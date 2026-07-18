@@ -1,6 +1,5 @@
 # Arabic RTL Educational Frontend
 
-مشروع Frontend مستقل لمنصة تعليمية عربية باتجاه RTL. ملف Figma الأصلي مرجع بصري فقط، وليس مصدر تشغيل أو اعتمادًا داخل التطبيق.
 
 ## Stack
 
