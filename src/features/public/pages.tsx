@@ -156,23 +156,27 @@ export function HomePage({ nav }: any) {
 // ============================================================
 // LOGIN
 // ============================================================
-export function LoginPage({ nav, setRole }: any) {
+export function LoginPage({ nav, setRole, onLogin }: any) {
   const [tab, setTab] = useState<"student"|"parent"|"admin">("student");
   const [phone, setPhone] = useState("");
   const [pass, setPass] = useState("");
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
 
-  const doLogin = () => {
+  const doLogin = async () => {
     if (!phone.match(/^01[0125][0-9]{8}$/) || !pass) { setErr("يرجى إدخال رقم هاتف صحيح وكلمة المرور"); return; }
     setLoading(true); setErr("");
-    setTimeout(() => {
-      setLoading(false);
-      if (tab==="student")      { setRole("student");   nav("student-dashboard", {}, "student"); }
-      else if (tab==="parent")  { setRole("parent");    nav("parent-dashboard", {}, "parent"); }
-      else                      { setRole("teacher");   nav("admin-dashboard", {}, "teacher"); }
+    try {
+      const user = await onLogin(phone, pass);
+      const nextRole = user.role;
+      setRole(nextRole);
+      nav(nextRole === "student" ? "student-dashboard" : nextRole === "parent" ? "parent-dashboard" : "admin-dashboard", {}, nextRole);
       notify("مرحبًا! تم تسجيل دخولك بنجاح", "success");
-    }, 1100);
+    } catch {
+      setErr("رقم الهاتف أو كلمة المرور غير صحيحة");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

@@ -22,11 +22,19 @@ import {
   EXAM_QS, ANNOUNCEMENTS, ACTIVATION_CODES, AUDIT_LOGS,
   ABWAB, DURUS, MAHADARAT, rn,
 } from "../../data/mock-data";
+import { login, logout, restoreSession, type AuthUser } from "../../shared/auth/session";
 
 // ============================================================
 // ACCESS DENIED
 // ============================================================
-type ShellProps = { role:Role; nav:Navigate; dark:boolean; setDark:Dispatch<SetStateAction<boolean>>; setRole:Dispatch<SetStateAction<Role>> };
+type ShellProps = {
+  role: Role;
+  nav: Navigate;
+  dark: boolean;
+  setDark: Dispatch<SetStateAction<boolean>>;
+  setRole: Dispatch<SetStateAction<Role>>;
+  onLogout: () => Promise<void>;
+};
 type NavItem = {l:string;view:AppRoute};
 
 function AccessDenied({ role, nav }: Pick<ShellProps,"role"|"nav">) {
@@ -62,7 +70,7 @@ function NotFoundPage({ nav }: Pick<ShellProps,"nav">) {
 // ============================================================
 // TOP BAR
 // ============================================================
-function TopBar({ role, nav, dark, setDark, setRole }: ShellProps) {
+function TopBar({ role, nav, dark, setDark, setRole, onLogout }: ShellProps) {
   const [mob, setMob] = useState(false);
   const [notif, setNotif] = useState(false);
 
@@ -132,7 +140,11 @@ function TopBar({ role, nav, dark, setDark, setRole }: ShellProps) {
                 <Shield size={12} className="text-primary"/>
                 <span className="text-primary font-bold">{role==="student"?"طالب":role==="parent"?"ولي أمر":role==="teacher"?"أستاذ":"مساعد"}</span>
               </div>
-              <Btn aria-label="تسجيل الخروج" size="sm" variant="ghost" onClick={() => { setRole("guest"); nav("home"); }}>
+              <Btn aria-label="تسجيل الخروج" size="sm" variant="ghost" onClick={async () => {
+                await onLogout();
+                setRole("guest");
+                nav("home", {}, "guest");
+              }}>
                 <LogOut size={15}/>
               </Btn>
             </div>
@@ -206,12 +218,9 @@ function DemoRoleSwitcher({ role, setRole, nav }: Pick<ShellProps,"role"|"setRol
 // ============================================================
 export default function App() {
   const [dark, setDark] = useState(() => localStorage.getItem("theme") === "dark");
-  const [role, setRole] = useState<Role>(() => {
-    const savedRole = localStorage.getItem("demo-role");
-    return savedRole === "student" || savedRole === "parent" || savedRole === "teacher" || savedRole === "assistant"
-      ? savedRole
-      : "guest";
-  });
+  const [role, setRole] = useState<Role>("guest");
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  const [authReady, setAuthReady] = useState(false);
   // Initialize from hash synchronously so the correct view renders on first paint
   const [view, setView] = useState<AppRoute>(() => parseRouteHash().route);
   const [params, setParams] = useState<RouteParams>(() => parseRouteHash().params);
@@ -225,9 +234,12 @@ export default function App() {
   },[dark]);
 
   useEffect(() => {
-    if (role === "guest") localStorage.removeItem("demo-role");
-    else localStorage.setItem("demo-role", role);
-  }, [role]);
+    restoreSession().then((user) => {
+      setAuthUser(user);
+      setRole(user?.role ?? "guest");
+      setAuthReady(true);
+    });
+  }, []);
 
   // Hash-based routing: sync on back/forward and external hash changes
   useEffect(() => {
@@ -256,7 +268,20 @@ export default function App() {
     window.scrollTo({ top:0, behavior:"smooth" });
   },[role]);
 
-  const ctx = { role, setRole, nav, params, dark, setDark };
+  const onLogin = async (phone: string, password: string) => {
+    const user = await login(phone, password);
+    setAuthUser(user);
+    return user;
+  };
+  const onLogout = async () => {
+    await logout();
+    setAuthUser(null);
+  };
+  const ctx = { role, setRole, nav, params, dark, setDark, onLogin, onLogout, authUser };
+
+  if (!authReady) {
+    return <div className="min-h-screen bg-background" role="status" aria-label="جاري تحميل الحساب" />;
+  }
 
   const render = () => {
     if (!canAccess(role, view)) {
