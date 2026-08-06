@@ -17,6 +17,8 @@ import { StudentDashboard, SubjectsPage, ChaptersPage, LessonsPage, VideoPage, E
 import { ParentDashboard, ParentErrorsPage } from "../parent/pages";
 import { AdminDashboard, StudentsListPage, StudentDetailPage, ContentManagePage, AssistantDashboard, ExamManagePage, ActivationCodesPage, AnnouncementsAdminPage, AssistantsPage, AuditLogPage, SupportRequestsPage, AcademicYearsPage } from "../admin/pages";
 import { Day5AcademicYearsPage, Day5AssistantsPage, Day5StudentDetailPage, Day5StudentsListPage } from "../admin/day5-pages";
+import { CurriculumManagePage } from "../admin/curriculum-page";
+import { StudentCurriculumPage } from "../student/curriculum-pages";
 import { Badge2, Btn, Card2, Field, Input2, Modal2, Pager, Select2, StatCard, ToastContainer, cn, notify } from "../../shared/ui";
 import {
   GOVERNORATES, GRADES, STUDENTS, SUBJECTS, CHAPTERS, LESSONS,
@@ -286,9 +288,9 @@ export default function App() {
       case "forgot":           return <ForgotPage {...ctx}/>;
       case "free-content":     return <FreeContentPage {...ctx}/>;
       case "student-dashboard":return <StudentDashboard {...ctx}/>;
-      case "subjects":         return <SubjectsPage {...ctx}/>;
-      case "chapters":         return <ChaptersPage {...ctx}/>;
-      case "lessons":          return <LessonsPage {...ctx}/>;
+      case "subjects":         return <StudentCurriculumPage {...ctx}/>;
+      case "chapters":         return <StudentCurriculumPage {...ctx}/>;
+      case "lessons":          return <StudentCurriculumPage {...ctx}/>;
       case "video":            return <VideoPage {...ctx} role={role}/>;
       case "exam":             return <ExamPage {...ctx}/>;
       case "exam-result":      return <ExamResultPage {...ctx}/>;
@@ -304,7 +306,7 @@ export default function App() {
       case "assistant-dashboard": return <AssistantDashboard {...ctx}/>;
       case "students-list":    return <Day5StudentsListPage {...ctx}/>;
       case "student-detail":   return <Day5StudentDetailPage {...ctx}/>;
-      case "content-subjects": return <ContentManagePage role={role} nav={nav} params={params}/>;
+      case "content-subjects": return <CurriculumManagePage/>;
       case "exam-manage":      return <ExamManagePage/>;
       case "activation-codes": return <ActivationCodesPage/>;
       case "announcements-admin": return <AnnouncementsAdminPage/>;
