@@ -50,6 +50,9 @@ export async function registerStudent(input: {
   parentPhone: string;
   birthDate: string;
   governorate: string;
+  email: string;
+  school: string;
+  gradeLevel: number;
   password: string;
   passwordConfirmation: string;
 }) {
@@ -62,6 +65,9 @@ export async function registerStudent(input: {
         parent_phone: input.parentPhone,
         birth_date: input.birthDate,
         governorate: input.governorate,
+        email: input.email,
+        school: input.school,
+        grade_level: input.gradeLevel,
         password: input.password,
         password_confirmation: input.passwordConfirmation,
       },

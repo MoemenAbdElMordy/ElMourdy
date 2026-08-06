@@ -260,6 +260,9 @@ export function RegisterPage({ nav }: any) {
         parentPhone: form.parentPhone,
         birthDate: form.birthDate,
         governorate: form.governorate,
+        email: form.email,
+        school: form.school,
+        gradeLevel: GRADES.indexOf(form.grade) + 1,
         password: form.password,
         passwordConfirmation: form.confirm,
       });

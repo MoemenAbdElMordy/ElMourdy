@@ -16,6 +16,7 @@ import { HomePage, LoginPage, RegisterPage, ParentRegisterPage, OTPPage, ForgotP
 import { StudentDashboard, SubjectsPage, ChaptersPage, LessonsPage, VideoPage, ExamPage, ExamResultPage, ErrorReviewPage, ProgressPage, AnnouncementsPage, ActivationPage, StudentSettingsPage } from "../student/pages";
 import { ParentDashboard, ParentErrorsPage } from "../parent/pages";
 import { AdminDashboard, StudentsListPage, StudentDetailPage, ContentManagePage, AssistantDashboard, ExamManagePage, ActivationCodesPage, AnnouncementsAdminPage, AssistantsPage, AuditLogPage, SupportRequestsPage, AcademicYearsPage } from "../admin/pages";
+import { Day5AcademicYearsPage, Day5AssistantsPage, Day5StudentDetailPage, Day5StudentsListPage } from "../admin/day5-pages";
 import { Badge2, Btn, Card2, Field, Input2, Modal2, Pager, Select2, StatCard, ToastContainer, cn, notify } from "../../shared/ui";
 import {
   GOVERNORATES, GRADES, STUDENTS, SUBJECTS, CHAPTERS, LESSONS,
@@ -301,16 +302,16 @@ export default function App() {
       case "parent-errors":    return <ParentErrorsPage {...ctx}/>;
       case "admin-dashboard":  return role==="assistant"?<AssistantDashboard {...ctx}/>:<AdminDashboard {...ctx}/>;
       case "assistant-dashboard": return <AssistantDashboard {...ctx}/>;
-      case "students-list":    return <StudentsListPage {...ctx}/>;
-      case "student-detail":   return <StudentDetailPage {...ctx}/>;
+      case "students-list":    return <Day5StudentsListPage {...ctx}/>;
+      case "student-detail":   return <Day5StudentDetailPage {...ctx}/>;
       case "content-subjects": return <ContentManagePage role={role} nav={nav} params={params}/>;
       case "exam-manage":      return <ExamManagePage/>;
       case "activation-codes": return <ActivationCodesPage/>;
       case "announcements-admin": return <AnnouncementsAdminPage/>;
-      case "assistants":       return <AssistantsPage/>;
+      case "assistants":       return <Day5AssistantsPage/>;
       case "audit-log":        return <AuditLogPage/>;
       case "support-requests": return <SupportRequestsPage/>;
-      case "academic-years":  return <AcademicYearsPage/>;
+      case "academic-years":  return <Day5AcademicYearsPage/>;
       default:                 return <NotFoundPage {...ctx}/>;
     }
   };
