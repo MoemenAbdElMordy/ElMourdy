@@ -16,17 +16,27 @@ import {
   ABWAB, DURUS, MAHADARAT, rn,
 } from "../../data/mock-data";
 import { buildPreviewNav } from "../platform/preview-navigation";
+import { ApiError } from "../../shared/api/client";
+import { changePassword, loadProfile, updateProfile } from "../../shared/auth/profile";
+import { loadDevices, removeDevice as removeRegisteredDevice, requestDeviceRemoval, type StudentDevice } from "../../shared/auth/devices";
+import type { AuthUser } from "../../shared/auth/session";
 // ============================================================
-export function StudentDashboard({ nav }: any) {
+export function StudentDashboard({ nav, authUser }: any) {
   const s = STUDENTS[0];
+  const [governorate, setGovernorate] = useState("");
+  useEffect(() => {
+    loadProfile()
+      .then((response) => setGovernorate(response.profile.governorate ?? ""))
+      .catch(() => setGovernorate(""));
+  }, []);
   const done = LESSONS.filter(l=>l.status==="complete").length;
   return (
     <div className="min-h-screen bg-background py-6 px-4">
       <div className="max-w-5xl mx-auto">
         <div className="flex items-start justify-between mb-6 flex-wrap gap-3">
           <div>
-            <h1 className="text-2xl font-black">أهلًا، {s.name.split(" ")[0]} 👋</h1>
-            <p className="text-muted-foreground text-sm">{s.grade} • {s.governorate}</p>
+            <h1 className="text-2xl font-black">أهلًا، {(authUser?.name ?? s.name).split(" ")[0]} 👋</h1>
+            {governorate && <p className="text-muted-foreground text-sm">{governorate}</p>}
           </div>
           <Badge2 variant={s.activated?"success":"warning"}>{s.activated?"الحساب مفعَّل":"يحتاج تفعيل"}</Badge2>
         </div>
@@ -993,31 +1003,109 @@ export function ActivationPage({ nav }: any) {
 // ============================================================
 // STUDENT SETTINGS
 // ============================================================
-type StudentDevice = {
-  id:number; name:string; kind:"phone"|"laptop"|"tablet"; browser:string; os:string;
-  location:string; ip:string; lastSeen:string; current:boolean; addedAt:string;
-};
-
-export function StudentSettingsPage() {
-  const student = STUDENTS[0];
+export function StudentSettingsPage({
+  authUser,
+  setAuthUser,
+}: {
+  authUser: AuthUser | null;
+  setAuthUser: (user: AuthUser | null) => void;
+}) {
   const [tab,setTab] = useState<"profile"|"security"|"devices">("devices");
-  const [devices,setDevices] = useState<StudentDevice[]>([
-    {id:1,name:"هاتف Samsung Galaxy A54",kind:"phone",browser:"Chrome 126",os:"Android 14",location:"القاهرة، مصر",ip:"102.44.18.21",lastSeen:"متصل الآن",current:true,addedAt:"2026-07-12"},
-    {id:2,name:"لابتوب Lenovo IdeaPad",kind:"laptop",browser:"Chrome 126",os:"Windows 11",location:"الجيزة، مصر",ip:"156.201.33.8",lastSeen:"منذ يومين",current:false,addedAt:"2026-06-03"},
-    {id:3,name:"iPad",kind:"tablet",browser:"Safari",os:"iPadOS 18",location:"القاهرة، مصر",ip:"41.232.10.4",lastSeen:"منذ 6 أيام",current:false,addedAt:"2026-05-20"},
-  ]);
+  const [profileForm,setProfileForm] = useState({
+    name: authUser?.name ?? "",
+    birthDate: "",
+    parentPhone: "",
+    governorate: "",
+  });
+  const [savingProfile,setSavingProfile] = useState(false);
+  const [devices,setDevices] = useState<StudentDevice[]>([]);
+  const [deviceLimit,setDeviceLimit] = useState(3);
+  const [loadingDevices,setLoadingDevices] = useState(true);
+  const [submittingDevice,setSubmittingDevice] = useState(false);
   const [requestDevice,setRequestDevice] = useState<StudentDevice|null>(null);
   const [requestReason,setRequestReason] = useState("");
   const [passwords,setPasswords] = useState({current:"",next:"",confirm:""});
+  const [savingPassword,setSavingPassword] = useState(false);
+  useEffect(() => {
+    loadProfile().then((response) => {
+      setProfileForm({
+        name: response.user.name,
+        birthDate: response.profile.birth_date ?? "",
+        parentPhone: response.profile.parent_phone ?? "",
+        governorate: response.profile.governorate ?? "",
+      });
+    }).catch(() => notify("تعذر تحميل بيانات الحساب", "error"));
+  }, []);
+  useEffect(() => {
+    loadDevices().then((response) => {
+      setDevices(response.devices);
+      setDeviceLimit(response.limit);
+    }).catch((error) => {
+      notify(error instanceof ApiError ? error.message : "تعذر تحميل الأجهزة المسجلة", "error");
+    }).finally(() => setLoadingDevices(false));
+  }, []);
+  const saveProfile = async () => {
+    setSavingProfile(true);
+    try {
+      const response = await updateProfile({
+        name: profileForm.name,
+        governorate: profileForm.governorate,
+      });
+      setAuthUser(response.user);
+      notify("تم حفظ البيانات", "success");
+    } catch (error) {
+      notify(error instanceof ApiError ? error.message : "تعذر حفظ البيانات", "error");
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+  const savePassword = async () => {
+    setSavingPassword(true);
+    try {
+      await changePassword({
+        currentPassword: passwords.current,
+        password: passwords.next,
+        passwordConfirmation: passwords.confirm,
+      });
+      setPasswords({current:"",next:"",confirm:""});
+      notify("تم تغيير كلمة المرور وإنهاء الجلسات الأخرى", "success");
+    } catch (error) {
+      notify(error instanceof ApiError ? error.message : "تعذر تغيير كلمة المرور", "error");
+    } finally {
+      setSavingPassword(false);
+    }
+  };
   const tabs = [
     {id:"profile",label:"البيانات الشخصية",icon:UserCheck},
     {id:"security",label:"كلمة المرور",icon:Shield},
     {id:"devices",label:"الأجهزة والجلسات",icon:Monitor},
   ] as const;
-  const DeviceIcon = ({kind}:{kind:StudentDevice["kind"]}) => kind==="phone"?<Smartphone size={20}/>:kind==="laptop"?<Laptop size={20}/>:<Monitor size={20}/>;
+  const deviceKind = (device:StudentDevice) => /android|ios|iphone/i.test(`${device.os} ${device.name}`) ? "phone" : /windows|mac|linux/i.test(`${device.os} ${device.name}`) ? "laptop" : "tablet";
+  const DeviceIcon = ({device}:{device:StudentDevice}) => deviceKind(device)==="phone"?<Smartphone size={20}/>:deviceKind(device)==="laptop"?<Laptop size={20}/>:<Monitor size={20}/>;
   const removeDevice = (device:StudentDevice) => {
     if (device.current) { notify("لا يمكن إزالة الجهاز المستخدم حاليًا", "error"); return; }
     setRequestDevice(device);
+  };
+  const submitDeviceAction = async () => {
+    if (!requestDevice) return;
+    setSubmittingDevice(true);
+    try {
+      if (requestDevice.can_self_remove) {
+        await removeRegisteredDevice(requestDevice.id);
+        setDevices(current => current.filter(device => device.id !== requestDevice.id));
+        notify("تمت إزالة الجهاز وإنهاء جلساته", "success");
+      } else {
+        await requestDeviceRemoval(requestDevice.id, requestReason);
+        setDevices(current => current.map(device => device.id === requestDevice.id ? {...device,pending_removal_request:true} : device));
+        notify("تم إرسال طلب إزالة الجهاز للمساعد", "success");
+      }
+      setRequestDevice(null);
+      setRequestReason("");
+    } catch (error) {
+      notify(error instanceof ApiError ? error.message : "تعذر تنفيذ طلب إزالة الجهاز", "error");
+    } finally {
+      setSubmittingDevice(false);
+    }
   };
   return (
     <div className="min-h-screen bg-background py-6 px-4">
@@ -1034,15 +1122,14 @@ export function StudentSettingsPage() {
             {tab==="profile"&&<Card2>
               <h2 className="font-bold mb-5">البيانات الشخصية والدراسية</h2>
               <div className="grid sm:grid-cols-2 gap-4">
-                <Input2 label="الاسم الكامل" defaultValue={student.name}/>
-                <Input2 label="رقم الهاتف" defaultValue={student.phone} dir="ltr" disabled/>
-                <Input2 label="تاريخ الميلاد" type="date" defaultValue="2008-04-16"/>
-                <Input2 label="رقم ولي الأمر" defaultValue={student.parentPhone} dir="ltr" disabled/>
-                <Input2 label="الصف الدراسي" defaultValue={student.grade} disabled/>
-                <Input2 label="المدرسة" defaultValue={student.school}/>
+                <Input2 label="الاسم الكامل" value={profileForm.name} onChange={event=>setProfileForm(value=>({...value,name:event.target.value}))}/>
+                <Input2 label="رقم الهاتف" value={authUser?.phone ?? ""} dir="ltr" disabled/>
+                <Input2 label="تاريخ الميلاد" type="date" value={profileForm.birthDate} disabled/>
+                <Input2 label="رقم ولي الأمر" value={profileForm.parentPhone} dir="ltr" disabled/>
+                <Input2 label="المحافظة" value={profileForm.governorate} onChange={event=>setProfileForm(value=>({...value,governorate:event.target.value}))}/>
               </div>
               <div className="mt-4 p-3 rounded-xl bg-muted text-xs text-muted-foreground">لتغيير رقم الهاتف أو رقم ولي الأمر تواصل مع خدمة العملاء.</div>
-              <Btn className="mt-5" onClick={()=>notify("تم حفظ البيانات","success")}>حفظ التعديلات</Btn>
+              <Btn className="mt-5" onClick={saveProfile} disabled={savingProfile}>حفظ التعديلات</Btn>
             </Card2>}
             {tab==="security"&&<Card2>
               <h2 className="font-bold mb-1">تغيير كلمة المرور</h2>
@@ -1051,30 +1138,31 @@ export function StudentSettingsPage() {
                 <Input2 label="كلمة المرور الحالية" type="password" value={passwords.current} onChange={e=>setPasswords(v=>({...v,current:e.target.value}))}/>
                 <Input2 label="كلمة المرور الجديدة" type="password" value={passwords.next} onChange={e=>setPasswords(v=>({...v,next:e.target.value}))}/>
                 <Input2 label="تأكيد كلمة المرور" type="password" value={passwords.confirm} onChange={e=>setPasswords(v=>({...v,confirm:e.target.value}))}/>
-                <Btn disabled={!passwords.current||passwords.next.length<8||passwords.next!==passwords.confirm} onClick={()=>{setPasswords({current:"",next:"",confirm:""});notify("تم تغيير كلمة المرور وإنهاء الجلسات الأخرى","success");}}>تحديث كلمة المرور</Btn>
+                <Btn disabled={savingPassword||!passwords.current||passwords.next.length<8||passwords.next!==passwords.confirm} onClick={savePassword}>تحديث كلمة المرور</Btn>
               </div>
             </Card2>}
             {tab==="devices"&&<div className="space-y-4">
               <Card2>
                 <div className="flex items-start justify-between gap-4 flex-wrap">
                   <div><h2 className="font-bold">الأجهزة المسجلة</h2><p className="text-sm text-muted-foreground mt-1">يمكنك استخدام 3 أجهزة بحد أقصى، وحسابك يعمل على جهاز واحد في نفس الوقت.</p></div>
-                  <Badge2 variant={devices.length>=3?"warning":"success"}>{devices.length} من 3 أجهزة</Badge2>
+                  <Badge2 variant={devices.length>=deviceLimit?"warning":"success"}>{devices.length} من {deviceLimit} أجهزة</Badge2>
                 </div>
               </Card2>
+              {loadingDevices&&<Card2><p className="text-sm text-muted-foreground">جارٍ تحميل الأجهزة…</p></Card2>}
+              {!loadingDevices&&devices.length===0&&<Card2><p className="text-sm text-muted-foreground">لا توجد أجهزة مسجلة.</p></Card2>}
               {devices.map(device=><Card2 key={device.id}>
                 <div className="flex items-start gap-4">
-                  <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center shrink-0",device.current?"bg-primary text-primary-foreground":"bg-muted text-muted-foreground")}><DeviceIcon kind={device.kind}/></div>
+                  <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center shrink-0",device.current?"bg-primary text-primary-foreground":"bg-muted text-muted-foreground")}><DeviceIcon device={device}/></div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap"><h3 className="font-bold text-sm">{device.name}</h3>{device.current&&<Badge2 variant="success">الجهاز الحالي</Badge2>}</div>
+                    <div className="flex items-center gap-2 flex-wrap"><h3 className="font-bold text-sm">{device.name}</h3>{device.current&&<Badge2 variant="success">الجهاز الحالي</Badge2>}{device.pending_removal_request&&<Badge2 variant="warning">طلب الإزالة قيد المراجعة</Badge2>}</div>
                     <div className="grid sm:grid-cols-2 gap-x-5 gap-y-1 mt-2 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1"><Monitor size={12}/>{device.os} • {device.browser}</span>
-                      <span className="flex items-center gap-1"><MapPin size={12}/>{device.location}</span>
-                      <span className="flex items-center gap-1"><Wifi size={12}/>{device.ip}</span>
-                      <span className="flex items-center gap-1"><Clock size={12}/>{device.lastSeen}</span>
-                      <span className="flex items-center gap-1"><CalendarDays size={12}/>أضيف {new Date(device.addedAt).toLocaleDateString("ar-EG")}</span>
+                      <span className="flex items-center gap-1"><Monitor size={12}/>{device.os || "نظام غير معروف"} • {device.browser || "متصفح غير معروف"}</span>
+                      <span className="flex items-center gap-1"><Wifi size={12}/>{device.ip_address || "عنوان غير متاح"}</span>
+                      <span className="flex items-center gap-1"><Clock size={12}/>آخر نشاط {new Date(device.last_seen_at).toLocaleString("ar-EG")}</span>
+                      <span className="flex items-center gap-1"><CalendarDays size={12}/>أضيف {new Date(device.created_at).toLocaleDateString("ar-EG")}</span>
                     </div>
                   </div>
-                  {!device.current&&<Btn size="sm" variant="ghost" onClick={()=>removeDevice(device)}>إزالة</Btn>}
+                  {!device.current&&<Btn size="sm" variant="ghost" disabled={device.pending_removal_request} onClick={()=>removeDevice(device)}>{device.pending_removal_request?"قيد المراجعة":"إزالة"}</Btn>}
                 </div>
               </Card2>)}
               <Card2 className="border-primary/20 bg-primary/5">
@@ -1086,10 +1174,11 @@ export function StudentSettingsPage() {
       </div>
       <Modal2 open={Boolean(requestDevice)} onClose={()=>{setRequestDevice(null);setRequestReason("");}} title="إزالة الجهاز">
         {requestDevice&&<div className="space-y-4">
-          <div className="p-3 rounded-xl bg-muted"><div className="font-bold text-sm">{requestDevice.name}</div><div className="text-xs text-muted-foreground mt-1">آخر نشاط: {requestDevice.lastSeen}</div></div>
-          <div className="p-3 rounded-xl border border-yellow-200 bg-yellow-50 dark:bg-yellow-900/20 text-sm text-yellow-800 dark:text-yellow-300">لم يمر 7 أيام على آخر إزالة ذاتية. سيتم إرسال طلب للمساعد.</div>
-          <Field label="سبب الطلب (اختياري)"><textarea rows={3} value={requestReason} onChange={e=>setRequestReason(e.target.value)} className="w-full rounded-xl border border-border bg-background p-3 text-sm" placeholder="مثال: الجهاز ضاع أو تم بيعه"/></Field>
-          <div className="flex gap-2"><Btn variant="outline" className="flex-1" onClick={()=>setRequestDevice(null)}>إلغاء</Btn><Btn className="flex-1" onClick={()=>{setRequestDevice(null);setRequestReason("");notify("تم إرسال طلب إزالة الجهاز للمساعد","success");}}>إرسال الطلب</Btn></div>
+          <div className="p-3 rounded-xl bg-muted"><div className="font-bold text-sm">{requestDevice.name}</div><div className="text-xs text-muted-foreground mt-1">آخر نشاط: {new Date(requestDevice.last_seen_at).toLocaleString("ar-EG")}</div></div>
+          {requestDevice.can_self_remove ?
+            <div className="p-3 rounded-xl border border-red-200 bg-red-50 dark:bg-red-900/20 text-sm text-red-800 dark:text-red-300">ستتم إزالة الجهاز وإنهاء أي جلسة مفتوحة عليه.</div> :
+            <><div className="p-3 rounded-xl border border-yellow-200 bg-yellow-50 dark:bg-yellow-900/20 text-sm text-yellow-800 dark:text-yellow-300">لم يمر 7 أيام على آخر إزالة ذاتية. سيتم إرسال طلب للمساعد.</div><Field label="سبب الطلب (اختياري)"><textarea rows={3} value={requestReason} onChange={e=>setRequestReason(e.target.value)} className="w-full rounded-xl border border-border bg-background p-3 text-sm" placeholder="مثال: الجهاز ضاع أو تم بيعه"/></Field></>}
+          <div className="flex gap-2"><Btn variant="outline" className="flex-1" disabled={submittingDevice} onClick={()=>setRequestDevice(null)}>إلغاء</Btn><Btn className="flex-1" disabled={submittingDevice} onClick={submitDeviceAction}>{requestDevice.can_self_remove?"إزالة الجهاز":"إرسال الطلب"}</Btn></div>
         </div>}
       </Modal2>
     </div>

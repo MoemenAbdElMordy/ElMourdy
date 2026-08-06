@@ -7,6 +7,7 @@ export type AuthUser = {
   name: string;
   phone: string;
   role: AuthRole;
+  permissions: string[];
 };
 
 type SessionResponse = {
@@ -14,7 +15,7 @@ type SessionResponse = {
   user: AuthUser;
 };
 
-function deviceFingerprint() {
+export function deviceFingerprint() {
   const key = "elmourdy-device-id";
   const existing = localStorage.getItem(key);
   if (existing) return existing;
@@ -22,6 +23,26 @@ function deviceFingerprint() {
   const value = crypto.randomUUID();
   localStorage.setItem(key, value);
   return value;
+}
+
+export function deviceMetadata() {
+  const userAgent = navigator.userAgent;
+  const os = userAgent.includes("Windows") ? "Windows" :
+    userAgent.includes("Android") ? "Android" :
+      /iPhone|iPad/.test(userAgent) ? "iOS" :
+        userAgent.includes("Mac OS") ? "macOS" :
+          userAgent.includes("Linux") ? "Linux" : "Unknown OS";
+  const browser = userAgent.includes("Edg/") ? "Microsoft Edge" :
+    userAgent.includes("Chrome/") ? "Google Chrome" :
+      userAgent.includes("Firefox/") ? "Mozilla Firefox" :
+        userAgent.includes("Safari/") ? "Safari" : "Unknown browser";
+
+  return { device_name: `${os} device`, browser, os };
+}
+
+export function acceptSession(response: SessionResponse) {
+  setSessionToken(response.token);
+  return response.user;
 }
 
 export async function login(phone: string, password: string) {
@@ -32,12 +53,11 @@ export async function login(phone: string, password: string) {
         phone,
         password,
         device_fingerprint: deviceFingerprint(),
-        browser: navigator.userAgent,
+        ...deviceMetadata(),
       },
     }),
   });
-  setSessionToken(response.token);
-  return response.user;
+  return acceptSession(response);
 }
 
 export async function restoreSession() {

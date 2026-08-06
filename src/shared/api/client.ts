@@ -35,6 +35,10 @@ export async function apiRequest<T>(path: string, options: RequestInit = {}): Pr
 
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
+    if (response.status === 401 && token) {
+      clearSessionToken();
+      window.dispatchEvent(new Event("elmourdy:session-expired"));
+    }
     throw new ApiError(
       body.error?.message ?? "The server could not complete the request",
       response.status,

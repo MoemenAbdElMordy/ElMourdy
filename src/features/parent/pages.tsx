@@ -16,16 +16,32 @@ import {
   ABWAB, DURUS, MAHADARAT, rn,
 } from "../../data/mock-data";
 import { buildPreviewNav } from "../platform/preview-navigation";
+import { loadProfile } from "../../shared/auth/profile";
 // ============================================================
 export function ParentDashboard({ nav }: any) {
-  const linkedStudents = [STUDENTS[2], STUDENTS[7], STUDENTS[11]];
-  const [selectedStudentId,setSelectedStudentId] = useState(linkedStudents[0].id);
+  const [linkedStudents,setLinkedStudents] = useState<any[]>([]);
+  const [selectedStudentId,setSelectedStudentId] = useState<number | null>(null);
+  useEffect(() => {
+    loadProfile().then((response) => {
+      const students = response.linked_students.map((student) => ({
+        ...student,
+        grade: "—",
+        school: "—",
+        lastActive: new Date().toISOString(),
+      }));
+      setLinkedStudents(students);
+      setSelectedStudentId(students[0]?.id ?? null);
+    }).catch(() => notify("تعذر تحميل الطلاب المرتبطين", "error"));
+  }, []);
   const s = linkedStudents.find(student=>student.id===selectedStudentId) || linkedStudents[0];
   const attempts = [
     {id:1,lesson:"تعريف الاسم وعلاماته",date:"2025-09-08",score:35,total:50,pct:70,passed:true,attempt:1},
     {id:2,lesson:"فروع اللغة العربية",date:"2025-09-05",score:25,total:50,pct:50,passed:false,attempt:1},
     {id:3,lesson:"فروع اللغة العربية",date:"2025-09-06",score:42,total:50,pct:84,passed:true,attempt:2},
   ];
+  if (!s) {
+    return <div className="min-h-screen bg-background p-6"><Card2>لا يوجد طلاب مرتبطون بهذا الحساب.</Card2></div>;
+  }
   return (
     <div className="min-h-screen bg-background py-6 px-4">
       <div className="max-w-4xl mx-auto">
@@ -34,7 +50,7 @@ export function ParentDashboard({ nav }: any) {
             <h1 className="text-2xl font-black">لوحة ولي الأمر</h1>
             <p className="text-muted-foreground text-sm">متابعة الطالب: {s.name}</p>
           </div>
-          <div className="flex items-center gap-2"><Select2 aria-label="اختيار الطالب" value={selectedStudentId} onChange={event=>setSelectedStudentId(Number(event.target.value))} options={linkedStudents.map(student=>({value:student.id,label:student.name}))}/><Badge2 variant={s.status==="active"?"success":"warning"}>{s.status==="active"?"نشط":"غير نشط"}</Badge2></div>
+          <div className="flex items-center gap-2"><Select2 aria-label="اختيار الطالب" value={selectedStudentId ?? ""} onChange={event=>setSelectedStudentId(Number(event.target.value))} options={linkedStudents.map(student=>({value:student.id,label:student.name}))}/><Badge2 variant={s.status==="active"?"success":"warning"}>{s.status==="active"?"نشط":"غير نشط"}</Badge2></div>
         </div>
 
         <Card2 className="mb-5">

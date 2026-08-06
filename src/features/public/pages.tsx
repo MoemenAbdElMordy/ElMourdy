@@ -16,6 +16,16 @@ import {
   ABWAB, DURUS, MAHADARAT, rn,
 } from "../../data/mock-data";
 import { buildPreviewNav } from "../platform/preview-navigation";
+import { ApiError } from "../../shared/api/client";
+import {
+  clearPendingRegistration,
+  loadPendingRegistration,
+  registerParent,
+  registerStudent,
+  resendRegistration,
+  storePendingRegistration,
+  verifyRegistration,
+} from "../../shared/auth/registration";
 // ============================================================
 export function HomePage({ nav }: any) {
   return (
@@ -157,7 +167,6 @@ export function HomePage({ nav }: any) {
 // LOGIN
 // ============================================================
 export function LoginPage({ nav, setRole, onLogin }: any) {
-  const [tab, setTab] = useState<"student"|"parent"|"admin">("student");
   const [phone, setPhone] = useState("");
   const [pass, setPass] = useState("");
   const [loading, setLoading] = useState(false);
@@ -188,14 +197,6 @@ export function LoginPage({ nav, setRole, onLogin }: any) {
           <p className="text-muted-foreground text-sm mt-1">منصة الأستاذ محمود عبدالمرضي</p>
         </div>
         <Card2>
-          <div className="flex gap-1 bg-muted rounded-xl p-1 mb-6">
-            {[{id:"student",l:"طالب"},{id:"parent",l:"ولي أمر"},{id:"admin",l:"أستاذ/مساعد"}].map(t=>(
-              <button key={t.id} onClick={() => setTab(t.id as any)}
-                className={cn("flex-1 py-2 rounded-lg text-sm font-semibold transition-colors",tab===t.id?"bg-card shadow text-foreground":"text-muted-foreground hover:text-foreground")}>
-                {t.l}
-              </button>
-            ))}
-          </div>
           <div className="space-y-4">
             <Input2 label="رقم الهاتف" type="tel" inputMode="numeric" placeholder="01xxxxxxxxx" value={phone} onChange={(e:any)=>setPhone(e.target.value.replace(/\D/g,"").slice(0,11))} dir="ltr"/>
             <Input2 label="كلمة المرور" type="password" placeholder="••••••••" value={pass} onChange={(e:any)=>setPass(e.target.value)}/>
@@ -207,10 +208,12 @@ export function LoginPage({ nav, setRole, onLogin }: any) {
             <Btn className="w-full" onClick={doLogin} disabled={loading}>
               {loading ? <><RefreshCw size={15} className="animate-spin"/> جارٍ الدخول…</> : "دخول"}
             </Btn>
-            <div className="flex items-center justify-between text-sm">
+            <div className="flex items-center justify-center text-sm">
               <button onClick={()=>nav("forgot")} className="text-primary hover:underline">نسيت كلمة المرور؟</button>
-              {tab==="student" && <button onClick={()=>nav("register")} className="text-primary hover:underline">تسجيل طالب جديد</button>}
-              {tab==="parent" && <button onClick={()=>nav("parent-register")} className="text-primary hover:underline">تسجيل ولي أمر</button>}
+            </div>
+            <div className="grid grid-cols-2 gap-2 border-t border-border pt-4">
+              <Btn variant="outline" onClick={()=>nav("register")}>إنشاء حساب طالب</Btn>
+              <Btn variant="outline" onClick={()=>nav("parent-register")}>إنشاء حساب ولي أمر</Btn>
             </div>
           </div>
         </Card2>
@@ -235,6 +238,7 @@ export function RegisterPage({ nav }: any) {
     if (!form.birthDate)                                    e.birthDate="تاريخ الميلاد مطلوب";
     if (!form.phone.match(/^01[0-2][0-9]{8}$/))            e.phone="رقم هاتف غير صحيح";
     if (!form.parentPhone.match(/^01[0-2][0-9]{8}$/))      e.parentPhone="رقم ولي الأمر غير صحيح";
+    if (form.phone === form.parentPhone && form.phone)      e.parentPhone="رقم ولي الأمر يجب أن يختلف عن رقم الطالب";
     if (!form.email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/))   e.email="بريد إلكتروني غير صحيح";
     if (!form.grade)                                        e.grade="يرجى اختيار الصف";
     if (!form.governorate)                                  e.governorate="يرجى اختيار المحافظة";
@@ -243,6 +247,29 @@ export function RegisterPage({ nav }: any) {
     if (form.password !== form.confirm)                    e.confirm="كلمات المرور غير متطابقة";
     setErrors(e);
     return Object.keys(e).length === 0;
+  };
+
+  const submit = async () => {
+    if (!validate()) return;
+
+    setLoading(true);
+    try {
+      const registration = await registerStudent({
+        name: form.name,
+        phone: form.phone,
+        parentPhone: form.parentPhone,
+        birthDate: form.birthDate,
+        governorate: form.governorate,
+        password: form.password,
+        passwordConfirmation: form.confirm,
+      });
+      storePendingRegistration(registration);
+      nav("otp", { phone: form.phone, verificationRole: "student" });
+    } catch (error) {
+      setErrors({ submit: error instanceof ApiError ? error.message : "تعذر إنشاء الحساب. حاول مرة أخرى." });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -265,13 +292,13 @@ export function RegisterPage({ nav }: any) {
             <div className="space-y-4">
               <h3 className="font-bold">البيانات الشخصية</h3>
               <Input2 label="الاسم الكامل" placeholder="محمد أحمد علي" value={form.name} onChange={(e:any)=>set("name",e.target.value)} error={errors.name}/>
-              <Input2 label="تاريخ الميلاد" type="date" value={form.birthDate} onChange={(e:any)=>set("birthDate",e.target.value)} error={errors.birthDate}/>
+              <Input2 label="تاريخ الميلاد" type="date" value={form.birthDate} onInput={(e:any)=>set("birthDate",e.currentTarget.value)} error={errors.birthDate}/>
               <div className="grid grid-cols-2 gap-3">
                 <Input2 label="هاتف الطالب" placeholder="01xxxxxxxxx" value={form.phone} onChange={(e:any)=>set("phone",e.target.value)} error={errors.phone} dir="ltr"/>
                 <Input2 label="هاتف ولي الأمر" placeholder="01xxxxxxxxx" value={form.parentPhone} onChange={(e:any)=>set("parentPhone",e.target.value)} error={errors.parentPhone} dir="ltr"/>
               </div>
               <Input2 label="البريد الإلكتروني (فريد)" type="email" placeholder="example@email.com" value={form.email} onChange={(e:any)=>set("email",e.target.value)} error={errors.email} dir="ltr"/>
-              <Btn className="w-full" onClick={()=>{ if(form.name&&form.birthDate&&form.phone&&form.parentPhone&&form.email)setStep(2);else validate(); }}>التالي</Btn>
+              <Btn className="w-full" onClick={()=>{ if(form.name&&form.birthDate&&form.phone&&form.parentPhone&&form.email&&form.phone!==form.parentPhone)setStep(2);else validate(); }}>التالي</Btn>
             </div>
           )}
           {step===2 && (
@@ -297,10 +324,11 @@ export function RegisterPage({ nav }: any) {
               <Input2 label="تأكيد كلمة المرور" type="password" placeholder="أعد كتابة كلمة المرور" value={form.confirm} onChange={(e:any)=>set("confirm",e.target.value)} error={errors.confirm}/>
               <div className="flex gap-2">
                 <Btn variant="outline" className="flex-1" onClick={()=>setStep(2)}>السابق</Btn>
-                <Btn className="flex-1" onClick={()=>{ if(validate()){ setLoading(true); setTimeout(()=>{ setLoading(false); nav("otp",{phone:form.phone,verificationRole:"student"}); },1200); } }} disabled={loading}>
+                <Btn className="flex-1" onClick={submit} disabled={loading}>
                   {loading?<><RefreshCw size={15} className="animate-spin"/> جارٍ التسجيل…</>:"إنشاء الحساب"}
                 </Btn>
               </div>
+              {errors.submit && <div role="alert" className="p-3 rounded-xl bg-red-50 text-red-700 text-sm">{errors.submit}</div>}
             </div>
           )}
         </Card2>
@@ -319,24 +347,29 @@ export function ParentRegisterPage({ nav }: any) {
   const [form, setForm] = useState({name:"",phone:"",password:"",confirm:""});
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const registeredParentPhones = new Set(STUDENTS.slice(0, 8).map(student => student.parentPhone));
   const validPhone = /^01[0125][0-9]{8}$/.test(form.phone);
 
-  const submit = () => {
+  const submit = async () => {
     if (!form.name.trim() || !validPhone || form.password.length < 8 || form.password !== form.confirm) {
       setError("راجع الاسم ورقم الهاتف وتطابق كلمة المرور (8 أحرف على الأقل).");
       return;
     }
-    if (!registeredParentPhones.has(form.phone)) {
-      setError("هذا الرقم غير مسجل كرقم ولي أمر لدى أي طالب. اطلب من الطالب مراجعة بياناته أو تواصل مع خدمة العملاء.");
-      return;
-    }
     setError("");
     setLoading(true);
-    window.setTimeout(() => {
+    try {
+      const registration = await registerParent({
+        name: form.name,
+        phone: form.phone,
+        password: form.password,
+        passwordConfirmation: form.confirm,
+      });
+      storePendingRegistration(registration);
+      nav("otp", {phone: form.phone, verificationRole:"parent"});
+    } catch (error) {
+      setError(error instanceof ApiError ? error.message : "تعذر إنشاء الحساب. حاول مرة أخرى.");
+    } finally {
       setLoading(false);
-      nav("otp", {phone:form.phone, verificationRole:"parent"});
-    }, 900);
+    }
   };
 
   return (
@@ -368,11 +401,13 @@ export function ParentRegisterPage({ nav }: any) {
 // ============================================================
 // OTP
 // ============================================================
-export function OTPPage({ nav, params, setRole }: any) {
+export function OTPPage({ nav, params, setRole, setAuthUser }: any) {
+  const [registration, setRegistration] = useState(() => loadPendingRegistration());
   const [otp, setOtp] = useState(["","","","","",""]);
   const [loading, setLoading] = useState(false);
-  const [resendRemaining, setResendRemaining] = useState(0);
+  const [resendRemaining, setResendRemaining] = useState(registration?.resendAfterSeconds ?? 0);
   const refs = useRef<any[]>([]);
+  const [error, setError] = useState("");
   useEffect(() => {
     if (resendRemaining <= 0) return;
     const timer = window.setInterval(() => setResendRemaining(value => Math.max(0, value - 1)), 1000);
@@ -383,6 +418,46 @@ export function OTPPage({ nav, params, setRole }: any) {
     const n=[...otp]; n[i]=v; setOtp(n);
     if (v && i<5) refs.current[i+1]?.focus();
   };
+  const verify = async () => {
+    if (!registration) {
+      setError("انتهت بيانات التسجيل. ابدأ التسجيل مرة أخرى.");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+    try {
+      const user = await verifyRegistration(registration, otp.join(""));
+      clearPendingRegistration();
+      setAuthUser(user);
+      setRole(user.role);
+      nav(user.role === "parent" ? "parent-dashboard" : "student-dashboard", {}, user.role);
+      notify(user.role === "parent" ? "تم التحقق وربط الطلاب بحسابك" : "تم التحقق بنجاح! مرحبًا بك", "success");
+    } catch (requestError) {
+      setError(requestError instanceof ApiError ? requestError.message : "تعذر التحقق من الرمز.");
+    } finally {
+      setLoading(false);
+    }
+  };
+  const resend = async () => {
+    if (!registration || resendRemaining > 0) return;
+
+    setLoading(true);
+    setError("");
+    try {
+      const nextRegistration = await resendRegistration(registration);
+      storePendingRegistration(nextRegistration);
+      setRegistration(nextRegistration);
+      setResendRemaining(nextRegistration.resendAfterSeconds);
+      setOtp(["","","","","",""]);
+      refs.current[0]?.focus();
+      notify("تم إرسال رمز تحقق جديد", "success");
+    } catch (requestError) {
+      setError(requestError instanceof ApiError ? requestError.message : "تعذر إعادة إرسال الرمز.");
+    } finally {
+      setLoading(false);
+    }
+  };
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-sm text-center">
@@ -392,7 +467,7 @@ export function OTPPage({ nav, params, setRole }: any) {
         <h1 className="text-2xl font-black mb-2">التحقق من الهاتف</h1>
         <p className="text-muted-foreground text-sm mb-6">
           أرسلنا رمز التحقق إلى<br/>
-          <span className="font-bold text-foreground">{params?.phone || "01xxxxxxxxx"}</span>
+          <span className="font-bold text-foreground" dir="ltr">{registration?.phone || params?.phone || "01xxxxxxxxx"}</span>
         </p>
         <Card2>
           <div className="flex gap-2 justify-center mb-5 flex-row-reverse">
@@ -402,15 +477,16 @@ export function OTPPage({ nav, params, setRole }: any) {
                 className="w-11 h-14 text-center text-xl font-black rounded-xl border-2 border-border focus:border-primary focus:outline-none bg-background transition-colors"/>
             ))}
           </div>
-          <Btn className="w-full mb-3" onClick={()=>{ setLoading(true); setTimeout(()=>{ const verifiedRole = params?.verificationRole === "parent" ? "parent" : "student"; setLoading(false); setRole(verifiedRole); nav(verifiedRole === "parent" ? "parent-dashboard" : "student-dashboard", {}, verifiedRole); notify(verifiedRole === "parent" ? "تم التحقق وربط الطلاب بحسابك" : "تم التحقق بنجاح! مرحبًا بك","success"); },1200); }} disabled={loading||otp.some(v=>!v)}>
+          {registration?.developmentCode && (
+            <div className="mb-3 rounded-xl bg-muted p-3 text-sm">
+              رمز التطوير: <strong dir="ltr">{registration.developmentCode}</strong>
+            </div>
+          )}
+          {error && <div role="alert" className="mb-3 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+          <Btn className="w-full mb-3" onClick={verify} disabled={loading||otp.some(v=>!v)}>
             {loading?<><RefreshCw size={15} className="animate-spin"/> جارٍ التحقق…</>:"تحقق"}
           </Btn>
-          <button disabled={resendRemaining > 0} onClick={() => {
-            setResendRemaining(30);
-            setOtp(["","","","","",""]);
-            refs.current[0]?.focus();
-            notify("تم إرسال رمز تحقق جديد", "success");
-          }} className="text-sm text-primary hover:underline disabled:opacity-50 disabled:no-underline">
+          <button disabled={loading || resendRemaining > 0} onClick={resend} className="text-sm text-primary hover:underline disabled:opacity-50 disabled:no-underline">
             {resendRemaining > 0 ? `إعادة الإرسال خلال ${resendRemaining} ثانية` : "إعادة إرسال الرمز"}
           </button>
         </Card2>

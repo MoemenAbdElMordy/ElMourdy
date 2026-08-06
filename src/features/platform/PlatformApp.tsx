@@ -34,6 +34,7 @@ type ShellProps = {
   setDark: Dispatch<SetStateAction<boolean>>;
   setRole: Dispatch<SetStateAction<Role>>;
   onLogout: () => Promise<void>;
+  authUser: AuthUser | null;
 };
 type NavItem = {l:string;view:AppRoute};
 
@@ -70,7 +71,7 @@ function NotFoundPage({ nav }: Pick<ShellProps,"nav">) {
 // ============================================================
 // TOP BAR
 // ============================================================
-function TopBar({ role, nav, dark, setDark, setRole, onLogout }: ShellProps) {
+function TopBar({ role, nav, dark, setDark, setRole, onLogout, authUser }: ShellProps) {
   const [mob, setMob] = useState(false);
   const [notif, setNotif] = useState(false);
 
@@ -81,7 +82,17 @@ function TopBar({ role, nav, dark, setDark, setRole, onLogout }: ShellProps) {
     teacher:  [{ l:"لوحة القيادة",view:"admin-dashboard"},{ l:"الطلاب",view:"students-list"},{ l:"المحتوى",view:"content-subjects"},{ l:"السنوات",view:"academic-years"},{ l:"الاختبارات",view:"exam-manage"},{ l:"الأكواد",view:"activation-codes"},{ l:"طلبات الدعم",view:"support-requests"},{ l:"الإعلانات",view:"announcements-admin"},{ l:"المساعدون",view:"assistants"},{ l:"سجل الأحداث",view:"audit-log"}],
     assistant:[{ l:"لوحتي",view:"admin-dashboard"},{ l:"الطلاب",view:"students-list"},{ l:"المحتوى",view:"content-subjects"},{ l:"طلبات الدعم",view:"support-requests"},{ l:"الإعلانات",view:"announcements-admin"}],
   };
-  const navLinks = links[role] || [];
+  const assistantRoutePermissions: Partial<Record<AppRoute, string>> = {
+    "students-list": "manage_students",
+    "content-subjects": "manage_content",
+    "support-requests": "manage_support_requests",
+    "announcements-admin": "manage_announcements",
+  };
+  const navLinks = (links[role] || []).filter((link) => {
+    if (role !== "assistant") return true;
+    const permission = assistantRoutePermissions[link.view];
+    return !permission || authUser?.permissions.includes(permission);
+  });
   const homeView = role==="student"?"student-dashboard":role==="parent"?"parent-dashboard":role==="teacher"||role==="assistant"?"admin-dashboard":"home";
 
   return (
@@ -168,50 +179,6 @@ function TopBar({ role, nav, dark, setDark, setRole, onLogout }: ShellProps) {
 }
 
 // ============================================================
-// DEMO ROLE SWITCHER
-// ============================================================
-function DemoRoleSwitcher({ role, setRole, nav }: Pick<ShellProps,"role"|"setRole"|"nav">) {
-  const [open, setOpen] = useState(true);
-  const roles: Array<{id:Role;label:string;icon:string}> = [
-    { id:"guest",     label:"زائر",    icon:"👁️" },
-    { id:"student",   label:"طالب",    icon:"🎓" },
-    { id:"parent",    label:"ولي أمر", icon:"👨‍👦" },
-    { id:"teacher",   label:"أستاذ",   icon:"👨‍🏫" },
-    { id:"assistant", label:"مساعد",   icon:"🤝" },
-  ];
-  const map: Record<Role,AppRoute> = { guest:"home", student:"student-dashboard", parent:"parent-dashboard", teacher:"admin-dashboard", assistant:"admin-dashboard" };
-  return (
-    <div className="fixed bottom-4 right-4 z-[90]">
-      {open && (
-        <div className="mb-2 bg-card border border-border rounded-2xl shadow-2xl p-3 min-w-[180px]">
-          <div className="text-[10px] font-bold text-muted-foreground mb-2 text-center uppercase tracking-widest">محاكاة الأدوار</div>
-          <div className="flex flex-col gap-1">
-            {roles.map(r => (
-              <button key={r.id} onClick={() => {
-                if (r.id === role) return; // already this role
-                setRole(r.id as Role);
-                // Pass new role explicitly to avoid stale-closure bug in nav()
-                nav(map[r.id], {}, r.id as Role);
-              }}
-                className={cn("flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-colors",
-                  role===r.id ? "bg-primary text-primary-foreground" : "hover:bg-accent text-foreground")}>
-                <span className="text-base">{r.icon}</span>
-                <span className="flex-1 text-right">{r.label}</span>
-                {role===r.id && <Check size={13}/>}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-      <button onClick={() => setOpen(!open)} aria-label="تبديل محاكي الأدوار"
-        className="w-12 h-12 bg-primary text-white rounded-full shadow-xl flex items-center justify-center font-bold mx-auto hover:opacity-90 transition-opacity">
-        {open ? <X size={18}/> : <span className="text-lg">⚡</span>}
-      </button>
-    </div>
-  );
-}
-
-// ============================================================
 // HOME PAGE
 // ============================================================
 // MAIN APP
@@ -239,6 +206,19 @@ export default function App() {
       setRole(user?.role ?? "guest");
       setAuthReady(true);
     });
+  }, []);
+
+  useEffect(() => {
+    const handleExpiredSession = () => {
+      setAuthUser(null);
+      setRole("guest");
+      setView("login");
+      setParams({});
+      window.location.hash = "login";
+      notify("انتهت الجلسة أو تم تسجيل الدخول من جهاز آخر. سجل الدخول مرة أخرى.", "error");
+    };
+    window.addEventListener("elmourdy:session-expired", handleExpiredSession);
+    return () => window.removeEventListener("elmourdy:session-expired", handleExpiredSession);
   }, []);
 
   // Hash-based routing: sync on back/forward and external hash changes
@@ -277,14 +257,22 @@ export default function App() {
     await logout();
     setAuthUser(null);
   };
-  const ctx = { role, setRole, nav, params, dark, setDark, onLogin, onLogout, authUser };
+  const ctx = { role, setRole, nav, params, dark, setDark, onLogin, onLogout, authUser, setAuthUser };
 
   if (!authReady) {
     return <div className="min-h-screen bg-background" role="status" aria-label="جاري تحميل الحساب" />;
   }
 
   const render = () => {
-    if (!canAccess(role, view)) {
+    const assistantPermissionByRoute: Partial<Record<AppRoute, string>> = {
+      "students-list": "manage_students",
+      "student-detail": "manage_students",
+      "content-subjects": "manage_content",
+      "support-requests": "manage_support_requests",
+      "announcements-admin": "manage_announcements",
+    };
+    const requiredPermission = role === "assistant" ? assistantPermissionByRoute[view] : undefined;
+    if (!canAccess(role, view) || (requiredPermission && !authUser?.permissions.includes(requiredPermission))) {
       return <AccessDenied role={role} nav={nav}/>;
     }
     switch(view) {
@@ -307,7 +295,7 @@ export default function App() {
       case "progress":         return <ProgressPage {...ctx}/>;
       case "announcements":    return <AnnouncementsPage/>;
       case "activation":       return <ActivationPage {...ctx}/>;
-      case "student-settings": return <StudentSettingsPage/>;
+      case "student-settings": return <StudentSettingsPage authUser={authUser} setAuthUser={setAuthUser}/>;
       case "parent-dashboard": return <ParentDashboard {...ctx}/>;
       case "parent-results":   return <ParentDashboard {...ctx}/>;
       case "parent-errors":    return <ParentErrorsPage {...ctx}/>;
@@ -332,7 +320,6 @@ export default function App() {
       <a href="#main-content" className="skip-link">تخطي إلى المحتوى الرئيسي</a>
       <TopBar {...ctx}/>
       <main id="main-content" tabIndex={-1}>{render()}</main>
-      {import.meta.env.DEV && <DemoRoleSwitcher role={role} setRole={setRole} nav={nav}/>}
       <ToastContainer/>
     </div>
   );
