@@ -40,7 +40,7 @@ export async function apiRequest<T>(path: string, options: RequestInit = {}): Pr
       window.dispatchEvent(new Event("elmourdy:session-expired"));
     }
     throw new ApiError(
-      body.error?.message ?? "The server could not complete the request",
+      body.error?.details?.[0] ?? body.error?.message ?? "The server could not complete the request",
       response.status,
       body.error?.code,
     );

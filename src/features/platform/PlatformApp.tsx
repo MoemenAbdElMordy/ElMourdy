@@ -13,12 +13,15 @@ import { parseHash as parseRouteHash, routeToHash } from "../../app/routing/hash
 import { canAccess, ROLE_DEFAULT } from "../../app/routing/policy";
 import type { AppRoute, Navigate, Role, RouteParams } from "../../app/routing/types";
 import { HomePage, LoginPage, RegisterPage, ParentRegisterPage, OTPPage, ForgotPage, FreeContentPage } from "../public/pages";
-import { StudentDashboard, SubjectsPage, ChaptersPage, LessonsPage, VideoPage, ExamPage, ExamResultPage, ErrorReviewPage, ProgressPage, AnnouncementsPage, ActivationPage, StudentSettingsPage } from "../student/pages";
+import { StudentDashboard, SubjectsPage, ChaptersPage, LessonsPage, ExamPage, ExamResultPage, ErrorReviewPage, ProgressPage, AnnouncementsPage, ActivationPage, StudentSettingsPage } from "../student/pages";
+import { ConnectedVideoPage } from "../student/connected-video-page";
 import { ParentDashboard, ParentErrorsPage } from "../parent/pages";
 import { AdminDashboard, StudentsListPage, StudentDetailPage, ContentManagePage, AssistantDashboard, ExamManagePage, ActivationCodesPage, AnnouncementsAdminPage, AssistantsPage, AuditLogPage, SupportRequestsPage, AcademicYearsPage } from "../admin/pages";
 import { Day5AcademicYearsPage, Day5AssistantsPage, Day5StudentDetailPage, Day5StudentsListPage } from "../admin/day5-pages";
 import { CurriculumManagePage } from "../admin/curriculum-page";
 import { StudentCurriculumPage } from "../student/curriculum-pages";
+import { ConnectedActivationCodesPage } from "../admin/activation-codes-page";
+import { ConnectedActivationPage } from "../student/activation-page";
 import { Badge2, Btn, Card2, Field, Input2, Modal2, Pager, Select2, StatCard, ToastContainer, cn, notify } from "../../shared/ui";
 import {
   GOVERNORATES, GRADES, STUDENTS, SUBJECTS, CHAPTERS, LESSONS,
@@ -291,13 +294,13 @@ export default function App() {
       case "subjects":         return <StudentCurriculumPage {...ctx}/>;
       case "chapters":         return <StudentCurriculumPage {...ctx}/>;
       case "lessons":          return <StudentCurriculumPage {...ctx}/>;
-      case "video":            return <VideoPage {...ctx} role={role}/>;
+      case "video":            return <ConnectedVideoPage {...ctx} role={role}/>;
       case "exam":             return <ExamPage {...ctx}/>;
       case "exam-result":      return <ExamResultPage {...ctx}/>;
       case "error-review":     return <ErrorReviewPage {...ctx}/>;
       case "progress":         return <ProgressPage {...ctx}/>;
       case "announcements":    return <AnnouncementsPage/>;
-      case "activation":       return <ActivationPage {...ctx}/>;
+      case "activation":       return <ConnectedActivationPage {...ctx}/>;
       case "student-settings": return <StudentSettingsPage authUser={authUser} setAuthUser={setAuthUser}/>;
       case "parent-dashboard": return <ParentDashboard {...ctx}/>;
       case "parent-results":   return <ParentDashboard {...ctx}/>;
@@ -308,7 +311,7 @@ export default function App() {
       case "student-detail":   return <Day5StudentDetailPage {...ctx}/>;
       case "content-subjects": return <CurriculumManagePage/>;
       case "exam-manage":      return <ExamManagePage/>;
-      case "activation-codes": return <ActivationCodesPage/>;
+      case "activation-codes": return <ConnectedActivationCodesPage/>;
       case "announcements-admin": return <AnnouncementsAdminPage/>;
       case "assistants":       return <Day5AssistantsPage/>;
       case "audit-log":        return <AuditLogPage/>;

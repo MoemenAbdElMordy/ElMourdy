@@ -25,6 +25,10 @@ describe("hash routing", () => {
   it("serializes nested lecture routes", () => {
     expect(routeToHash("chapters", { subjectId: 3, jumpToLectures: true })).toBe("chapters/3/lectures");
   });
+
+  it("uses the chapter identifier for lesson routes", () => {
+    expect(routeToHash("lessons", { subjectId: 9, chapterId: 4 })).toBe("lessons/4");
+  });
 });
 
 describe("role policy", () => {

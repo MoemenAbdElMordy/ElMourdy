@@ -31,7 +31,9 @@ export function parseHash(): { route: AppRoute; params: RouteParams } {
 }
 
 export function routeToHash(route: AppRoute, params: RouteParams): string {
-  const id = params.lessonId ?? params.subjectId ?? params.chapterId ?? params.studentId;
+  const id = route === "lessons" ? params.chapterId :
+    route === "chapters" ? params.subjectId :
+      route === "student-detail" ? params.studentId : params.lessonId;
   const suffix = params.jumpToLectures ? `/${id ?? 0}/lectures` : id ? `/${id}` : "";
   return `${route}${suffix}`;
 }
