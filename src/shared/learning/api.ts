@@ -1,0 +1,32 @@
+import { apiRequest } from "../api/client";
+
+export type ExamChoice = { id:number; body:string; is_correct?:boolean };
+export type ExamQuestion = { id:number; body:string; explanation?:string|null; points:number|string; choices:ExamChoice[]; selected_choice_id?:number|null; correct_choice_id?:number; is_correct?:boolean };
+export type Exam = {
+  id:number; title:string; scope_type:"lesson"|"chapter"|"branch"|"comprehensive"; lesson_id?:number|null;
+  chapter_id?:number|null; branch_id?:number|null; academic_year_id:number; grade_id:number; duration_minutes:number;
+  max_attempts:number; pass_percent:number; risk_from_percent:number; risk_to_percent:number; status:"draft"|"published"|"hidden"|"archived";
+  questions_count:number; attempts_count:number; questions?:ExamQuestion[];
+};
+export type ExamAttempt = {
+  id:number; exam_id:number; exam_title:string; student_profile_id:number; student_name:string; attempt_number:number;
+  status:"in_progress"|"submitted"|"expired"; started_at:string; submitted_at?:string|null; score_points?:number|string|null;
+  max_points?:number|string|null; percent?:number|string|null; result_status?:"passed"|"risk"|"failed"|null;
+  duration_minutes?:number; questions?:ExamQuestion[];
+};
+export type Announcement = { id:number; title:string; body:string; status:"draft"|"published"|"archived"; publish_at?:string|null; created_at:string; grade_ids:number[] };
+export type SupportRequest = { id:number; request_type:"device_removal"|"extra_exam_attempt"|"parent_phone_change"; status:"pending"|"approved"|"rejected"|"cancelled"; reason?:string; payload:Record<string,unknown>; student_profile_id?:number|null; requester:{id:number;name:string;role:string}; created_at:string };
+
+export const loadExams = (filters:{lessonId?:number}={}) => apiRequest<{exams:Exam[]}>(`/exams${filters.lessonId?`?lesson_id=${filters.lessonId}`:""}`);
+export const loadExam = (id:number) => apiRequest<{exam:Exam}>(`/exams/${id}`);
+export const saveExam = (input:Record<string,unknown>, id?:number) => apiRequest<{exam:Exam}>(id?`/exams/${id}`:"/exams", {method:id?"PATCH":"POST",body:JSON.stringify({exam:input})});
+export const startExam = (examId:number) => apiRequest<{attempt:ExamAttempt}>(`/exams/${examId}/attempts`, {method:"POST"});
+export const submitExam = (attemptId:number, answers:{question_id:number;choice_id:number}[]) => apiRequest<{attempt:ExamAttempt}>(`/exam_attempts/${attemptId}/submit`, {method:"POST",body:JSON.stringify({answers})});
+export const loadAttempts = (studentProfileId?:number) => apiRequest<{attempts:ExamAttempt[]}>(`/exam_attempts${studentProfileId?`?student_profile_id=${studentProfileId}`:""}`);
+export const loadAttempt = (id:number) => apiRequest<{attempt:ExamAttempt}>(`/exam_attempts/${id}`);
+export const loadAnnouncements = () => apiRequest<{announcements:Announcement[]}>("/announcements");
+export const saveAnnouncement = (input:Record<string,unknown>, id?:number) => apiRequest<{announcement:Announcement}>(id?`/announcements/${id}`:"/announcements", {method:id?"PATCH":"POST",body:JSON.stringify({announcement:input})});
+export const deleteAnnouncement = (id:number) => apiRequest<void>(`/announcements/${id}`, {method:"DELETE"});
+export const loadSupportRequests = () => apiRequest<{support_requests:SupportRequest[]}>("/support_requests");
+export const createSupportRequest = (input:Record<string,unknown>) => apiRequest<{support_request:SupportRequest}>("/support_requests", {method:"POST",body:JSON.stringify({support_request:input})});
+export const reviewSupportRequest = (id:number, decision:"approve"|"reject", note="") => apiRequest<{support_request:SupportRequest}>(`/support_requests/${id}/review`, {method:"POST",body:JSON.stringify({decision,note})});

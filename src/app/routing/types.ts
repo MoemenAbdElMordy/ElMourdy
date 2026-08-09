@@ -6,6 +6,8 @@ export type RouteParams = {
   subjectId?: number;
   chapterId?: number;
   studentId?: number;
+  examId?: number;
+  attemptId?: number;
   jumpToLectures?: boolean;
   phone?: string;
   verificationRole?: "student" | "parent";

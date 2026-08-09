@@ -13,15 +13,16 @@ import { parseHash as parseRouteHash, routeToHash } from "../../app/routing/hash
 import { canAccess, ROLE_DEFAULT } from "../../app/routing/policy";
 import type { AppRoute, Navigate, Role, RouteParams } from "../../app/routing/types";
 import { HomePage, LoginPage, RegisterPage, ParentRegisterPage, OTPPage, ForgotPage, FreeContentPage } from "../public/pages";
-import { StudentDashboard, SubjectsPage, ChaptersPage, LessonsPage, ExamPage, ExamResultPage, ErrorReviewPage, ProgressPage, AnnouncementsPage, ActivationPage, StudentSettingsPage } from "../student/pages";
+import { StudentDashboard, SubjectsPage, ChaptersPage, LessonsPage, ActivationPage, StudentSettingsPage } from "../student/pages";
 import { ConnectedVideoPage } from "../student/connected-video-page";
-import { ParentDashboard, ParentErrorsPage } from "../parent/pages";
-import { AdminDashboard, StudentsListPage, StudentDetailPage, ContentManagePage, AssistantDashboard, ExamManagePage, ActivationCodesPage, AnnouncementsAdminPage, AssistantsPage, AuditLogPage, SupportRequestsPage, AcademicYearsPage } from "../admin/pages";
+import { ParentDashboard } from "../parent/pages";
+import { AdminDashboard, StudentsListPage, StudentDetailPage, ContentManagePage, AssistantDashboard, ActivationCodesPage, AssistantsPage, AuditLogPage, AcademicYearsPage } from "../admin/pages";
 import { Day5AcademicYearsPage, Day5AssistantsPage, Day5StudentDetailPage, Day5StudentsListPage } from "../admin/day5-pages";
 import { CurriculumManagePage } from "../admin/curriculum-page";
 import { StudentCurriculumPage } from "../student/curriculum-pages";
 import { ConnectedActivationCodesPage } from "../admin/activation-codes-page";
 import { ConnectedActivationPage } from "../student/activation-page";
+import { ConnectedAnnouncementsPage, ConnectedAttemptResultPage, ConnectedExamManagePage, ConnectedResultsPage, ConnectedStudentExamPage, ConnectedSupportRequestsPage } from "../learning/connected-pages";
 import { Badge2, Btn, Card2, Field, Input2, Modal2, Pager, Select2, StatCard, ToastContainer, cn, notify } from "../../shared/ui";
 import {
   GOVERNORATES, GRADES, STUDENTS, SUBJECTS, CHAPTERS, LESSONS,
@@ -295,27 +296,27 @@ export default function App() {
       case "chapters":         return <StudentCurriculumPage {...ctx}/>;
       case "lessons":          return <StudentCurriculumPage {...ctx}/>;
       case "video":            return <ConnectedVideoPage {...ctx} role={role}/>;
-      case "exam":             return <ExamPage {...ctx}/>;
-      case "exam-result":      return <ExamResultPage {...ctx}/>;
-      case "error-review":     return <ErrorReviewPage {...ctx}/>;
-      case "progress":         return <ProgressPage {...ctx}/>;
-      case "announcements":    return <AnnouncementsPage/>;
+      case "exam":             return <ConnectedStudentExamPage {...ctx}/>;
+      case "exam-result":      return <ConnectedAttemptResultPage {...ctx} role={role}/>;
+      case "error-review":     return <ConnectedAttemptResultPage {...ctx} role={role}/>;
+      case "progress":         return <ConnectedResultsPage {...ctx} role={role}/>;
+      case "announcements":    return <ConnectedAnnouncementsPage/>;
       case "activation":       return <ConnectedActivationPage {...ctx}/>;
       case "student-settings": return <StudentSettingsPage authUser={authUser} setAuthUser={setAuthUser}/>;
       case "parent-dashboard": return <ParentDashboard {...ctx}/>;
-      case "parent-results":   return <ParentDashboard {...ctx}/>;
-      case "parent-errors":    return <ParentErrorsPage {...ctx}/>;
+      case "parent-results":   return <ConnectedResultsPage {...ctx} role={role}/>;
+      case "parent-errors":    return <ConnectedAttemptResultPage {...ctx} role={role}/>;
       case "admin-dashboard":  return role==="assistant"?<AssistantDashboard {...ctx}/>:<AdminDashboard {...ctx}/>;
       case "assistant-dashboard": return <AssistantDashboard {...ctx}/>;
       case "students-list":    return <Day5StudentsListPage {...ctx}/>;
       case "student-detail":   return <Day5StudentDetailPage {...ctx}/>;
       case "content-subjects": return <CurriculumManagePage/>;
-      case "exam-manage":      return <ExamManagePage/>;
+      case "exam-manage":      return <ConnectedExamManagePage/>;
       case "activation-codes": return <ConnectedActivationCodesPage/>;
-      case "announcements-admin": return <AnnouncementsAdminPage/>;
+      case "announcements-admin": return <ConnectedAnnouncementsPage manage/>;
       case "assistants":       return <Day5AssistantsPage/>;
       case "audit-log":        return <AuditLogPage/>;
-      case "support-requests": return <SupportRequestsPage/>;
+      case "support-requests": return <ConnectedSupportRequestsPage/>;
       case "academic-years":  return <Day5AcademicYearsPage/>;
       default:                 return <NotFoundPage {...ctx}/>;
     }

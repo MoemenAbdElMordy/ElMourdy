@@ -24,6 +24,8 @@ export function parseHash(): { route: AppRoute; params: RouteParams } {
     if (route === "chapters") params.subjectId = id;
     if (route === "lessons") params.chapterId = id;
     if (route === "student-detail") params.studentId = id;
+    if (route === "exam") params.examId = id;
+    if (["exam-result", "error-review", "parent-errors"].includes(route)) params.attemptId = id;
   }
   if (modifier === "lectures") params.jumpToLectures = true;
 
@@ -33,7 +35,9 @@ export function parseHash(): { route: AppRoute; params: RouteParams } {
 export function routeToHash(route: AppRoute, params: RouteParams): string {
   const id = route === "lessons" ? params.chapterId :
     route === "chapters" ? params.subjectId :
-      route === "student-detail" ? params.studentId : params.lessonId;
+      route === "student-detail" ? params.studentId :
+        route === "exam" ? params.examId :
+          ["exam-result", "error-review", "parent-errors"].includes(route) ? params.attemptId : params.lessonId;
   const suffix = params.jumpToLectures ? `/${id ?? 0}/lectures` : id ? `/${id}` : "";
   return `${route}${suffix}`;
 }
