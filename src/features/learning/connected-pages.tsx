@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { CheckCircle, Eye, Plus, Send, Trash2, XCircle } from "lucide-react";
 import type { Navigate, Role, RouteParams } from "../../app/routing/types";
 import { loadCurriculum } from "../../shared/curriculum/api";
-import { loadGrades, type Grade } from "../../shared/admin/day5";
+import { loadGrades, loadStudents, type Grade, type StudentRecord } from "../../shared/admin/day5";
 import {
   createSupportRequest,
   deleteAnnouncement,
@@ -671,12 +671,14 @@ export function ConnectedAnnouncementsPage({
 }) {
   const [items, setItems] = useState<Announcement[]>([]);
   const [grades, setGrades] = useState<Grade[]>([]);
+  const [students, setStudents] = useState<StudentRecord[]>([]);
   const [editingId, setEditingId] = useState<number | undefined>();
   const [form, setForm] = useState({
     title: "",
     body: "",
     status: "published",
     grade_id: "",
+    user_id: "",
   });
   const refresh = () =>
     loadAnnouncements()
@@ -684,8 +686,10 @@ export function ConnectedAnnouncementsPage({
       .catch((e) => notify(errorMessage(e), "error"));
   useEffect(() => {
     void refresh();
-    if (manage)
+    if (manage) {
       void loadGrades().then((response) => setGrades(response.grades));
+      void loadStudents().then((response) => setStudents(response.students));
+    }
   }, [manage]);
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -696,10 +700,11 @@ export function ConnectedAnnouncementsPage({
           body: form.body,
           status: form.status,
           grade_ids: form.grade_id ? [Number(form.grade_id)] : [],
+          user_ids: form.user_id ? [Number(form.user_id)] : [],
         },
         editingId,
       );
-      setForm({ title: "", body: "", status: "published", grade_id: "" });
+      setForm({ title: "", body: "", status: "published", grade_id: "", user_id: "" });
       setEditingId(undefined);
       refresh();
       notify("تم نشر الإعلان", "success");
@@ -735,8 +740,17 @@ export function ConnectedAnnouncementsPage({
                 { value: "", label: "جميع الصفوف" },
                 ...grades.map((grade) => ({
                   value: grade.id,
-                  label: grade.name,
+                  label: grade.level === 1 ? "الصف الأول الثانوي" : grade.level === 2 ? "الصف الثاني الثانوي" : grade.level === 3 ? "الصف الثالث الثانوي" : grade.name,
                 })),
+              ]}
+            />
+            <Select2
+              label="طالب محدد (اختياري)"
+              value={form.user_id}
+              onChange={(e) => setForm({ ...form, user_id: e.target.value })}
+              options={[
+                { value: "", label: "لا يوجد طالب محدد" },
+                ...students.map((student) => ({ value: student.id, label: `${student.name} — ${student.phone}` })),
               ]}
             />
             <textarea
@@ -779,6 +793,7 @@ export function ConnectedAnnouncementsPage({
                         body: a.body,
                         status: a.status,
                         grade_id: String(a.grade_ids[0] ?? ""),
+                        user_id: String(a.user_ids[0] ?? ""),
                       });
                     }}
                   >
@@ -839,6 +854,7 @@ export function ConnectedSupportRequestsPage() {
                       : "تغيير رقم ولي الأمر"}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">{r.reason}</p>
+                {r.actions.at(-1) && <p className="text-xs text-muted-foreground mt-2">راجعه {r.actions.at(-1)?.reviewer_name} في {new Date(r.actions.at(-1)!.created_at).toLocaleString("ar-EG")}</p>}
               </div>
               <div className="flex gap-2 items-center">
                 <Badge2

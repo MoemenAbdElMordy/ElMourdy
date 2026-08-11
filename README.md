@@ -1,40 +1,97 @@
 # ElMourdy Educational Platform
 
-A modern, responsive frontend for an Arabic educational platform. ElMourdy is built with a native right-to-left experience and provides dedicated workflows for students, parents, teachers, and teaching assistants.
+The production frontend for **ElMourdy**, a complete Arabic learning platform built for secondary-school students, parents, teachers, and teaching assistants.
 
-## Overview
+ElMourdy combines structured curriculum delivery, protected video lessons, assessments, progress tracking, family visibility, and day-to-day platform administration in a responsive Arabic-first experience. The application is live at [mourdy.com](https://mourdy.com).
 
-The application demonstrates a complete multi-role learning experience, including course navigation, video lessons, examinations, progress tracking, announcements, activation codes, student management, and administrative tools. It currently uses mock data and is ready to be connected to a production backend.
+## What Makes ElMourdy Different
 
-## Key Features
+- A native right-to-left interface designed specifically for Arabic content
+- Dedicated experiences for students, parents, teachers, and assistants
+- Real API-backed data instead of client-side demo records
+- Protected adaptive video playback with multiple HLS quality levels
+- Fine-grained role and assistant permission enforcement
+- Student progress, examination results, error review, and attendance insights
+- Teacher tools for managing the complete academic and operational workflow
+- Locally hosted Cairo fonts, responsive layouts, dark mode, and accessible navigation
 
-- Native Arabic RTL layout with locally hosted Cairo fonts
-- Responsive user interface with light and dark themes
-- Role-based navigation and access control
-- Student dashboards, subjects, chapters, lessons, and video content
-- Exams, results, error reviews, and progress tracking
-- Parent dashboards for monitoring student performance
-- Teacher and assistant administration dashboards
-- Student, content, announcement, exam, and activation-code management
-- Accessible navigation, error boundaries, and loading states
-- Hash-based routing with browser back and forward support
+## Platform Experiences
+
+### Students
+
+- Create and verify an account
+- Browse subjects, chapters, lessons, and lectures
+- Redeem lesson activation codes
+- Watch protected adaptive-streaming videos
+- Resume playback from the last saved position
+- Take grade-scoped examinations and review mistakes
+- Track academic progress and announcements
+- Manage account security and registered devices
+
+### Parents
+
+- Register a dedicated parent account
+- Access linked students through the verified parent phone number
+- Review results, mistakes, activity, and progress
+- Switch between multiple linked students from one dashboard
+
+### Teachers
+
+- Monitor live operational and academic dashboard metrics
+- Manage students, parents, enrollments, devices, and account status
+- Preview the platform exactly as a selected student sees it
+- Create and organize academic years and curriculum content
+- Upload, process, publish, retry, and remove lecture videos
+- Create examinations, announcements, and activation-code batches
+- Review detailed reports and support requests
+- Create assistants and assign granular permissions
+- Review human-readable assistant activity logs
+
+### Teaching Assistants
+
+- Access only the administrative areas explicitly granted by the teacher
+- Process student, device, support, content, assessment, code, and reporting tasks
+- Produce auditable administrative actions without exposing student activity in the assistant audit view
 
 ## Technology Stack
 
-- React 18
-- TypeScript
-- Vite 6
-- Tailwind CSS 4
-- Lucide React
-- Vitest and Testing Library
-- ESLint
+| Area | Technology |
+| --- | --- |
+| UI | React 18, TypeScript, Tailwind CSS 4 |
+| Build | Vite 6 |
+| Video | HLS.js with native HLS fallback |
+| Icons | Lucide React |
+| Testing | Vitest, Testing Library, JSDOM |
+| Quality | TypeScript and ESLint |
+| Hosting | Vercel with SPA rewrites and immutable font caching |
+| API | Ruby on Rails backend in the separate `ElMourdy_Backend` repository |
 
-## Getting Started
+## Architecture
 
-### Prerequisites
+```text
+src/
+├── app/          Application bootstrap, routing, policies, and error handling
+├── assets/       Source-controlled visual and font assets
+├── features/     Role-oriented pages and complete user workflows
+├── shared/       API clients, authentication, domain services, and reusable UI
+└── styles/       Design tokens, themes, local fonts, and global behavior
 
-- Node.js 20 or later
+public/
+├── fonts/        Self-hosted Cairo webfont files
+├── robots.txt    Search crawler policy
+├── sitemap.xml   Public search index map
+└── *.html        Privacy, terms, and data-deletion documents
+```
+
+The route policy is enforced before rendering protected pages. Authentication state is restored from the backend session API, while shared domain clients keep network behavior independent from page components.
+
+## Local Development
+
+### Requirements
+
+- Node.js 20 or newer
 - npm
+- A running ElMourdy Rails API
 
 ### Installation
 
@@ -44,52 +101,81 @@ cd ElMourdy
 npm install
 ```
 
-### Development
+Create a local `.env` file when the backend is not running on the default address:
+
+```env
+VITE_API_URL=http://127.0.0.1:3000/api
+```
+
+Start the development server:
 
 ```bash
 npm run dev
 ```
 
-Open the local URL displayed by Vite in your browser.
+Vite will print the local URL, normally `http://localhost:5173`.
 
-## Available Scripts
+## Commands
 
-| Command | Description |
+| Command | Purpose |
 | --- | --- |
-| `npm run dev` | Start the development server |
-| `npm run build` | Create an optimized production build |
-| `npm run typecheck` | Validate TypeScript types |
+| `npm run dev` | Start the development server with hot reload |
+| `npm run typecheck` | Validate the complete TypeScript project |
 | `npm run lint` | Run ESLint with zero warnings allowed |
-| `npm run test` | Run the automated test suite |
-| `npm run check` | Run type checking, linting, tests, and the production build |
+| `npm run test` | Run the automated frontend tests |
+| `npm run build` | Generate the optimized production bundle |
+| `npm run check` | Run type checking, linting, tests, and production build |
 
-## Project Structure
+## Video Playback
 
-```text
-src/
-├── app/        # Application shell, routing, and access policies
-├── assets/     # Local fonts and static assets
-├── data/       # Mock data and data-layer contracts
-├── features/   # Public, student, parent, and administration features
-├── pages/      # Route-level page organization
-├── shared/     # Reusable UI components and utilities
-└── styles/     # Global styles, themes, and design tokens
-```
+The player requests a short-lived playback session from the backend and plays HLS manifests through HLS.js where necessary. It supports multiple qualities, secure delivery URLs, playback-position persistence, moving student watermarks, curriculum navigation, and lecture notes.
 
-## Quality Assurance
+Original media files and storage credentials never pass through the frontend repository.
 
-Run the complete quality gate before submitting changes:
+## Performance and User Experience
+
+- Cairo Arabic and Latin subsets are hosted on the same origin and preloaded before application startup
+- Font files use long-lived immutable browser caching
+- Route-level application code is split from the initial public bundle
+- Scrollbars remain visually hidden without disabling mouse, keyboard, or touch scrolling
+- Modals preserve focus and scroll position during controlled input updates
+- Layouts adapt across mobile, tablet, and desktop breakpoints
+
+## Security Model
+
+- The backend is the source of truth for identity, role, status, and permissions
+- Protected routes reject unauthorized roles before rendering their page
+- The frontend never determines privileges from user-selected account types
+- Session tokens are transmitted through the API authorization header
+- Video access uses short-lived server-issued playback credentials
+- No production secrets or account passwords belong in this repository
+
+## Quality Gate
+
+Run the complete verification command before publishing changes:
 
 ```bash
 npm run check
 ```
 
-This command validates types, enforces linting rules, runs all tests, and verifies that the production bundle builds successfully.
+A change is considered ready only when type checking, linting, tests, and the optimized production build all succeed.
 
-## Current Status
+## Deployment
 
-This repository contains the frontend implementation. Authentication, persistent data, media delivery, and other server-side capabilities are represented through demo flows and mock data until a backend integration is added.
+The production site is deployed through Vercel. `vercel.json` provides client-side route rewrites and immutable caching for locally hosted fonts.
+
+Set the production API address in the hosting environment:
+
+```env
+VITE_API_URL=https://api.example.com/api
+```
+
+Build output is generated in `dist/` and must not be committed.
+
+## Related Repository
+
+The Rails API, MySQL schema, authentication, authorization, media processing, and operational services are maintained in [ElMourdy_Backend](https://github.com/MoemenAbdElMordy/ElMourdy_Backend).
 
 ## License
 
-This project is private and proprietary. All rights reserved.
+Private and proprietary software. All rights reserved.

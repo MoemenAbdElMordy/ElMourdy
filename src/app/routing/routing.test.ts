@@ -1,33 +1,38 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from "vitest";
-import { parseHash, routeToHash } from "./hash-router";
+import { parseLocation, routeToPath } from "./hash-router";
 import { canAccess, ROLE_DEFAULT } from "./policy";
 
 describe("hash routing", () => {
   beforeEach(() => {
-    window.location.hash = "";
+    window.history.replaceState({}, "", "/");
   });
 
   it("opens the home page for an empty hash", () => {
-    expect(parseHash()).toEqual({ route: "home", params: {} });
+    expect(parseLocation()).toEqual({ route: "home", params: {} });
   });
 
   it("parses route identifiers and parameters", () => {
-    window.location.hash = "#student-detail/12";
-    expect(parseHash()).toEqual({ route: "student-detail", params: { studentId: 12 } });
+    window.history.replaceState({}, "", "/student-detail/12");
+    expect(parseLocation()).toEqual({ route: "student-detail", params: { studentId: 12 } });
   });
 
   it("uses the not-found route for unknown paths", () => {
-    window.location.hash = "#missing-page";
-    expect(parseHash().route).toBe("not-found");
+    window.history.replaceState({}, "", "/missing-page");
+    expect(parseLocation().route).toBe("not-found");
   });
 
   it("serializes nested lecture routes", () => {
-    expect(routeToHash("chapters", { subjectId: 3, jumpToLectures: true })).toBe("chapters/3/lectures");
+    expect(routeToPath("chapters", { subjectId: 3, jumpToLectures: true })).toBe("/chapters/3/lectures");
   });
 
   it("uses the chapter identifier for lesson routes", () => {
-    expect(routeToHash("lessons", { subjectId: 9, chapterId: 4 })).toBe("lessons/4");
+    expect(routeToPath("lessons", { subjectId: 9, chapterId: 4 })).toBe("/lessons/4");
+  });
+
+  it("keeps old hash links working during migration", () => {
+    window.history.replaceState({}, "", "/#about");
+    expect(parseLocation().route).toBe("about");
   });
 });
 

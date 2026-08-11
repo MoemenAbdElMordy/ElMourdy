@@ -7,7 +7,12 @@ export type LinkedStudent = {
   phone: string;
   birth_date: string;
   governorate?: string;
+  school?: string;
   status: string;
+  grade?: string;
+  grade_level?: number;
+  academic_year?: string;
+  last_active_at?: string | null;
 };
 
 export type ProfileResponse = {

@@ -6,6 +6,7 @@ export type RouteParams = {
   subjectId?: number;
   chapterId?: number;
   studentId?: number;
+  parentId?: number;
   examId?: number;
   attemptId?: number;
   jumpToLectures?: boolean;
@@ -42,6 +43,10 @@ export type AppRoute =
   | "assistant-dashboard"
   | "students-list"
   | "student-detail"
+  | "parents-list"
+  | "parent-detail"
+  | "student-preview"
+  | "management-reports"
   | "content-subjects"
   | "exam-manage"
   | "activation-codes"

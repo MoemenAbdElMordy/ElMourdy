@@ -7,11 +7,13 @@ const routes = new Set<AppRoute>([
   "exam-result", "error-review", "progress", "announcements", "activation", "student-settings",
   "parent-dashboard", "parent-results", "parent-errors", "admin-dashboard",
   "assistant-dashboard", "students-list", "student-detail", "content-subjects",
+  "parents-list", "parent-detail", "student-preview", "management-reports",
   "exam-manage", "activation-codes", "announcements-admin", "assistants", "audit-log", "support-requests", "academic-years",
 ]);
 
-export function parseHash(): { route: AppRoute; params: RouteParams } {
-  const raw = window.location.hash.replace(/^#\/?/, "");
+export function parseLocation(): { route: AppRoute; params: RouteParams } {
+  const legacyHash = window.location.hash.replace(/^#\/?/, "");
+  const raw = legacyHash || window.location.pathname.replace(/^\/+|\/+$/g, "");
   if (!raw) return { route: "home", params: {} };
 
   const [candidate, idPart, modifier] = raw.split("/");
@@ -24,6 +26,8 @@ export function parseHash(): { route: AppRoute; params: RouteParams } {
     if (route === "chapters") params.subjectId = id;
     if (route === "lessons") params.chapterId = id;
     if (route === "student-detail") params.studentId = id;
+    if (route === "student-preview") params.studentId = id;
+    if (route === "parent-detail") params.parentId = id;
     if (route === "exam") params.examId = id;
     if (["exam-result", "error-review", "parent-errors"].includes(route)) params.attemptId = id;
   }
@@ -32,12 +36,17 @@ export function parseHash(): { route: AppRoute; params: RouteParams } {
   return { route, params };
 }
 
-export function routeToHash(route: AppRoute, params: RouteParams): string {
+export function routeToPath(route: AppRoute, params: RouteParams): string {
   const id = route === "lessons" ? params.chapterId :
     route === "chapters" ? params.subjectId :
       route === "student-detail" ? params.studentId :
+        route === "student-preview" ? params.studentId :
+          route === "parent-detail" ? params.parentId :
         route === "exam" ? params.examId :
           ["exam-result", "error-review", "parent-errors"].includes(route) ? params.attemptId : params.lessonId;
   const suffix = params.jumpToLectures ? `/${id ?? 0}/lectures` : id ? `/${id}` : "";
-  return `${route}${suffix}`;
+  return route === "home" ? "/" : `/${route}${suffix}`;
 }
+
+export const parseHash = parseLocation;
+export const routeToHash = (route: AppRoute, params: RouteParams) => routeToPath(route, params).replace(/^\//, "");

@@ -2,20 +2,21 @@ import { useEffect, useState } from "react";
 import { BookOpen, ChevronLeft, Clock, Play } from "lucide-react";
 import { ApiError } from "../../shared/api/client";
 import { loadCurriculum, type Curriculum } from "../../shared/curriculum/api";
-import { Badge2, Card2, notify } from "../../shared/ui";
+import { Badge2, Card2 } from "../../shared/ui";
 
 export function StudentCurriculumPage({ nav, params }: any) {
   const [tree, setTree] = useState<Curriculum | null>(null);
-  useEffect(() => {
+  const [error, setError] = useState("");
+  const load = () => {
+    setError("");
     loadCurriculum()
-      .then((r) => setTree(r.curriculum))
-      .catch((error) =>
-        notify(
-          error instanceof ApiError ? error.message : "تعذر تحميل المنهج",
-          "error",
-        ),
-      );
+      .then((response) => setTree(response.curriculum))
+      .catch((reason) => setError(reason instanceof ApiError ? reason.message : "تعذر تحميل المنهج"));
+  };
+  useEffect(() => {
+    load();
   }, []);
+  if (error) return <div className="p-8 text-center"><Card2 className="max-w-md mx-auto"><p className="mb-4">{error}</p><button className="btn-primary" onClick={load}>إعادة المحاولة</button></Card2></div>;
   if (!tree) return <div className="p-8 text-center">جارٍ تحميل المنهج…</div>;
   const requestedChapterId = Number(params?.chapterId);
   const branch =

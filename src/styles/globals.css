@@ -1,11 +1,25 @@
 html {
   scroll-behavior: smooth;
+  scrollbar-width: none;
+  font-family: "Cairo", Tahoma, Arial, sans-serif;
 }
 
 body {
   min-width: 320px;
   min-height: 100vh;
   overflow-x: hidden;
+}
+
+/* Keep every area scrollable without reserving space for a visible scrollbar. */
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 :focus-visible {

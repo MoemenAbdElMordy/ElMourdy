@@ -197,7 +197,14 @@ export function ConnectedVideoPage({
     };
 
     if (Hls.isSupported()) {
-      hls = new Hls({ enableWorker: true });
+      hls = new Hls({
+        enableWorker: true,
+        xhrSetup: (request, url) => {
+          if (url.includes(".ngrok-free.")) {
+            request.setRequestHeader("ngrok-skip-browser-warning", "true");
+          }
+        },
+      });
       hls.loadSource(source);
       hls.attachMedia(video);
       hls.on(Hls.Events.MANIFEST_PARSED, restorePosition);

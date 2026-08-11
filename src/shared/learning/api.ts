@@ -14,8 +14,8 @@ export type ExamAttempt = {
   max_points?:number|string|null; percent?:number|string|null; result_status?:"passed"|"risk"|"failed"|null;
   duration_minutes?:number; questions?:ExamQuestion[];
 };
-export type Announcement = { id:number; title:string; body:string; status:"draft"|"published"|"archived"; publish_at?:string|null; created_at:string; grade_ids:number[] };
-export type SupportRequest = { id:number; request_type:"device_removal"|"extra_exam_attempt"|"parent_phone_change"; status:"pending"|"approved"|"rejected"|"cancelled"; reason?:string; payload:Record<string,unknown>; student_profile_id?:number|null; requester:{id:number;name:string;role:string}; created_at:string };
+export type Announcement = { id:number; title:string; body:string; status:"draft"|"published"|"archived"; publish_at?:string|null; created_at:string; grade_ids:number[]; user_ids:number[] };
+export type SupportRequest = { id:number; request_type:"device_removal"|"extra_exam_attempt"|"parent_phone_change"; status:"pending"|"approved"|"rejected"|"cancelled"; reason?:string; payload:Record<string,unknown>; student_profile_id?:number|null; requester:{id:number;name:string;role:string}; created_at:string; actions:Array<{action:string;note?:string|null;reviewer_user_id:number;reviewer_name:string;created_at:string}> };
 
 export const loadExams = (filters:{lessonId?:number}={}) => apiRequest<{exams:Exam[]}>(`/exams${filters.lessonId?`?lesson_id=${filters.lessonId}`:""}`);
 export const loadExam = (id:number) => apiRequest<{exam:Exam}>(`/exams/${id}`);

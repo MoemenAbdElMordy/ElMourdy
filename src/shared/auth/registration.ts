@@ -9,7 +9,10 @@ export type PendingRegistration = {
   phone: string;
   role: Extract<AuthRole, "student" | "parent">;
   resendAfterSeconds: number;
-  developmentCode?: string;
+  expiresAt: string;
+  verificationMethod: "whatsapp_inbound";
+  whatsappUrl: string;
+  clientToken: string;
 };
 
 export function storePendingRegistration(registration: PendingRegistration) {
@@ -29,8 +32,11 @@ type RegistrationResponse = {
   registration_id: number;
   verification_id: number;
   phone: string;
+  expires_at: string;
   resend_after_seconds: number;
-  development_code?: string;
+  verification_method: "whatsapp_inbound";
+  whatsapp_url: string;
+  client_token: string;
 };
 
 function pendingRegistration(response: RegistrationResponse, role: PendingRegistration["role"]) {
@@ -40,7 +46,10 @@ function pendingRegistration(response: RegistrationResponse, role: PendingRegist
     phone: response.phone,
     role,
     resendAfterSeconds: response.resend_after_seconds,
-    developmentCode: response.development_code,
+    expiresAt: response.expires_at,
+    verificationMethod: response.verification_method,
+    whatsappUrl: response.whatsapp_url,
+    clientToken: response.client_token,
   };
 }
 
@@ -96,15 +105,30 @@ export async function registerParent(input: {
   return pendingRegistration(response, "parent");
 }
 
-export async function verifyRegistration(registration: PendingRegistration, code: string) {
-  const response = await apiRequest<{ token: string; user: AuthUser }>(
-    `/registrations/${registration.registrationId}/verify`,
+export async function loadRegistrationStatus(registration: PendingRegistration) {
+  return apiRequest<{ status: "pending" | "verified" | "expired" | "failed"; expires_at: string }>(
+    `/registrations/${registration.registrationId}/status`,
     {
       method: "POST",
       body: JSON.stringify({
         registration: {
           verification_id: registration.verificationId,
-          code,
+          client_token: registration.clientToken,
+        },
+      }),
+    },
+  );
+}
+
+export async function completeRegistration(registration: PendingRegistration) {
+  const response = await apiRequest<{ token: string; user: AuthUser }>(
+    `/registrations/${registration.registrationId}/complete`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        registration: {
+          verification_id: registration.verificationId,
+          client_token: registration.clientToken,
           device_fingerprint: registration.role === "student" ? deviceFingerprint() : undefined,
           ...(registration.role === "student" ? deviceMetadata() : {}),
         },

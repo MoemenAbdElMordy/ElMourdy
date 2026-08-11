@@ -9,27 +9,24 @@ import {
   Activity, Star, UserCheck, UserX,
   Copy, Printer, RefreshCw, Check, AlertCircle, Upload
 } from "lucide-react";
-import { parseHash as parseRouteHash, routeToHash } from "../../app/routing/hash-router";
+import { parseLocation, routeToPath } from "../../app/routing/hash-router";
 import { canAccess, ROLE_DEFAULT } from "../../app/routing/policy";
 import type { AppRoute, Navigate, Role, RouteParams } from "../../app/routing/types";
-import { HomePage, LoginPage, RegisterPage, ParentRegisterPage, OTPPage, ForgotPage, FreeContentPage } from "../public/pages";
-import { StudentDashboard, SubjectsPage, ChaptersPage, LessonsPage, ActivationPage, StudentSettingsPage } from "../student/pages";
+import { AboutPage, HomePage, LoginPage, RegisterPage, ParentRegisterPage, OTPPage, ForgotPage, FreeContentPage } from "../public/pages";
+import { StudentSettingsPage } from "../student/settings-page";
 import { ConnectedVideoPage } from "../student/connected-video-page";
 import { ParentDashboard } from "../parent/pages";
-import { AdminDashboard, StudentsListPage, StudentDetailPage, ContentManagePage, AssistantDashboard, ActivationCodesPage, AssistantsPage, AuditLogPage, AcademicYearsPage } from "../admin/pages";
 import { Day5AcademicYearsPage, Day5AssistantsPage, Day5StudentDetailPage, Day5StudentsListPage } from "../admin/day5-pages";
 import { CurriculumManagePage } from "../admin/curriculum-page";
 import { StudentCurriculumPage } from "../student/curriculum-pages";
 import { ConnectedActivationCodesPage } from "../admin/activation-codes-page";
 import { ConnectedActivationPage } from "../student/activation-page";
 import { ConnectedAnnouncementsPage, ConnectedAttemptResultPage, ConnectedExamManagePage, ConnectedResultsPage, ConnectedStudentExamPage, ConnectedSupportRequestsPage } from "../learning/connected-pages";
+import { ConnectedAuditLogPage, ConnectedManagementDashboard, ConnectedStudentDashboard } from "../dashboard/connected-dashboards";
+import { ManagementReportsPage, ParentDetailPage, ParentsListPage, StudentPreviewPage } from "../admin/teacher-control-pages";
 import { Badge2, Btn, Card2, Field, Input2, Modal2, Pager, Select2, StatCard, ToastContainer, cn, notify } from "../../shared/ui";
-import {
-  GOVERNORATES, GRADES, STUDENTS, SUBJECTS, CHAPTERS, LESSONS,
-  EXAM_QS, ANNOUNCEMENTS, ACTIVATION_CODES, AUDIT_LOGS,
-  ABWAB, DURUS, MAHADARAT, rn,
-} from "../../data/mock-data";
 import { login, logout, restoreSession, type AuthUser } from "../../shared/auth/session";
+import { loadAnnouncements, type Announcement } from "../../shared/learning/api";
 
 // ============================================================
 // ACCESS DENIED
@@ -81,19 +78,33 @@ function NotFoundPage({ nav }: Pick<ShellProps,"nav">) {
 function TopBar({ role, nav, dark, setDark, setRole, onLogout, authUser }: ShellProps) {
   const [mob, setMob] = useState(false);
   const [notif, setNotif] = useState(false);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+
+  useEffect(() => {
+    if (role === "guest") {
+      setAnnouncements([]);
+      return;
+    }
+    loadAnnouncements().then((response) => setAnnouncements(response.announcements.slice(0, 3))).catch(() => setAnnouncements([]));
+  }, [role]);
 
   const links: Record<Role,NavItem[]> = {
     guest:    [{ l:"الرئيسية",view:"home"},{ l:"المحتوى المجاني",view:"free-content"},{ l:"من نحن",view:"about"}],
     student:  [{ l:"لوحتي",view:"student-dashboard"},{ l:"موادي",view:"subjects"},{ l:"تقدمي",view:"progress"},{ l:"الإعلانات",view:"announcements"},{ l:"التفعيل",view:"activation"},{ l:"الإعدادات",view:"student-settings"}],
     parent:   [{ l:"لوحة الأهل",view:"parent-dashboard"},{ l:"النتائج والمحاولات",view:"parent-results"}],
-    teacher:  [{ l:"لوحة القيادة",view:"admin-dashboard"},{ l:"الطلاب",view:"students-list"},{ l:"المحتوى",view:"content-subjects"},{ l:"السنوات",view:"academic-years"},{ l:"الاختبارات",view:"exam-manage"},{ l:"الأكواد",view:"activation-codes"},{ l:"طلبات الدعم",view:"support-requests"},{ l:"الإعلانات",view:"announcements-admin"},{ l:"المساعدون",view:"assistants"},{ l:"سجل الأحداث",view:"audit-log"}],
-    assistant:[{ l:"لوحتي",view:"admin-dashboard"},{ l:"الطلاب",view:"students-list"},{ l:"المحتوى",view:"content-subjects"},{ l:"طلبات الدعم",view:"support-requests"},{ l:"الإعلانات",view:"announcements-admin"}],
+    teacher:  [{ l:"لوحة القيادة",view:"admin-dashboard"},{ l:"الطلاب",view:"students-list"},{ l:"أولياء الأمور",view:"parents-list"},{ l:"التقارير",view:"management-reports"},{ l:"المحتوى",view:"content-subjects"},{ l:"السنوات",view:"academic-years"},{ l:"الاختبارات",view:"exam-manage"},{ l:"الأكواد",view:"activation-codes"},{ l:"طلبات الدعم",view:"support-requests"},{ l:"الإعلانات",view:"announcements-admin"},{ l:"المساعدون",view:"assistants"},{ l:"نشاط المساعدين",view:"audit-log"}],
+    assistant:[{ l:"لوحتي",view:"admin-dashboard"},{ l:"الطلاب",view:"students-list"},{ l:"التقارير",view:"management-reports"},{ l:"المحتوى",view:"content-subjects"},{ l:"السنوات",view:"academic-years"},{ l:"الاختبارات",view:"exam-manage"},{ l:"الأكواد",view:"activation-codes"},{ l:"طلبات الدعم",view:"support-requests"},{ l:"الإعلانات",view:"announcements-admin"},{ l:"نشاط المساعدين",view:"audit-log"}],
   };
   const assistantRoutePermissions: Partial<Record<AppRoute, string>> = {
     "students-list": "manage_students",
     "content-subjects": "manage_content",
     "support-requests": "manage_support_requests",
     "announcements-admin": "manage_announcements",
+    "audit-log": "view_reports",
+    "academic-years": "manage_academic_years",
+    "exam-manage": "manage_exams",
+    "activation-codes": "manage_codes",
+    "management-reports": "view_reports",
   };
   const navLinks = (links[role] || []).filter((link) => {
     if (role !== "assistant") return true;
@@ -105,19 +116,19 @@ function TopBar({ role, nav, dark, setDark, setRole, onLogout, authUser }: Shell
   return (
     <header className="sticky top-0 z-40 bg-card/95 backdrop-blur border-b border-border shadow-sm">
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-3">
-        <button onClick={() => nav(homeView)} className="flex items-center gap-3 shrink-0">
+        <a href={routeToPath(homeView, {})} onClick={(event) => { event.preventDefault(); nav(homeView); }} className="flex items-center gap-3 shrink-0">
           <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-white font-black text-lg">م</div>
           <div className="hidden sm:block leading-tight">
             <div className="font-black text-sm text-foreground">منصة المرضي</div>
             <div className="text-[10px] text-muted-foreground">خادم لغة أهل الجنة</div>
           </div>
-        </button>
+        </a>
 
         <nav className="hidden xl:flex items-center gap-0.5 flex-1 justify-center">
           {navLinks.map(l => (
-            <button key={l.view} onClick={() => nav(l.view)} className="px-3 py-2 rounded-xl text-sm font-medium hover:bg-accent transition-colors whitespace-nowrap">
+            <a key={l.view} href={routeToPath(l.view, {})} onClick={(event) => { event.preventDefault(); nav(l.view); }} className="px-3 py-2 rounded-xl text-sm font-medium hover:bg-accent transition-colors whitespace-nowrap">
               {l.l}
-            </button>
+            </a>
           ))}
         </nav>
 
@@ -131,17 +142,18 @@ function TopBar({ role, nav, dark, setDark, setRole, onLogout, authUser }: Shell
             <div className="relative">
               <button onClick={() => setNotif(!notif)} className="relative p-2 rounded-xl hover:bg-accent" aria-label="الإشعارات" aria-expanded={notif}>
                 <Bell size={17}/>
-                <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-red-500 rounded-full"/>
+                {announcements.length > 0 && <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-red-500 rounded-full"/>}
               </button>
               {notif && (
                 <div className="absolute left-0 top-12 w-72 bg-card border border-border rounded-2xl shadow-xl z-50 p-4">
                   <div className="font-bold mb-3 text-sm">الإشعارات</div>
-                  {ANNOUNCEMENTS.slice(0,3).map(a => (
+                  {announcements.map(a => (
                     <div key={a.id} className="py-2 border-b border-border last:border-0">
                       <div className="text-sm font-medium leading-snug">{a.title}</div>
-                      <div className="text-xs text-muted-foreground mt-0.5">{a.date}</div>
+                      <div className="text-xs text-muted-foreground mt-0.5">{new Date(a.publish_at ?? a.created_at).toLocaleDateString("ar-EG")}</div>
                     </div>
                   ))}
+                  {announcements.length === 0 && <p className="text-xs text-muted-foreground">لا توجد إشعارات جديدة.</p>}
                 </div>
               )}
             </div>
@@ -175,9 +187,9 @@ function TopBar({ role, nav, dark, setDark, setRole, onLogout, authUser }: Shell
       {mob && (
         <div className="xl:hidden border-t border-border bg-card px-4 py-2 flex flex-col gap-0.5">
           {navLinks.map(l => (
-            <button key={l.view} onClick={() => { nav(l.view); setMob(false); }} className="px-3 py-2.5 rounded-xl text-sm font-medium hover:bg-accent text-right">
+            <a key={l.view} href={routeToPath(l.view, {})} onClick={(event) => { event.preventDefault(); nav(l.view); setMob(false); }} className="px-3 py-2.5 rounded-xl text-sm font-medium hover:bg-accent text-right">
               {l.l}
-            </button>
+            </a>
           ))}
         </div>
       )}
@@ -195,9 +207,8 @@ export default function App() {
   const [role, setRole] = useState<Role>("guest");
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [authReady, setAuthReady] = useState(false);
-  // Initialize from hash synchronously so the correct view renders on first paint
-  const [view, setView] = useState<AppRoute>(() => parseRouteHash().route);
-  const [params, setParams] = useState<RouteParams>(() => parseRouteHash().params);
+  const [view, setView] = useState<AppRoute>(() => parseLocation().route);
+  const [params, setParams] = useState<RouteParams>(() => parseLocation().params);
 
   useEffect(()=>{
     document.documentElement.classList.toggle("dark", dark);
@@ -206,6 +217,34 @@ export default function App() {
     document.documentElement.style.colorScheme = dark ? "dark" : "light";
     localStorage.setItem("theme", dark ? "dark" : "light");
   },[dark]);
+
+  useEffect(() => {
+    const publicMetadata: Partial<Record<AppRoute, { title: string; description: string }>> = {
+      home: {
+        title: "منصة المرضي | اللغة العربية للمرحلة الثانوية",
+        description: "منصة الأستاذ محمود عبدالمرضي لتعليم اللغة العربية لطلاب المرحلة الثانوية من خلال المحاضرات والاختبارات والمتابعة المستمرة.",
+      },
+      about: {
+        title: "عن الأستاذ محمود عبدالمرضي | منصة المرضي",
+        description: "تعرف على الأستاذ محمود عبدالمرضي ومنهج منصة المرضي في شرح اللغة العربية لطلاب المرحلة الثانوية.",
+      },
+      "free-content": {
+        title: "المحتوى المجاني | منصة المرضي",
+        description: "شاهد المحتوى المجاني المتاح لطلاب المرحلة الثانوية على منصة الأستاذ محمود عبدالمرضي.",
+      },
+    };
+    const metadata = publicMetadata[view];
+    document.title = metadata?.title ?? "منصة المرضي";
+
+    const description = document.querySelector<HTMLMetaElement>('meta[name="description"]');
+    if (description) description.content = metadata?.description ?? "منصة تعليمية خاصة بطلاب الأستاذ محمود عبدالمرضي.";
+
+    const robots = document.querySelector<HTMLMetaElement>('meta[name="robots"]');
+    if (robots) robots.content = metadata ? "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" : "noindex, nofollow";
+
+    const canonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+    if (canonical) canonical.href = `https://mourdy.com${metadata ? routeToPath(view, {}) : "/"}`;
+  }, [view]);
 
   useEffect(() => {
     restoreSession().then((user) => {
@@ -221,37 +260,45 @@ export default function App() {
       setRole("guest");
       setView("login");
       setParams({});
-      window.location.hash = "login";
+      window.history.replaceState({}, "", "/login");
       notify("انتهت الجلسة أو تم تسجيل الدخول من جهاز آخر. سجل الدخول مرة أخرى.", "error");
     };
     window.addEventListener("elmourdy:session-expired", handleExpiredSession);
     return () => window.removeEventListener("elmourdy:session-expired", handleExpiredSession);
   }, []);
 
-  // Hash-based routing: sync on back/forward and external hash changes
+  // Sync browser back/forward navigation and migrate legacy hash links.
   useEffect(() => {
-    const onHash = () => {
-      const { route, params: nextParams } = parseRouteHash();
+    const onLocationChange = () => {
+      const { route, params: nextParams } = parseLocation();
       setView(route);
       setParams(nextParams);
     };
-    window.addEventListener("hashchange", onHash);
-    return () => window.removeEventListener("hashchange", onHash);
+    if (window.location.hash) {
+      const initial = parseLocation();
+      window.history.replaceState({}, "", routeToPath(initial.route, initial.params));
+    }
+    window.addEventListener("popstate", onLocationChange);
+    window.addEventListener("hashchange", onLocationChange);
+    return () => {
+      window.removeEventListener("popstate", onLocationChange);
+      window.removeEventListener("hashchange", onLocationChange);
+    };
   }, []);
 
-  // nav accepts optional asRole to avoid stale-closure bugs (e.g. DemoRoleSwitcher sets role then calls nav)
+  // The optional role keeps navigation decisions consistent during authentication transitions.
   const nav = useCallback((v: AppRoute, p: RouteParams = {}, asRole?: Role) => {
     const effectiveRole = asRole ?? role;
     if (!canAccess(effectiveRole, v)) {
       const dest = ROLE_DEFAULT[effectiveRole];
       setView(dest); setParams({});
-      window.location.hash = dest;
+      window.history.pushState({}, "", routeToPath(dest, {}));
       window.scrollTo({ top:0, behavior:"smooth" });
       return;
     }
     setView(v);
     setParams(p);
-    window.location.hash = routeToHash(v, p);
+    window.history.pushState({}, "", routeToPath(v, p));
     window.scrollTo({ top:0, behavior:"smooth" });
   },[role]);
 
@@ -277,6 +324,11 @@ export default function App() {
       "content-subjects": "manage_content",
       "support-requests": "manage_support_requests",
       "announcements-admin": "manage_announcements",
+      "audit-log": "view_reports",
+      "academic-years": "manage_academic_years",
+      "exam-manage": "manage_exams",
+      "activation-codes": "manage_codes",
+      "management-reports": "view_reports",
     };
     const requiredPermission = role === "assistant" ? assistantPermissionByRoute[view] : undefined;
     if (!canAccess(role, view) || (requiredPermission && !authUser?.permissions.includes(requiredPermission))) {
@@ -291,7 +343,8 @@ export default function App() {
       case "otp":              return <OTPPage {...ctx}/>;
       case "forgot":           return <ForgotPage {...ctx}/>;
       case "free-content":     return <FreeContentPage {...ctx}/>;
-      case "student-dashboard":return <StudentDashboard {...ctx}/>;
+      case "about":            return <AboutPage {...ctx}/>;
+      case "student-dashboard":return <ConnectedStudentDashboard {...ctx}/>;
       case "subjects":         return <StudentCurriculumPage {...ctx}/>;
       case "chapters":         return <StudentCurriculumPage {...ctx}/>;
       case "lessons":          return <StudentCurriculumPage {...ctx}/>;
@@ -306,16 +359,20 @@ export default function App() {
       case "parent-dashboard": return <ParentDashboard {...ctx}/>;
       case "parent-results":   return <ConnectedResultsPage {...ctx} role={role}/>;
       case "parent-errors":    return <ConnectedAttemptResultPage {...ctx} role={role}/>;
-      case "admin-dashboard":  return role==="assistant"?<AssistantDashboard {...ctx}/>:<AdminDashboard {...ctx}/>;
-      case "assistant-dashboard": return <AssistantDashboard {...ctx}/>;
+      case "admin-dashboard":  return <ConnectedManagementDashboard {...ctx} role={role as "teacher" | "assistant"}/>;
+      case "assistant-dashboard": return <ConnectedManagementDashboard {...ctx} role="assistant"/>;
       case "students-list":    return <Day5StudentsListPage {...ctx}/>;
       case "student-detail":   return <Day5StudentDetailPage {...ctx}/>;
+      case "parents-list":    return <ParentsListPage {...ctx}/>;
+      case "parent-detail":   return <ParentDetailPage {...ctx}/>;
+      case "student-preview": return <StudentPreviewPage {...ctx}/>;
+      case "management-reports": return <ManagementReportsPage {...ctx}/>;
       case "content-subjects": return <CurriculumManagePage/>;
       case "exam-manage":      return <ConnectedExamManagePage/>;
       case "activation-codes": return <ConnectedActivationCodesPage/>;
       case "announcements-admin": return <ConnectedAnnouncementsPage manage/>;
       case "assistants":       return <Day5AssistantsPage/>;
-      case "audit-log":        return <AuditLogPage/>;
+      case "audit-log":        return <ConnectedAuditLogPage/>;
       case "support-requests": return <ConnectedSupportRequestsPage/>;
       case "academic-years":  return <Day5AcademicYearsPage/>;
       default:                 return <NotFoundPage {...ctx}/>;

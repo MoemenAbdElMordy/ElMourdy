@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { CalendarDays, ChevronRight, Edit2, Eye, Plus, Search, Shield } from "lucide-react";
+import { CalendarDays, ChevronRight, Edit2, Eye, Plus, Search, Shield, Trash2 } from "lucide-react";
 import { ApiError } from "../../shared/api/client";
-import { createAcademicYear, createAssistant, loadAcademicYears, loadAssistants, loadGrades, loadStudent, loadStudents, updateAcademicYear, updateAssistant, updateStudentStatus, type AcademicYear, type AssistantRecord, type Grade, type StudentRecord } from "../../shared/admin/day5";
-import { Badge2, Btn, Card2, Field, Input2, Modal2, Select2, notify } from "../../shared/ui";
+import { archiveAssistant, copyAcademicYearContent, createAcademicYear, createAssistant, loadAcademicYears, loadAssistants, loadGrades, loadStudent, loadStudents, removeStudentDevice, resetStudentPassword, rolloverAcademicYearStudents, updateAcademicYear, updateAssistant, updateStudentEnrollment, updateStudentParentPhone, updateStudentStatus, type AcademicYear, type AssistantRecord, type Grade, type StudentRecord } from "../../shared/admin/day5";
+import { Badge2, Btn, Card2, Field, Input2, Modal2, Select2, StatCard, notify } from "../../shared/ui";
 import { createManualGrant, loadAccessGrants, revokeGrant, type AccessGrant } from "../../shared/activation-codes/api";
 import { loadCurriculum, type Curriculum } from "../../shared/curriculum/api";
 
@@ -134,7 +134,18 @@ export function Day5StudentDetailPage({ nav, params, authUser }: any) {
   const [grantModal, setGrantModal] = useState(false);
   const [lessonId, setLessonId] = useState(0);
   const [expiresOn, setExpiresOn] = useState("");
+  const [years, setYears] = useState<AcademicYear[]>([]);
+  const [grades, setGrades] = useState<Grade[]>([]);
+  const [enrollmentModal, setEnrollmentModal] = useState(false);
+  const [passwordModal, setPasswordModal] = useState(false);
+  const [parentPhoneModal, setParentPhoneModal] = useState(false);
+  const [academicYearId, setAcademicYearId] = useState(0);
+  const [gradeId, setGradeId] = useState(0);
+  const [newPassword, setNewPassword] = useState("");
+  const [newParentPhone, setNewParentPhone] = useState("");
   const canManageCodes = authUser?.role === "teacher" || authUser?.permissions?.includes("manage_codes");
+  const canManageParentPhone = authUser?.role === "teacher" || authUser?.permissions?.includes("manage_parent_phone");
+  const canManageDevices = authUser?.role === "teacher" || authUser?.permissions?.includes("manage_devices");
   const refresh = () =>
     loadStudent(Number(params?.studentId))
       .then(async (r) => {
@@ -156,6 +167,10 @@ export function Day5StudentDetailPage({ nav, params, authUser }: any) {
       .catch((e) => notify(e instanceof ApiError ? e.message : "تعذر تحميل الطالب", "error"));
   useEffect(() => {
     void refresh();
+    loadAcademicYears().then((response) => {
+      setYears(response.academic_years);
+      setGrades(response.grades);
+    });
   }, [params?.studentId]);
   if (!student) return <div className="p-8 text-center">جارٍ تحميل بيانات الطالب…</div>;
   const toggle = async () => {
@@ -197,8 +212,49 @@ export function Day5StudentDetailPage({ nav, params, authUser }: any) {
     ["هاتف الطالب", student.phone],
     ["هاتف ولي الأمر", student.parent_phone],
     ["البريد", student.email],
-    ["عدد الأجهزة", String(student.devices_count ?? 0)],
+    ["عدد الأجهزة النشطة", String(student.devices_count ?? 0)],
   ];
+  const openEnrollment = () => {
+    setAcademicYearId(student.academic_year_id ?? years.find((year) => year.status === "active")?.id ?? 0);
+    setGradeId(student.grade_id ?? grades[0]?.id ?? 0);
+    setEnrollmentModal(true);
+  };
+  const saveEnrollment = async () => {
+    const response = await updateStudentEnrollment(student.id, academicYearId, gradeId);
+    setStudent(response.student);
+    setEnrollmentModal(false);
+    notify("تم تحديث تسجيل الطالب الدراسي", "success");
+  };
+  const savePassword = async () => {
+    await resetStudentPassword(student.id, newPassword);
+    setNewPassword("");
+    setPasswordModal(false);
+    notify("تم تغيير كلمة المرور وإنهاء جلسات الطالب القديمة", "success");
+  };
+  const openParentPhone = () => {
+    setNewParentPhone(student.parent_phone || "");
+    setParentPhoneModal(true);
+  };
+  const saveParentPhone = async () => {
+    try {
+      const response = await updateStudentParentPhone(student.id, newParentPhone);
+      setStudent(response.student);
+      setParentPhoneModal(false);
+      notify("تم تحديث رقم ولي الأمر وربط حسابه بالطالب", "success");
+    } catch (error) {
+      notify(error instanceof ApiError ? error.message : "تعذر تحديث رقم ولي الأمر", "error");
+    }
+  };
+  const removeDevice = async (deviceId: number) => {
+    if (!window.confirm("هل تريد إزالة هذا الجهاز وإنهاء جلساته؟")) return;
+    try {
+      await removeStudentDevice(student.id, deviceId);
+      await refresh();
+      notify("تمت إزالة الجهاز وإنهاء جلساته", "success");
+    } catch (error) {
+      notify(error instanceof ApiError ? error.message : "تعذر إزالة الجهاز", "error");
+    }
+  };
   return (
     <div className="min-h-screen bg-background py-6 px-4">
       <div className="max-w-3xl mx-auto">
@@ -211,9 +267,15 @@ export function Day5StudentDetailPage({ nav, params, authUser }: any) {
               <h1 className="text-xl font-black">{student.name}</h1>
               <Badge2 variant={student.status === "active" ? "success" : "danger"}>{student.status === "active" ? "نشط" : "موقوف"}</Badge2>
             </div>
-            <Btn variant={student.status === "active" ? "danger" : "primary"} onClick={toggle}>
-              {student.status === "active" ? "إيقاف الحساب" : "إعادة التفعيل"}
-            </Btn>
+            <div className="flex flex-wrap gap-2">
+              {authUser?.role === "teacher" && <Btn variant="outline" onClick={() => nav("student-preview", { studentId: student.id })}><Eye size={14}/> معاينة كطالب</Btn>}
+              <Btn variant="outline" onClick={openEnrollment}>تغيير الصف أو السنة</Btn>
+              {canManageParentPhone && <Btn variant="outline" onClick={openParentPhone}>تغيير رقم ولي الأمر</Btn>}
+              <Btn variant="outline" onClick={() => setPasswordModal(true)}>تغيير كلمة المرور</Btn>
+              <Btn variant={student.status === "active" ? "danger" : "primary"} onClick={toggle}>
+                {student.status === "active" ? "إيقاف الحساب" : "إعادة التفعيل"}
+              </Btn>
+            </div>
           </div>
           <div className="grid sm:grid-cols-2 gap-3">
             {rows.map(([label, value]) => (
@@ -225,6 +287,21 @@ export function Day5StudentDetailPage({ nav, params, authUser }: any) {
               </div>
             ))}
           </div>
+        </Card2>
+        <div className="grid sm:grid-cols-3 gap-3 mt-4">
+          <StatCard label="محاضرات مكتملة" value={student.progress?.completed_lectures ?? 0} icon={Eye} />
+          <StatCard label="محاضرات تمت مشاهدتها" value={student.progress?.watched_lectures ?? 0} icon={CalendarDays} />
+          <StatCard label="أعلى نتيجة" value={student.progress?.highest_score == null ? "—" : `${Math.round(student.progress.highest_score)}%`} icon={Shield} />
+        </div>
+        <Card2 className="mt-4">
+          <h2 className="font-black mb-3">الأجهزة</h2>
+          {student.devices?.map((device) => <div key={device.id} className="flex items-center justify-between gap-3 py-2 border-t border-border text-sm"><span className="flex-1">{device.name || [device.browser, device.os].filter(Boolean).join(" — ") || `جهاز ${device.id}`}</span><Badge2 variant={device.status === "active" ? "success" : "default"}>{device.status === "active" ? "نشط" : device.status === "removed" ? "تمت إزالته" : "محظور"}</Badge2>{canManageDevices && device.status === "active" && <Btn size="sm" variant="danger" onClick={() => removeDevice(device.id)}><Trash2 size={14}/> إزالة</Btn>}</div>)}
+          {!student.devices?.length && <p className="text-sm text-muted-foreground">لا توجد أجهزة مسجلة.</p>}
+        </Card2>
+        <Card2 className="mt-4">
+          <h2 className="font-black mb-3">آخر محاولات الاختبارات</h2>
+          {student.attempts?.map((attempt) => <div key={attempt.id} className="flex justify-between gap-3 py-2 border-t border-border text-sm"><span>{attempt.exam_title}</span><span>{attempt.percent == null ? attempt.status : `${Math.round(attempt.percent)}% — ${attempt.result_status}`}</span></div>)}
+          {!student.attempts?.length && <p className="text-sm text-muted-foreground">لا توجد محاولات حتى الآن.</p>}
         </Card2>
         {canManageCodes && (
           <Card2 className="mt-4">
@@ -254,7 +331,7 @@ export function Day5StudentDetailPage({ nav, params, authUser }: any) {
             ))}
           </Card2>
         )}
-        <Modal2 open={grantModal} onClose={() => setGrantModal(false)} title="منح صلاحية درس">
+        <Modal2 open={grantModal} onClose={() => setGrantModal(false)} title="منح صلاحية درس" onSubmit={grantAccess}>
           <div className="space-y-3">
             <Select2
               label="الدرس"
@@ -266,9 +343,29 @@ export function Day5StudentDetailPage({ nav, params, authUser }: any) {
               }))}
             />
             <Input2 label="تاريخ الانتهاء" type="date" value={expiresOn} onInput={(event: any) => setExpiresOn(event.currentTarget.value)} />
-            <Btn className="w-full" disabled={!lessonId || !expiresOn} onClick={grantAccess}>
+            <Btn type="submit" className="w-full" disabled={!lessonId || !expiresOn}>
               منح الصلاحية
             </Btn>
+          </div>
+        </Modal2>
+        <Modal2 open={enrollmentModal} onClose={() => setEnrollmentModal(false)} title="تغيير التسجيل الدراسي" onSubmit={saveEnrollment}>
+          <div className="space-y-3">
+            <Select2 label="السنة الدراسية" value={String(academicYearId)} onChange={(e: any) => setAcademicYearId(Number(e.target.value))} options={years.map((year) => ({ value: String(year.id), label: year.name }))} />
+            <Select2 label="الصف" value={String(gradeId)} onChange={(e: any) => setGradeId(Number(e.target.value))} options={grades.map((grade) => ({ value: String(grade.id), label: gradeLabel(grade.level, grade.name) }))} />
+            <Btn type="submit" className="w-full" disabled={!academicYearId || !gradeId}>حفظ التسجيل</Btn>
+          </div>
+        </Modal2>
+        <Modal2 open={passwordModal} onClose={() => setPasswordModal(false)} title="تغيير كلمة مرور الطالب" onSubmit={savePassword}>
+          <div className="space-y-3">
+            <Input2 label="كلمة المرور الجديدة" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+            <Btn type="submit" className="w-full" disabled={newPassword.length < 8}>حفظ كلمة المرور</Btn>
+          </div>
+        </Modal2>
+        <Modal2 open={parentPhoneModal} onClose={() => setParentPhoneModal(false)} title="تغيير رقم ولي الأمر" onSubmit={saveParentPhone}>
+          <div className="space-y-3">
+            <Input2 label="رقم ولي الأمر الجديد" value={newParentPhone} dir="ltr" onChange={(e) => setNewParentPhone(e.target.value)} />
+            <p className="text-xs text-muted-foreground">إذا كان للرقم حساب ولي أمر موثق، سيتم ربط الطالب به تلقائيًا.</p>
+            <Btn type="submit" className="w-full" disabled={!newParentPhone.trim() || newParentPhone === student.phone}>حفظ رقم ولي الأمر</Btn>
           </div>
         </Modal2>
       </div>
@@ -278,6 +375,7 @@ export function Day5StudentDetailPage({ nav, params, authUser }: any) {
 
 export function Day5AcademicYearsPage() {
   const [years, setYears] = useState<AcademicYear[]>([]);
+  const [sourceYearId, setSourceYearId] = useState(0);
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState({
     name: "",
@@ -287,7 +385,10 @@ export function Day5AcademicYearsPage() {
   });
   const refresh = () =>
     loadAcademicYears()
-      .then((r) => setYears(r.academic_years))
+      .then((r) => {
+        setYears(r.academic_years);
+        setSourceYearId((current) => current || r.academic_years.find((year) => year.status === "active")?.id || r.academic_years[0]?.id || 0);
+      })
       .catch((e) => notify(e instanceof ApiError ? e.message : "تعذر تحميل السنوات", "error"));
   useEffect(() => {
     void refresh();
@@ -300,9 +401,32 @@ export function Day5AcademicYearsPage() {
     notify("تم إنشاء السنة الدراسية", "success");
   };
   const archive = async (year: AcademicYear) => {
-    await updateAcademicYear(year.id, { status: "archived" });
-    await refresh();
-    notify("تمت أرشفة السنة الدراسية", "success");
+    try {
+      await updateAcademicYear(year.id, { status: "archived" });
+      await refresh();
+      notify("تمت أرشفة السنة الدراسية", "success");
+    } catch (error) {
+      notify(error instanceof ApiError ? error.message : "تعذر أرشفة السنة", "error");
+    }
+  };
+  const copyContent = async (target: AcademicYear) => {
+    try {
+      const response = await copyAcademicYearContent(target.id, sourceYearId);
+      notify(`تم نسخ ${response.copied_branches_count} مادة إلى السنة الجديدة`, "success");
+      await refresh();
+    } catch (error) {
+      notify(error instanceof ApiError ? error.message : "تعذر نسخ المنهج", "error");
+    }
+  };
+  const rolloverStudents = async (target: AcademicYear) => {
+    if (!window.confirm("سيتم نقل الطلاب للصف التالي وتفعيل السنة الجديدة. هل تريد الاستمرار؟")) return;
+    try {
+      const response = await rolloverAcademicYearStudents(target.id, sourceYearId);
+      notify(`تم نقل ${response.moved_count} طالب، وإنهاء تسجيل ${response.graduated_count} طالب`, "success");
+      await refresh();
+    } catch (error) {
+      notify(error instanceof ApiError ? error.message : "تعذر ترحيل الطلاب", "error");
+    }
   };
   return (
     <div className="min-h-screen bg-background py-6 px-4">
@@ -313,6 +437,7 @@ export function Day5AcademicYearsPage() {
             <Plus size={15} /> سنة جديدة
           </Btn>
         </div>
+        {years.length > 1 && <Card2 className="mb-4"><Select2 label="السنة المصدر لنسخ المنهج أو ترحيل الطلاب" value={String(sourceYearId)} onChange={(e: any) => setSourceYearId(Number(e.target.value))} options={years.map((year) => ({ value: String(year.id), label: year.name }))} /></Card2>}
         <div className="space-y-3">
           {years.map((year) => (
             <Card2 key={year.id}>
@@ -328,16 +453,16 @@ export function Day5AcademicYearsPage() {
                   </p>
                   <p className="text-sm mt-2">{year.students_count} طالب</p>
                 </div>
-                {year.status === "active" && (
-                  <Btn size="sm" variant="outline" onClick={() => archive(year)}>
-                    أرشفة
-                  </Btn>
-                )}
+                <div className="flex flex-wrap gap-2">
+                  {year.status === "draft" && sourceYearId !== year.id && <Btn size="sm" variant="outline" onClick={() => copyContent(year)}>نسخ هيكل المنهج</Btn>}
+                  {year.status === "draft" && sourceYearId !== year.id && <Btn size="sm" onClick={() => rolloverStudents(year)}>ترحيل الطلاب وتفعيل السنة</Btn>}
+                  {year.status === "active" && <Btn size="sm" variant="outline" onClick={() => archive(year)}>أرشفة</Btn>}
+                </div>
               </div>
             </Card2>
           ))}
         </div>
-        <Modal2 open={modal} onClose={() => setModal(false)} title="إنشاء سنة دراسية">
+        <Modal2 open={modal} onClose={() => setModal(false)} title="إنشاء سنة دراسية" onSubmit={save}>
           <div className="space-y-3">
             <Input2 label="اسم السنة" value={form.name} onChange={(e) => setForm((v) => ({ ...v, name: e.target.value }))} />
             <Input2
@@ -358,7 +483,7 @@ export function Day5AcademicYearsPage() {
                 setForm((v) => ({ ...v, ends_on: value }));
               }}
             />
-            <Btn className="w-full" disabled={!form.name || !form.starts_on || !form.ends_on} onClick={save}>
+            <Btn type="submit" className="w-full" disabled={!form.name || !form.starts_on || !form.ends_on}>
               إنشاء السنة
             </Btn>
           </div>
@@ -379,6 +504,7 @@ export function Day5AssistantsPage() {
     email: "",
     title: "",
     password: "",
+    status: "active" as AssistantRecord["status"],
     permissions: [] as string[],
   };
   const [form, setForm] = useState(empty);
@@ -402,6 +528,7 @@ export function Day5AssistantsPage() {
             email: assistant.email || "",
             title: assistant.title || "",
             password: "",
+            status: assistant.status,
             permissions: assistant.permissions,
           }
         : empty,
@@ -414,12 +541,24 @@ export function Day5AssistantsPage() {
         name: form.name,
         email: form.email,
         title: form.title,
+        status: form.status,
         permissions: form.permissions,
+        ...(form.password ? { password: form.password, password_confirmation: form.password } : {}),
       });
     else await createAssistant({ ...form, password_confirmation: form.password });
     setModal(false);
     await refresh();
     notify(editing ? "تم تحديث المساعد" : "تم إنشاء حساب المساعد", "success");
+  };
+  const archive = async (assistant: AssistantRecord) => {
+    if (!window.confirm(`هل تريد أرشفة حساب ${assistant.name} وإنهاء كل جلساته؟`)) return;
+    try {
+      await archiveAssistant(assistant.id);
+      await refresh();
+      notify("تمت أرشفة حساب المساعد وإنهاء جلساته", "success");
+    } catch (error) {
+      notify(error instanceof ApiError ? error.message : "تعذر أرشفة حساب المساعد", "error");
+    }
   };
   return (
     <div className="min-h-screen bg-background py-6 px-4">
@@ -445,20 +584,22 @@ export function Day5AssistantsPage() {
                   </p>
                   <p className="text-xs mt-2">{a.permissions.map((k) => permissionLabels[k] || k).join("، ") || "لا توجد صلاحيات"}</p>
                 </div>
-                <button aria-label={`تعديل ${a.name}`} onClick={() => open(a)}>
-                  <Edit2 size={16} />
-                </button>
+                <div className="flex items-center gap-3">
+                  <button aria-label={`تعديل ${a.name}`} onClick={() => open(a)}><Edit2 size={16} /></button>
+                  {a.status !== "archived" && <button aria-label={`أرشفة ${a.name}`} onClick={() => archive(a)}><Trash2 size={16} className="text-red-500" /></button>}
+                </div>
               </div>
             </Card2>
           ))}
         </div>
-        <Modal2 open={modal} onClose={() => setModal(false)} title={editing ? "تعديل المساعد" : "إضافة مساعد"}>
+        <Modal2 open={modal} onClose={() => setModal(false)} title={editing ? "تعديل المساعد" : "إضافة مساعد"} onSubmit={save}>
           <div className="space-y-3">
             <Input2 label="الاسم" value={form.name} onChange={(e) => setForm((v) => ({ ...v, name: e.target.value }))} />
             <Input2 label="الهاتف" value={form.phone} disabled={!!editing} dir="ltr" onChange={(e) => setForm((v) => ({ ...v, phone: e.target.value }))} />
             <Input2 label="البريد" value={form.email} dir="ltr" onChange={(e) => setForm((v) => ({ ...v, email: e.target.value }))} />
             <Input2 label="المسمى الوظيفي" value={form.title} onChange={(e) => setForm((v) => ({ ...v, title: e.target.value }))} />
-            {!editing && <Input2 label="كلمة المرور المؤقتة" type="password" value={form.password} onChange={(e) => setForm((v) => ({ ...v, password: e.target.value }))} />}
+            {editing && <Select2 label="حالة الحساب" value={form.status} onChange={(e: any) => setForm((v) => ({ ...v, status: e.target.value as AssistantRecord["status"] }))} options={[{value:"active",label:"نشط"},{value:"suspended",label:"موقوف"},{value:"archived",label:"مؤرشف"}]} />}
+            <Input2 label={editing ? "كلمة مرور جديدة (اختياري)" : "كلمة المرور المؤقتة"} type="password" value={form.password} onChange={(e) => setForm((v) => ({ ...v, password: e.target.value }))} />
             <Field label="الصلاحيات">
               <div className="grid sm:grid-cols-2 gap-2">
                 {keys.map((key) => (
@@ -478,7 +619,7 @@ export function Day5AssistantsPage() {
                 ))}
               </div>
             </Field>
-            <Btn className="w-full" disabled={!form.name || (!editing && form.password.length < 8)} onClick={save}>
+            <Btn type="submit" className="w-full" disabled={!form.name || (!editing && form.password.length < 8) || (!!editing && form.password.length > 0 && form.password.length < 8)}>
               حفظ
             </Btn>
           </div>

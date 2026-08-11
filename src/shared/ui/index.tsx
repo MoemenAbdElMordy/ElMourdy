@@ -147,7 +147,7 @@ export function Field({
   errorId?: string;
 }) {
   return (
-    <div className={cn("flex flex-col gap-1.5", className)}>
+    <div className={cn("flex min-w-0 max-w-full flex-col gap-1.5", className)}>
       {label && (
         <label
           htmlFor={htmlFor}
@@ -182,9 +182,9 @@ export function Input2({
     <Field label={label} error={error} htmlFor={id} errorId={errorId}>
       <input
         className={cn(
-          "w-full px-3 py-2.5 rounded-xl border border-border bg-background text-foreground",
+          "block w-full min-w-0 max-w-full px-3 py-2.5 rounded-xl border border-border bg-background text-foreground",
           "focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary",
-          "placeholder:text-muted-foreground text-sm min-h-[44px]",
+          "placeholder:text-muted-foreground text-sm min-h-[44px] overflow-hidden",
           Boolean(error) && "border-red-500",
           className,
         )}
@@ -215,7 +215,7 @@ export function Select2({
         value={value}
         onChange={onChange}
         className={cn(
-          "w-full px-3 py-2.5 rounded-xl border border-border bg-background text-foreground",
+          "block w-full min-w-0 max-w-full px-3 py-2.5 rounded-xl border border-border bg-background text-foreground",
           "focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary text-sm min-h-[44px]",
           className,
         )}
@@ -286,14 +286,18 @@ export function Modal2({
   title,
   children,
   size = "md",
+  onSubmit,
 }: {
   open: boolean;
   onClose: () => void;
   title: ReactNode;
   children: ReactNode;
   size?: "sm" | "md" | "lg";
+  onSubmit?: () => void | Promise<void>;
 }) {
   const dialogRef = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
   const titleId = useId();
   useEffect(() => {
     if (!open) return;
@@ -306,13 +310,13 @@ export function Modal2({
     // Focus first focusable element
     const timer = setTimeout(() => {
       const el = dialogRef.current?.querySelector<HTMLElement>(
-        "button,input,textarea,select,[tabindex]:not([tabindex='-1'])",
+        "input,textarea,select,button,[tabindex]:not([tabindex='-1'])",
       );
       el?.focus();
     }, 20);
     // Escape to close
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") onCloseRef.current();
     };
     document.addEventListener("keydown", onKey);
     return () => {
@@ -321,7 +325,7 @@ export function Modal2({
       document.body.style.overflow = previousOverflow;
       previouslyFocused?.focus();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
   return (
@@ -339,7 +343,7 @@ export function Modal2({
       <div
         ref={dialogRef}
         className={cn(
-          "relative bg-card rounded-2xl shadow-2xl border border-border overflow-hidden w-full mx-auto",
+          "relative mx-auto flex max-h-[calc(100dvh-1.5rem)] w-full min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl sm:max-h-[calc(100dvh-2rem)]",
           size === "lg" ? "max-w-2xl" : size === "sm" ? "max-w-sm" : "max-w-md",
         )}
       >
@@ -348,6 +352,7 @@ export function Modal2({
             {title}
           </h3>
           <button
+            type="button"
             onClick={onClose}
             className="p-2 hover:bg-accent rounded-xl focus-visible:outline-2 focus-visible:outline-primary"
             aria-label="إغلاق"
@@ -355,9 +360,33 @@ export function Modal2({
             <X size={16} />
           </button>
         </div>
-        <div className="p-5 sm:p-6 max-h-[85vh] overflow-y-auto">
-          {children}
-        </div>
+        {onSubmit ? (
+          <form
+            className="min-h-0 min-w-0 flex-1 overflow-y-auto p-5 sm:p-6"
+            onKeyDown={(event) => {
+              if (
+                event.key === "Enter" &&
+                event.target instanceof HTMLInputElement &&
+                !["checkbox", "radio", "file", "button", "submit"].includes(
+                  event.target.type,
+                )
+              ) {
+                event.preventDefault();
+                event.currentTarget.requestSubmit();
+              }
+            }}
+            onSubmit={(event) => {
+              event.preventDefault();
+              void onSubmit();
+            }}
+          >
+            {children}
+          </form>
+        ) : (
+          <div className="min-h-0 min-w-0 flex-1 overflow-y-auto p-5 sm:p-6">
+            {children}
+          </div>
+        )}
       </div>
     </div>
   );

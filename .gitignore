@@ -12,3 +12,5 @@ Thumbs.db
 # Local compiler probes
 compile_probe.c
 hello_probe.c
+
+.vercel

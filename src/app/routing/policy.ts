@@ -29,14 +29,18 @@ export const ROUTE_POLICY: Record<AppRoute, readonly Role[]> = {
   "assistant-dashboard": ["assistant"],
   "students-list": ["teacher", "assistant"],
   "student-detail": ["teacher", "assistant"],
+  "parents-list": ["teacher"],
+  "parent-detail": ["teacher"],
+  "student-preview": ["teacher"],
+  "management-reports": ["teacher", "assistant"],
   "content-subjects": ["teacher", "assistant"],
-  "exam-manage": ["teacher"],
-  "activation-codes": ["teacher"],
+  "exam-manage": ["teacher", "assistant"],
+  "activation-codes": ["teacher", "assistant"],
   "announcements-admin": ["teacher", "assistant"],
   assistants: ["teacher"],
-  "audit-log": ["teacher"],
+  "audit-log": ["teacher", "assistant"],
   "support-requests": ["teacher", "assistant"],
-  "academic-years": ["teacher"],
+  "academic-years": ["teacher", "assistant"],
 };
 
 export const ROLE_DEFAULT: Record<Role, AppRoute> = {

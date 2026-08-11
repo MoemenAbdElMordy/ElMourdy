@@ -6,38 +6,78 @@ import {
   Users, LogOut, Bell, Search, Plus, Edit2, Trash2, Eye, Download,
   AlertTriangle, Info, RotateCcw, Home, FileText, Video, Key, Shield,
   Activity, Star, UserCheck, UserX, Copy, Printer, RefreshCw, Check,
-  AlertCircle, Upload
+  AlertCircle, MessageCircle, Upload
 } from "lucide-react";
 import type { Role } from "../../app/routing/types";
 import { Badge2, Btn, Card2, Field, Input2, Modal2, Pager, Select2, StatCard, cn, notify } from "../../shared/ui";
-import {
-  GOVERNORATES, GRADES, STUDENTS, SUBJECTS, CHAPTERS, LESSONS,
-  EXAM_QS, ANNOUNCEMENTS, ACTIVATION_CODES, AUDIT_LOGS,
-  ABWAB, DURUS, MAHADARAT, rn,
-} from "../../data/mock-data";
-import { buildPreviewNav } from "../platform/preview-navigation";
 import { ApiError } from "../../shared/api/client";
 import {
   clearPendingRegistration,
+  completeRegistration,
   loadPendingRegistration,
+  loadRegistrationStatus,
   registerParent,
   registerStudent,
   resendRegistration,
   storePendingRegistration,
-  verifyRegistration,
 } from "../../shared/auth/registration";
+import {
+  clearPendingPasswordReset,
+  completePasswordReset,
+  loadPasswordResetStatus,
+  loadPendingPasswordReset,
+  requestPasswordReset,
+  storePendingPasswordReset,
+} from "../../shared/auth/password-reset";
+import { loadFreeLectures, loadGrades, type FreeLecture, type PublicGrade } from "../../shared/public/api";
+import { EGYPTIAN_GOVERNORATES } from "../../shared/public/registration-options";
 // ============================================================
 export function HomePage({ nav }: any) {
+  const [lectures, setLectures] = useState<FreeLecture[]>([]);
+  const [loadingContent, setLoadingContent] = useState(true);
+  const [contentError, setContentError] = useState("");
+
+  useEffect(() => {
+    loadFreeLectures()
+      .then((response) => setLectures(response.lectures))
+      .catch((error) => setContentError(error instanceof Error ? error.message : "تعذر تحميل المحتوى"))
+      .finally(() => setLoadingContent(false));
+  }, []);
+
+  const branches = useMemo(() => {
+    const grouped = new Map<number, { id: number; title: string; gradeNames: Set<string>; lectureCount: number; durationSeconds: number }>();
+    lectures.forEach((lecture) => {
+      const branch = grouped.get(lecture.branch.id) ?? {
+        id: lecture.branch.id,
+        title: lecture.branch.title,
+        gradeNames: new Set<string>(),
+        lectureCount: 0,
+        durationSeconds: 0,
+      };
+      branch.gradeNames.add(lecture.grade.name);
+      branch.lectureCount += 1;
+      branch.durationSeconds += lecture.duration_seconds ?? 0;
+      grouped.set(lecture.branch.id, branch);
+    });
+    return Array.from(grouped.values());
+  }, [lectures]);
+
+  const gradeCount = new Set(lectures.map((lecture) => lecture.grade.id)).size;
+  const totalDurationHours = Math.round(lectures.reduce((total, lecture) => total + (lecture.duration_seconds ?? 0), 0) / 3600);
+  const decorations = [
+    { width: 84, height: 84, top: "12%", left: "8%" },
+    { width: 52, height: 52, top: "68%", left: "18%" },
+    { width: 112, height: 112, top: "20%", left: "78%" },
+    { width: 66, height: 66, top: "72%", left: "88%" },
+  ];
+
   return (
     <div className="bg-background">
       {/* Hero */}
       <section className="relative bg-primary text-primary-foreground overflow-hidden">
         <div className="absolute inset-0 opacity-10">
-          {Array.from({length:20},(_,i)=>(
-            <div key={i} className="absolute rounded-full bg-white" style={{
-              width: `${rn(40,120)}px`, height: `${rn(40,120)}px`,
-              top: `${rn(0,100)}%`, left: `${rn(0,100)}%`, opacity: 0.3
-            }}/>
+          {decorations.map((style, index) => (
+            <div key={index} className="absolute rounded-full bg-white opacity-30" style={style}/>
           ))}
         </div>
         <div className="relative max-w-4xl mx-auto px-4 py-20 text-center">
@@ -65,15 +105,15 @@ export function HomePage({ nav }: any) {
       <section className="py-10 px-4 bg-card border-b border-border">
         <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
           {[
-            { v:"+3,000", l:"طالب مسجَّل",      icon:Users     },
-            { v:"+120",   l:"محاضرة متاحة",      icon:Video     },
-            { v:"+90",    l:"اختبار تفاعلي",     icon:FileText  },
-            { v:"15",     l:"سنة خبرة تدريسية",  icon:Award     },
-          ].map((s,i)=>(
-            <div key={i}>
-              <s.icon size={24} className="text-primary mx-auto mb-2"/>
-              <div className="text-2xl font-black">{s.v}</div>
-              <div className="text-sm text-muted-foreground">{s.l}</div>
+            { value: lectures.length, label: "محاضرة مجانية", icon: Video },
+            { value: branches.length, label: "فرع دراسي", icon: BookOpen },
+            { value: gradeCount, label: "صف دراسي", icon: Users },
+            { value: totalDurationHours, label: "ساعة محتوى", icon: Clock },
+          ].map((stat) => (
+            <div key={stat.label}>
+              <stat.icon size={24} className="text-primary mx-auto mb-2"/>
+              <div className="text-2xl font-black">{loadingContent ? "—" : stat.value.toLocaleString("ar-EG")}</div>
+              <div className="text-sm text-muted-foreground">{stat.label}</div>
             </div>
           ))}
         </div>
@@ -86,33 +126,35 @@ export function HomePage({ nav }: any) {
             <div className="w-20 h-20 rounded-2xl bg-primary flex items-center justify-center text-white text-4xl font-black mb-5">م</div>
             <h2 className="text-2xl font-black mb-3">الأستاذ محمود عبدالمرضي</h2>
             <p className="text-muted-foreground mb-4 leading-relaxed">
-              أستاذ اللغة العربية للمرحلة الثانوية، ذو خبرة تزيد عن 15 عامًا في التدريس. متخصص في تبسيط قواعد النحو والصرف وتحبيب اللغة إلى قلوب الطلاب.
+              أستاذ لغة عربية للمرحلة الثانوية، متخصص في تبسيط النحو والصرف والبلاغة وربط الشرح بالتطبيق العملي.
             </p>
             <ul className="space-y-2">
-              {["ليسانس آداب — قسم اللغة العربية","دبلوم التربية التعليمية","أكثر من 3000 طالب عبر مختلف المحافظات"].map((t,i)=>(
-                <li key={i} className="flex items-center gap-2 text-sm">
-                  <CheckCircle size={15} className="text-primary shrink-0"/> {t}
+              {["شرح منظم للمرحلة الثانوية", "اختبارات لقياس الفهم", "متابعة النتائج والتقدم"].map((item) => (
+                <li key={item} className="flex items-center gap-2 text-sm">
+                  <CheckCircle size={15} className="text-primary shrink-0"/> {item}
                 </li>
               ))}
             </ul>
           </div>
           <div className="grid grid-cols-1 gap-3">
-            {SUBJECTS.map(s => (
-              <Card2 key={s.id} className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => nav("login")}>
+            {branches.slice(0, 4).map((branch) => (
+              <Card2 key={branch.id} className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => nav("free-content")}>
                 <div className="flex items-center gap-4">
-                  <div className="text-3xl shrink-0">{s.icon}</div>
+                  <div className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0"><BookOpen size={20}/></div>
                   <div className="flex-1">
-                    <div className="font-bold">{s.name}</div>
-                    <div className="text-xs text-muted-foreground mb-1">{s.grade}</div>
+                    <div className="font-bold">{branch.title}</div>
+                    <div className="text-xs text-muted-foreground mb-1">{Array.from(branch.gradeNames).join("، ")}</div>
                     <div className="flex gap-2 flex-wrap">
-                      <Badge2 variant="primary">{s.openLectures} مجانية</Badge2>
-                      <Badge2>{s.lessonsCount} محاضرة</Badge2>
+                      <Badge2 variant="primary">{branch.lectureCount} محاضرة مجانية</Badge2>
+                      <Badge2>{formatLectureDuration(branch.durationSeconds)}</Badge2>
                     </div>
                   </div>
                   <ChevronLeft size={16} className="text-muted-foreground shrink-0"/>
                 </div>
               </Card2>
             ))}
+            {!loadingContent && !contentError && branches.length === 0 && <Card2 className="text-center text-muted-foreground">سيظهر المحتوى هنا فور نشر أول محاضرة مجانية.</Card2>}
+            {contentError && <Card2 className="text-center text-red-600">تعذر تحميل المحتوى حاليًا.</Card2>}
           </div>
         </div>
       </section>
@@ -122,22 +164,16 @@ export function HomePage({ nav }: any) {
         <div className="max-w-5xl mx-auto">
           <h2 className="text-2xl font-black text-center mb-8">المواد المتاحة</h2>
           <div className="grid md:grid-cols-3 gap-5">
-            {SUBJECTS.map(s => (
-              <Card2 key={s.id}>
-                <div className="text-4xl mb-3">{s.icon}</div>
-                <h3 className="font-bold text-lg mb-1">{s.name}</h3>
-                <p className="text-sm text-muted-foreground mb-4 leading-relaxed">{s.description}</p>
+            {branches.map((branch) => (
+              <Card2 key={branch.id}>
+                <BookOpen className="text-primary mb-3" size={30}/>
+                <h3 className="font-bold text-lg mb-1">{branch.title}</h3>
+                <p className="text-sm text-muted-foreground mb-4 leading-relaxed">{Array.from(branch.gradeNames).join("، ")}</p>
                 <div className="grid grid-cols-2 gap-2 mb-4 text-xs">
-                  {[["الفصول",s.chaptersCount],["المحاضرات",s.lessonsCount],["المجانية",s.openLectures],["الطلاب",s.studentsCount.toLocaleString("ar-EG")]].map(([k,v])=>(
-                    <div key={k as string} className="bg-muted rounded-xl p-2 text-center">
-                      <div className="font-black text-sm">{v}</div>
-                      <div className="text-muted-foreground">{k}</div>
-                    </div>
-                  ))}
+                  <div className="bg-muted rounded-xl p-2 text-center"><div className="font-black text-sm">{branch.lectureCount}</div><div className="text-muted-foreground">المحاضرات المجانية</div></div>
+                  <div className="bg-muted rounded-xl p-2 text-center"><div className="font-black text-sm">{formatLectureDuration(branch.durationSeconds)}</div><div className="text-muted-foreground">إجمالي المدة</div></div>
                 </div>
-                <Btn variant="outline" className="w-full" onClick={() => nav("register")}>
-                  اشترك بـ {s.price} جنيه / شهر
-                </Btn>
+                <Btn variant="outline" className="w-full" onClick={() => nav("free-content")}>عرض المحاضرات</Btn>
               </Card2>
             ))}
           </div>
@@ -157,7 +193,7 @@ export function HomePage({ nav }: any) {
       </section>
 
       <footer className="border-t border-border py-6 px-4 text-center text-xs text-muted-foreground">
-        <p>© 2025 منصة المرضي — الأستاذ محمود عبدالمرضي. جميع الحقوق محفوظة.</p>
+        <p>© {new Date().getFullYear()} منصة المرضي — الأستاذ محمود عبدالمرضي. جميع الحقوق محفوظة.</p>
       </footer>
     </div>
   );
@@ -181,8 +217,8 @@ export function LoginPage({ nav, setRole, onLogin }: any) {
       setRole(nextRole);
       nav(nextRole === "student" ? "student-dashboard" : nextRole === "parent" ? "parent-dashboard" : "admin-dashboard", {}, nextRole);
       notify("مرحبًا! تم تسجيل دخولك بنجاح", "success");
-    } catch {
-      setErr("رقم الهاتف أو كلمة المرور غير صحيحة");
+    } catch (error) {
+      setErr(error instanceof ApiError ? error.message : "تعذر تسجيل الدخول. حاول مرة أخرى.");
     } finally {
       setLoading(false);
     }
@@ -229,15 +265,22 @@ export function RegisterPage({ nav }: any) {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<any>({});
+  const [grades, setGrades] = useState<PublicGrade[]>([]);
   const [form, setForm] = useState({ name:"",birthDate:"",phone:"",parentPhone:"",email:"",grade:"",governorate:"",school:"",password:"",confirm:"" });
   const set = (k:string,v:string) => setForm(f=>({...f,[k]:v}));
+
+  useEffect(() => {
+    loadGrades()
+      .then((response) => setGrades(response.grades))
+      .catch(() => setErrors((current: Record<string, string>) => ({ ...current, grades: "تعذر تحميل الصفوف الدراسية." })));
+  }, []);
 
   const validate = () => {
     const e: any = {};
     if (!form.name.trim())                                  e.name="الاسم مطلوب";
     if (!form.birthDate)                                    e.birthDate="تاريخ الميلاد مطلوب";
-    if (!form.phone.match(/^01[0-2][0-9]{8}$/))            e.phone="رقم هاتف غير صحيح";
-    if (!form.parentPhone.match(/^01[0-2][0-9]{8}$/))      e.parentPhone="رقم ولي الأمر غير صحيح";
+    if (!form.phone.match(/^01[0125][0-9]{8}$/))           e.phone="رقم هاتف غير صحيح";
+    if (!form.parentPhone.match(/^01[0125][0-9]{8}$/))     e.parentPhone="رقم ولي الأمر غير صحيح";
     if (form.phone === form.parentPhone && form.phone)      e.parentPhone="رقم ولي الأمر يجب أن يختلف عن رقم الطالب";
     if (!form.email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/))   e.email="بريد إلكتروني غير صحيح";
     if (!form.grade)                                        e.grade="يرجى اختيار الصف";
@@ -262,7 +305,7 @@ export function RegisterPage({ nav }: any) {
         governorate: form.governorate,
         email: form.email,
         school: form.school,
-        gradeLevel: GRADES.indexOf(form.grade) + 1,
+        gradeLevel: Number(form.grade),
         password: form.password,
         passwordConfirmation: form.confirm,
       });
@@ -308,10 +351,11 @@ export function RegisterPage({ nav }: any) {
             <div className="space-y-4">
               <h3 className="font-bold">البيانات الدراسية</h3>
               <Select2 label="الصف الدراسي" value={form.grade} onChange={(e:any)=>set("grade",e.target.value)}
-                options={[{value:"",label:"اختر الصف"},...GRADES.map(g=>({value:g,label:g}))]}/>
+                options={[{value:"",label:"اختر الصف"},...grades.map((grade)=>({value:grade.level,label:grade.name}))]}/>
               {errors.grade && <p className="text-xs text-red-500 -mt-2">{errors.grade}</p>}
+              {errors.grades && <p className="text-xs text-red-500 -mt-2">{errors.grades}</p>}
               <Select2 label="المحافظة" value={form.governorate} onChange={(e:any)=>set("governorate",e.target.value)}
-                options={[{value:"",label:"اختر المحافظة"},...GOVERNORATES.map(g=>({value:g,label:g}))]}/>
+                options={[{value:"",label:"اختر المحافظة"},...EGYPTIAN_GOVERNORATES.map((governorate)=>({value:governorate,label:governorate}))]}/>
               {errors.governorate && <p className="text-xs text-red-500 -mt-2">{errors.governorate}</p>}
               <Input2 label="اسم المدرسة" placeholder="مدرسة القاهرة الثانوية" value={form.school} onChange={(e:any)=>set("school",e.target.value)} error={errors.school}/>
               <div className="flex gap-2">
@@ -406,42 +450,72 @@ export function ParentRegisterPage({ nav }: any) {
 // ============================================================
 export function OTPPage({ nav, params, setRole, setAuthUser }: any) {
   const [registration, setRegistration] = useState(() => loadPendingRegistration());
-  const [otp, setOtp] = useState(["","","","","",""]);
   const [loading, setLoading] = useState(false);
   const [resendRemaining, setResendRemaining] = useState(registration?.resendAfterSeconds ?? 0);
-  const refs = useRef<any[]>([]);
   const [error, setError] = useState("");
+  const [verificationStatus, setVerificationStatus] = useState<"pending" | "verified" | "expired" | "failed">("pending");
+  const completingRef = useRef(false);
+
   useEffect(() => {
     if (resendRemaining <= 0) return;
     const timer = window.setInterval(() => setResendRemaining(value => Math.max(0, value - 1)), 1000);
     return () => window.clearInterval(timer);
   }, [resendRemaining]);
-  const chg = (i:number,v:string) => {
-    if (!/^\d?$/.test(v)) return;
-    const n=[...otp]; n[i]=v; setOtp(n);
-    if (v && i<5) refs.current[i+1]?.focus();
-  };
-  const verify = async () => {
-    if (!registration) {
-      setError("انتهت بيانات التسجيل. ابدأ التسجيل مرة أخرى.");
-      return;
-    }
 
+  const finishRegistration = useCallback(async () => {
+    if (!registration || completingRef.current) return;
+
+    completingRef.current = true;
     setLoading(true);
     setError("");
     try {
-      const user = await verifyRegistration(registration, otp.join(""));
+      const user = await completeRegistration(registration);
       clearPendingRegistration();
       setAuthUser(user);
       setRole(user.role);
       nav(user.role === "parent" ? "parent-dashboard" : "student-dashboard", {}, user.role);
       notify(user.role === "parent" ? "تم التحقق وربط الطلاب بحسابك" : "تم التحقق بنجاح! مرحبًا بك", "success");
     } catch (requestError) {
-      setError(requestError instanceof ApiError ? requestError.message : "تعذر التحقق من الرمز.");
-    } finally {
+      completingRef.current = false;
       setLoading(false);
+      setError(requestError instanceof ApiError ? requestError.message : "تعذر إكمال تسجيل الحساب.");
     }
-  };
+  }, [nav, registration, setAuthUser, setRole]);
+
+  useEffect(() => {
+    if (!registration) return;
+
+    let active = true;
+    let timer: number | undefined;
+    const checkStatus = async () => {
+      try {
+        const result = await loadRegistrationStatus(registration);
+        if (!active) return;
+
+        setVerificationStatus(result.status);
+        if (result.status === "verified") {
+          await finishRegistration();
+          return;
+        }
+        if (result.status === "expired" || result.status === "failed") {
+          setError("انتهت صلاحية رابط التحقق. أنشئ رابطًا جديدًا للمتابعة.");
+          return;
+        }
+      } catch (requestError) {
+        if (!active) return;
+        setError(requestError instanceof ApiError ? requestError.message : "تعذر متابعة حالة التحقق.");
+      }
+
+      if (active) timer = window.setTimeout(checkStatus, 2000);
+    };
+
+    void checkStatus();
+    return () => {
+      active = false;
+      if (timer) window.clearTimeout(timer);
+    };
+  }, [finishRegistration, registration]);
+
   const resend = async () => {
     if (!registration || resendRemaining > 0) return;
 
@@ -452,11 +526,11 @@ export function OTPPage({ nav, params, setRole, setAuthUser }: any) {
       storePendingRegistration(nextRegistration);
       setRegistration(nextRegistration);
       setResendRemaining(nextRegistration.resendAfterSeconds);
-      setOtp(["","","","","",""]);
-      refs.current[0]?.focus();
-      notify("تم إرسال رمز تحقق جديد", "success");
+      setVerificationStatus("pending");
+      completingRef.current = false;
+      notify("تم إنشاء رابط تحقق جديد", "success");
     } catch (requestError) {
-      setError(requestError instanceof ApiError ? requestError.message : "تعذر إعادة إرسال الرمز.");
+      setError(requestError instanceof ApiError ? requestError.message : "تعذر إنشاء رابط تحقق جديد.");
     } finally {
       setLoading(false);
     }
@@ -469,28 +543,37 @@ export function OTPPage({ nav, params, setRole, setAuthUser }: any) {
         </div>
         <h1 className="text-2xl font-black mb-2">التحقق من الهاتف</h1>
         <p className="text-muted-foreground text-sm mb-6">
-          أرسلنا رمز التحقق إلى<br/>
+          افتح واتساب وأرسل الرسالة الجاهزة من الرقم<br/>
           <span className="font-bold text-foreground" dir="ltr">{registration?.phone || params?.phone || "01xxxxxxxxx"}</span>
         </p>
         <Card2>
-          <div className="flex gap-2 justify-center mb-5 flex-row-reverse">
-            {otp.map((v,i)=>(
-              <input key={i} ref={el=>refs.current[i]=el} value={v} onChange={e=>chg(i,e.target.value)}
-                aria-label={`الرقم ${i + 1} من رمز التحقق`} autoComplete={i === 0 ? "one-time-code" : "off"} maxLength={1} inputMode="numeric"
-                className="w-11 h-14 text-center text-xl font-black rounded-xl border-2 border-border focus:border-primary focus:outline-none bg-background transition-colors"/>
-            ))}
-          </div>
-          {registration?.developmentCode && (
-            <div className="mb-3 rounded-xl bg-muted p-3 text-sm">
-              رمز التطوير: <strong dir="ltr">{registration.developmentCode}</strong>
+          <div className="mb-5 rounded-2xl border border-primary/20 bg-primary/5 p-4 text-right">
+            <div className="mb-2 flex items-center gap-2 font-bold">
+              <MessageCircle size={20} className="text-primary"/>
+              خطوة واحدة للتأكيد
             </div>
-          )}
+            <p className="text-sm text-muted-foreground">
+              اضغط الزر، ثم اضغط إرسال داخل واتساب. سيتم تأكيد حسابك تلقائيًا عند وصول الرسالة.
+            </p>
+          </div>
           {error && <div role="alert" className="mb-3 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</div>}
-          <Btn className="w-full mb-3" onClick={verify} disabled={loading||otp.some(v=>!v)}>
-            {loading?<><RefreshCw size={15} className="animate-spin"/> جارٍ التحقق…</>:"تحقق"}
-          </Btn>
+          {registration?.whatsappUrl && (
+            <a
+              href={registration.whatsappUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="mb-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 py-3 font-bold text-white transition-opacity hover:opacity-90"
+            >
+              <MessageCircle size={20}/>
+              فتح واتساب وإرسال رسالة التحقق
+            </a>
+          )}
+          <div className="mb-3 flex items-center justify-center gap-2 text-sm text-muted-foreground" aria-live="polite">
+            <RefreshCw size={15} className={verificationStatus === "pending" ? "animate-spin" : ""}/>
+            {loading ? "جارٍ فتح حسابك…" : "في انتظار وصول رسالة واتساب…"}
+          </div>
           <button disabled={loading || resendRemaining > 0} onClick={resend} className="text-sm text-primary hover:underline disabled:opacity-50 disabled:no-underline">
-            {resendRemaining > 0 ? `إعادة الإرسال خلال ${resendRemaining} ثانية` : "إعادة إرسال الرمز"}
+            {resendRemaining > 0 ? `إنشاء رابط جديد خلال ${resendRemaining} ثانية` : "إنشاء رابط تحقق جديد"}
           </button>
         </Card2>
       </div>
@@ -502,34 +585,146 @@ export function OTPPage({ nav, params, setRole, setAuthUser }: any) {
 // FORGOT PASSWORD
 // ============================================================
 export function ForgotPage({ nav }: any) {
-  const [email, setEmail] = useState("");
-  const [sent, setSent] = useState(false);
+  const [phone, setPhone] = useState("");
+  const [reset, setReset] = useState(() => loadPendingPasswordReset());
+  const [status, setStatus] = useState<"request" | "pending" | "verified" | "success">(
+    reset ? "pending" : "request",
+  );
+  const [password, setPassword] = useState("");
+  const [passwordConfirmation, setPasswordConfirmation] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!reset || status !== "pending") return;
+
+    let active = true;
+    let timer: number | undefined;
+    const checkStatus = async () => {
+      try {
+        const response = await loadPasswordResetStatus(reset);
+        if (!active) return;
+        if (response.status === "verified") {
+          setStatus("verified");
+          return;
+        }
+        if (response.status === "expired" || response.status === "failed") {
+          clearPendingPasswordReset();
+          setReset(null);
+          setStatus("request");
+          setError("انتهت صلاحية رابط الاستعادة. ابدأ من جديد.");
+          return;
+        }
+        if (response.status === "consumed") {
+          clearPendingPasswordReset();
+          setStatus("success");
+          return;
+        }
+      } catch (requestError) {
+        if (active) setError(requestError instanceof ApiError ? requestError.message : "تعذر متابعة حالة التحقق.");
+      }
+      if (active) timer = window.setTimeout(checkStatus, 2000);
+    };
+
+    void checkStatus();
+    return () => {
+      active = false;
+      if (timer) window.clearTimeout(timer);
+    };
+  }, [reset, status]);
+
+  const submitPhone = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const pendingReset = await requestPasswordReset(phone);
+      storePendingPasswordReset(pendingReset);
+      setReset(pendingReset);
+      setStatus("pending");
+    } catch (requestError) {
+      setError(requestError instanceof ApiError ? requestError.message : "تعذر بدء استعادة كلمة المرور.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const submitPassword = async () => {
+    if (!reset) return;
+    if (password.length < 8) {
+      setError("كلمة المرور يجب ألا تقل عن 8 أحرف.");
+      return;
+    }
+    if (password !== passwordConfirmation) {
+      setError("تأكيد كلمة المرور غير مطابق.");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+    try {
+      await completePasswordReset(reset, password, passwordConfirmation);
+      clearPendingPasswordReset();
+      setReset(null);
+      setStatus("success");
+    } catch (requestError) {
+      setError(requestError instanceof ApiError ? requestError.message : "تعذر تغيير كلمة المرور.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const restart = () => {
+    clearPendingPasswordReset();
+    setReset(null);
+    setStatus("request");
+    setError("");
+  };
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-6">
           <h1 className="text-2xl font-black">استعادة كلمة المرور</h1>
-          <p className="text-muted-foreground text-sm mt-1">أدخل بريدك الإلكتروني لإرسال رابط الاستعادة</p>
+          <p className="text-muted-foreground text-sm mt-1">تحقق من رقم حسابك عن طريق واتساب ثم اختر كلمة مرور جديدة</p>
         </div>
         <Card2>
-          {!sent ? (
+          {error && <div role="alert" className="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+          {status === "request" && (
             <div className="space-y-4">
-              <Input2 label="البريد الإلكتروني" type="email" placeholder="example@email.com" value={email} onChange={(e:any)=>setEmail(e.target.value)} dir="ltr"/>
-              <Btn className="w-full" onClick={()=>{ setLoading(true); setTimeout(()=>{ setLoading(false); setSent(true); },1100); }} disabled={loading||!email}>
-                {loading?<><RefreshCw size={15} className="animate-spin"/> إرسال…</>:"إرسال رابط الاستعادة"}
+              <Input2 label="رقم الهاتف" type="tel" placeholder="01xxxxxxxxx" value={phone} onChange={(event) => setPhone(event.target.value)} dir="ltr"/>
+              <Btn className="w-full" onClick={submitPhone} disabled={loading || phone.trim().length < 11}>
+                {loading ? <><RefreshCw size={15} className="animate-spin"/> جارٍ التجهيز…</> : "متابعة عبر واتساب"}
               </Btn>
             </div>
-          ) : (
+          )}
+          {status === "pending" && reset && (
+            <div className="text-center py-2">
+              <MessageCircle size={44} className="text-primary mx-auto mb-3"/>
+              <p className="font-bold mb-2">أرسل رسالة التأكيد</p>
+              <p className="text-sm text-muted-foreground mb-4">افتح واتساب من نفس رقم الحساب، ثم أرسل الرسالة الجاهزة. الصفحة ستنتقل تلقائيًا للخطوة التالية.</p>
+              <a href={reset.whatsappUrl} target="_blank" rel="noreferrer" className="mb-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 py-3 font-bold text-white hover:opacity-90"><MessageCircle size={20}/> فتح واتساب وإرسال الرسالة</a>
+              <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground"><RefreshCw size={15} className="animate-spin"/> في انتظار رسالة واتساب…</div>
+              <button onClick={restart} className="mt-4 text-sm text-primary hover:underline">استخدام رقم آخر</button>
+            </div>
+          )}
+          {status === "verified" && (
+            <div className="space-y-4">
+              <div className="text-center"><CheckCircle size={42} className="text-primary mx-auto mb-2"/><p className="font-bold">تم التحقق من الرقم</p></div>
+              <Input2 label="كلمة المرور الجديدة" type="password" value={password} onChange={(event) => setPassword(event.target.value)} dir="ltr"/>
+              <Input2 label="تأكيد كلمة المرور" type="password" value={passwordConfirmation} onChange={(event) => setPasswordConfirmation(event.target.value)} dir="ltr"/>
+              <Btn className="w-full" onClick={submitPassword} disabled={loading || password.length < 8 || password !== passwordConfirmation}>{loading ? <><RefreshCw size={15} className="animate-spin"/> جارٍ الحفظ…</> : "حفظ كلمة المرور الجديدة"}</Btn>
+            </div>
+          )}
+          {status === "success" && (
             <div className="text-center py-4">
               <CheckCircle size={44} className="text-primary mx-auto mb-3"/>
-              <p className="font-bold mb-1">تم الإرسال!</p>
-              <p className="text-sm text-muted-foreground mb-4">تحقق من بريدك الإلكتروني للحصول على رابط الاستعادة</p>
-              <Btn variant="outline" className="w-full" onClick={()=>nav("login")}>العودة لتسجيل الدخول</Btn>
+              <p className="font-bold mb-1">تم تغيير كلمة المرور</p>
+              <p className="text-sm text-muted-foreground mb-4">يمكنك الآن تسجيل الدخول بكلمة المرور الجديدة.</p>
+              <Btn className="w-full" onClick={() => nav("login")}>تسجيل الدخول</Btn>
             </div>
           )}
         </Card2>
-        <button onClick={()=>nav("login")} className="block text-center text-sm text-primary mt-4 hover:underline">
+        <button onClick={() => nav("login")} className="block text-center text-sm text-primary mt-4 hover:underline">
           تذكرت كلمة المرور؟ سجّل الدخول
         </button>
       </div>
@@ -538,36 +733,128 @@ export function ForgotPage({ nav }: any) {
 }
 
 // ============================================================
+// ABOUT
+// ============================================================
+export function AboutPage({ nav }: any) {
+  return (
+    <div className="min-h-screen bg-background py-10 px-4">
+      <div className="max-w-4xl mx-auto space-y-6">
+        <section className="rounded-3xl bg-primary p-8 text-primary-foreground md:p-10">
+          <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/15 text-3xl font-black">م</div>
+          <h1 className="mb-3 text-3xl font-black">عن منصة المرضي</h1>
+          <p className="max-w-2xl text-base leading-8 opacity-90">
+            منصة تعليمية متخصصة في اللغة العربية للمرحلة الثانوية، تساعد الطالب على فهم المنهج من خلال المحاضرات المسجلة والاختبارات والمتابعة المستمرة.
+          </p>
+        </section>
+
+        <div className="grid gap-4 md:grid-cols-3">
+          <Card2>
+            <BookOpen className="mb-3 text-primary" />
+            <h2 className="mb-2 font-black">شرح مبسّط</h2>
+            <p className="text-sm leading-7 text-muted-foreground">محتوى منظم يشرح النحو والصرف والبلاغة بطريقة واضحة وتدريجية.</p>
+          </Card2>
+          <Card2>
+            <Award className="mb-3 text-primary" />
+            <h2 className="mb-2 font-black">تقييم مستمر</h2>
+            <p className="text-sm leading-7 text-muted-foreground">اختبارات مرتبطة بالمحاضرات لقياس الفهم ومتابعة مستوى الطالب.</p>
+          </Card2>
+          <Card2>
+            <Users className="mb-3 text-primary" />
+            <h2 className="mb-2 font-black">متابعة الأسرة</h2>
+            <p className="text-sm leading-7 text-muted-foreground">لوحة مخصصة لولي الأمر لمتابعة النتائج والمحاولات الفعلية للطالب.</p>
+          </Card2>
+        </div>
+
+        <Card2 className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
+          <div>
+            <h2 className="mb-1 text-xl font-black">الأستاذ محمود عبدالمرضي</h2>
+            <p className="text-sm leading-7 text-muted-foreground">أستاذ اللغة العربية للمرحلة الثانوية، ومتخصص في تبسيط قواعد اللغة وربطها بالتطبيق العملي.</p>
+          </div>
+          <div className="flex shrink-0 gap-2">
+            <Btn variant="outline" onClick={() => nav("free-content")}>المحتوى المجاني</Btn>
+            <Btn onClick={() => nav("register")}>إنشاء حساب</Btn>
+          </div>
+        </Card2>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
 // FREE CONTENT
 // ============================================================
+function formatLectureDuration(seconds?: number | null) {
+  if (!seconds) return "المدة غير محددة";
+  const minutes = Math.ceil(seconds / 60);
+  if (minutes < 60) return `${minutes} دقيقة`;
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  return remainingMinutes ? `${hours} ساعة و${remainingMinutes} دقيقة` : `${hours} ساعة`;
+}
+
 export function FreeContentPage({ nav, role }: any) {
-  const free = LESSONS.filter(l=>l.isOpen);
+  const [lectures, setLectures] = useState<FreeLecture[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    loadFreeLectures()
+      .then((response) => setLectures(response.lectures))
+      .catch((reason) => setError(reason instanceof Error ? reason.message : "تعذر تحميل المحتوى المجاني"))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const groups = useMemo(() => {
+    const grouped = new Map<number, { title: string; grade: string; lectures: FreeLecture[] }>();
+    lectures.forEach((lecture) => {
+      const current = grouped.get(lecture.branch.id) ?? {
+        title: lecture.branch.title,
+        grade: lecture.grade.name,
+        lectures: [],
+      };
+      current.lectures.push(lecture);
+      grouped.set(lecture.branch.id, current);
+    });
+    return Array.from(grouped.entries());
+  }, [lectures]);
+
   return (
     <div className="min-h-screen bg-background py-6 px-4">
       <div className="max-w-3xl mx-auto">
         <h1 className="text-2xl font-black mb-2">المحتوى المجاني</h1>
         <p className="text-muted-foreground mb-6">محاضرات مجانية متاحة للجميع بدون اشتراك</p>
-        {SUBJECTS.map(s=>{
-          const sl = free.filter(l=>{ const ch=CHAPTERS.find(c=>c.id===l.chapterId); return ch?.subjectId===s.id; });
-          if (!sl.length) return null;
-          return (
-            <div key={s.id} className="mb-6">
+
+        {loading && <Card2 className="text-center text-muted-foreground">جارٍ تحميل المحاضرات…</Card2>}
+        {!loading && error && <Card2 className="text-center text-red-600">{error}</Card2>}
+        {!loading && !error && groups.length === 0 && (
+          <Card2 className="text-center">
+            <Video className="mx-auto mb-3 text-muted-foreground" />
+            <h2 className="mb-1 font-black">لا توجد محاضرات مجانية جاهزة حاليًا</h2>
+            <p className="text-sm text-muted-foreground">ستظهر المحاضرات هنا فور نشرها وتجهيز الفيديو للمشاهدة.</p>
+          </Card2>
+        )}
+
+        {groups.map(([branchId, group]) => (
+            <div key={branchId} className="mb-6">
               <div className="flex items-center gap-2 mb-3">
-                <span className="text-2xl">{s.icon}</span>
-                <span className="font-bold text-lg">{s.name}</span>
-                <Badge2 variant="primary">{sl.length} محاضرات مجانية</Badge2>
+                <BookOpen className="text-primary" />
+                <div className="flex-1">
+                  <div className="font-bold text-lg">{group.title}</div>
+                  <div className="text-xs text-muted-foreground">{group.grade}</div>
+                </div>
+                <Badge2 variant="primary">{group.lectures.length} محاضرات مجانية</Badge2>
               </div>
               <div className="space-y-2">
-                {sl.map(l=>(
-                  <Card2 key={l.id} className="cursor-pointer hover:border-primary/50 transition-colors" onClick={()=>role==="student"?nav("video",{lessonId:l.id}):nav("login")}>
+                {group.lectures.map((lecture) => (
+                  <Card2 key={lecture.id} className="cursor-pointer hover:border-primary/50 transition-colors" onClick={()=>role==="student"?nav("video",{lessonId:lecture.id}):nav("login")}>
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                         <Play size={17} className="text-primary"/>
                       </div>
                       <div className="flex-1">
-                        <div className="font-semibold text-sm">{l.title}</div>
+                        <div className="font-semibold text-sm">{lecture.title}</div>
                         <div className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5">
-                          <Clock size={11}/>{l.duration}
+                          <Clock size={11}/>{formatLectureDuration(lecture.duration_seconds)}
                           <Badge2 variant="info">مجاني</Badge2>
                         </div>
                       </div>
@@ -577,8 +864,7 @@ export function FreeContentPage({ nav, role }: any) {
                 ))}
               </div>
             </div>
-          );
-        })}
+        ))}
         <div className="mt-6 text-center">
           <p className="text-muted-foreground mb-4">المحاضرات مجانية ولا تحتاج كودًا، لكن يلزم تسجيل حساب طالب للمشاهدة وحفظ التقدم.</p>
           <Btn onClick={()=>nav(role==="student"?"student-dashboard":"register")}>{role==="student"?"العودة للوحة الطالب":"التسجيل الآن"}</Btn>

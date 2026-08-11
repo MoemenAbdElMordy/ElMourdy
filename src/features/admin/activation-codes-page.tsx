@@ -208,6 +208,7 @@ export function ConnectedActivationCodesPage() {
           open={modal}
           onClose={() => setModal(false)}
           title="إنشاء دفعة أكواد"
+          onSubmit={create}
         >
           <div className="space-y-3">
             <Input2
@@ -271,9 +272,9 @@ export function ConnectedActivationCodesPage() {
               }))}
             />
             <Btn
+              type="submit"
               className="w-full"
               disabled={!form.name || !form.expires_on || !selectedLessonId}
-              onClick={create}
             >
               <Key size={15} /> إنشاء الأكواد
             </Btn>
