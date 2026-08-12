@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const resetMocks = vi.hoisted(() => ({
@@ -21,7 +22,7 @@ vi.mock("../../shared/auth/password-reset", () => ({
   storePendingPasswordReset: resetMocks.store,
 }));
 
-import { ForgotPage } from "./pages";
+import { ForgotPage, LoginPage } from "./pages";
 
 const pendingReset = {
   passwordResetId: 12,
@@ -72,5 +73,20 @@ describe("password recovery page", () => {
       "NewPassword123!",
     ));
     expect(await screen.findByText("تم تغيير كلمة المرور")).toBeInTheDocument();
+  });
+});
+
+describe("login page", () => {
+  it("submits valid credentials when Enter is pressed", async () => {
+    const user = userEvent.setup();
+    const onLogin = vi.fn().mockResolvedValue({ role: "assistant" });
+    const nav = vi.fn();
+    render(<LoginPage nav={nav} setRole={vi.fn()} onLogin={onLogin}/>);
+
+    await user.type(screen.getByLabelText("رقم الهاتف"), "01012349876");
+    await user.type(screen.getByLabelText("كلمة المرور"), "AssistantPassword{Enter}");
+
+    await waitFor(() => expect(onLogin).toHaveBeenCalledWith("01012349876", "AssistantPassword"));
+    expect(nav).toHaveBeenCalledWith("admin-dashboard", {}, "assistant");
   });
 });

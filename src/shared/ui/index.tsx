@@ -383,7 +383,27 @@ export function Modal2({
             {children}
           </form>
         ) : (
-          <div className="min-h-0 min-w-0 flex-1 overflow-y-auto p-5 sm:p-6">
+          <div
+            className="min-h-0 min-w-0 flex-1 overflow-y-auto p-5 sm:p-6"
+            onKeyDown={(event) => {
+              if (
+                event.key !== "Enter" ||
+                !(event.target instanceof HTMLInputElement) ||
+                ["checkbox", "radio", "file", "button", "submit"].includes(
+                  event.target.type,
+                )
+              ) return;
+
+              const actionButtons = Array.from(
+                event.currentTarget.querySelectorAll<HTMLButtonElement>(
+                  "button:not(:disabled)",
+                ),
+              );
+              if (actionButtons.length !== 1) return;
+              event.preventDefault();
+              actionButtons[0].click();
+            }}
+          >
             {children}
           </div>
         )}

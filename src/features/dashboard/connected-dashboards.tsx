@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Activity, AlertTriangle, BookOpen, CheckCircle, Clock, RotateCcw, Star, Users, Video } from "lucide-react";
+import { Activity, AlertTriangle, BookOpen, CheckCircle, Clock, Play, RotateCcw, Star, Users, Video } from "lucide-react";
 import type { Navigate } from "../../app/routing/types";
 import { ApiError } from "../../shared/api/client";
 import {
@@ -10,6 +10,8 @@ import {
   type StudentDashboardData,
 } from "../../shared/dashboard/api";
 import { Badge2, Card2, StatCard } from "../../shared/ui";
+import { useLectureThumbnailUrl } from "../../shared/media/lecture-thumbnail";
+import { emptyPagination, PaginationControls, type PaginationMeta } from "../../shared/pagination";
 
 const errorMessage = (error: unknown) =>
   error instanceof ApiError ? error.message : "تعذر تحميل البيانات";
@@ -20,6 +22,25 @@ function LoadingState() {
 
 function ErrorState({ message, retry }: { message: string; retry: () => void }) {
   return <div className="min-h-[60vh] grid place-items-center px-4"><Card2 className="max-w-md text-center"><AlertTriangle className="mx-auto mb-3 text-red-500"/><p className="mb-4">{message}</p><button className="btn-primary" onClick={retry}>إعادة المحاولة</button></Card2></div>;
+}
+
+function ContinueWatching({ item, nav }: { item: NonNullable<StudentDashboardData["continue_watching"]>; nav: Navigate }) {
+  const thumbnailUrl = useLectureThumbnailUrl(item.lecture_id, item.has_thumbnail);
+  const minutes = Math.floor(item.last_position_seconds / 60);
+  const seconds = item.last_position_seconds % 60;
+  return <button type="button" onClick={() => nav("video", { lessonId: item.lecture_id })} className="group mb-5 grid w-full overflow-hidden rounded-2xl border border-border bg-card text-right shadow-sm transition hover:border-primary hover:shadow-md sm:grid-cols-[260px_1fr]">
+    <div className="relative aspect-video overflow-hidden bg-muted sm:aspect-auto sm:min-h-40">
+      {thumbnailUrl ? <img src={thumbnailUrl} alt={`صورة محاضرة ${item.title}`} className="h-full w-full object-cover" /> : <div className="grid h-full place-items-center bg-gradient-to-br from-primary/20 to-primary/5"><Video className="text-primary" size={42} /></div>}
+      <span className="absolute inset-0 grid place-items-center bg-black/10"><span className="grid h-12 w-12 place-items-center rounded-full bg-white/90 text-primary shadow"><Play size={20} fill="currentColor" /></span></span>
+      <div className="absolute inset-x-0 bottom-0 h-1.5 bg-black/35"><div className="h-full bg-red-600" style={{ width: `${item.progress_percent}%` }} /></div>
+    </div>
+    <div className="flex flex-col justify-center p-5">
+      <span className="mb-2 text-sm font-bold text-primary">استكمل المشاهدة</span>
+      <h2 className="text-xl font-black">{item.title}</h2>
+      <p className="mt-1 text-sm text-muted-foreground">{item.subject_title} • {item.chapter_title} • {item.lesson_title}</p>
+      <p className="mt-4 text-sm">توقفت عند {minutes}:{seconds.toString().padStart(2, "0")} — شاهدت {item.progress_percent}%</p>
+    </div>
+  </button>;
 }
 
 export function ConnectedStudentDashboard({ nav, authUser }: { nav: Navigate; authUser?: { name?: string } | null }) {
@@ -63,6 +84,7 @@ export function ConnectedStudentDashboard({ nav, authUser }: { nav: Navigate; au
             </div>
           </Card2>
         )}
+        {data.continue_watching && <ContinueWatching item={data.continue_watching} nav={nav} />}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
           <StatCard label="المحاضرات المكتملة" value={`${stats.completed_lectures}/${stats.total_lectures}`} icon={CheckCircle} />
           <StatCard label="أعلى درجة" value={stats.highest_score == null ? "—" : `${Math.round(stats.highest_score)}%`} icon={Star} />
@@ -126,6 +148,9 @@ export function ConnectedManagementDashboard({ nav, role }: { nav: Navigate; rol
           <StatCard label="فيديوهات جاهزة" value={stats.ready_videos} icon={Video} />
           <StatCard label="فيديوهات قيد المعالجة" value={stats.processing_videos} icon={Clock} />
           <StatCard label="محتوى مسودة" value={stats.draft_content} icon={BookOpen} />
+          <StatCard label="مهام في الانتظار" value={stats.queued_jobs} icon={Clock} />
+          <StatCard label="مهام فشلت" value={stats.failed_jobs} icon={AlertTriangle} />
+          <StatCard label="عمّال الطابور" value={stats.queue_workers} icon={Activity} />
         </div>
         {stats.failed_videos > 0 && <Card2 className="mb-5 border-red-300"><div className="flex gap-2 text-red-600"><AlertTriangle size={18}/><strong>{stats.failed_videos} فيديو فشل في المعالجة ويحتاج مراجعة.</strong></div></Card2>}
         <div className="grid lg:grid-cols-3 gap-4">
@@ -141,11 +166,12 @@ export function ConnectedManagementDashboard({ nav, role }: { nav: Navigate; rol
 export function ConnectedAuditLogPage() {
   const [items, setItems] = useState<AuditLog[] | null>(null);
   const [error, setError] = useState("");
-  const load = () => { setError(""); loadAuditLogs().then((response) => setItems(response.audit_logs)).catch((reason) => setError(errorMessage(reason))); };
-  useEffect(() => { load(); }, []);
+  const [page,setPage]=useState(1);const [pagination,setPagination]=useState<PaginationMeta>(emptyPagination);
+  const load = () => { setError(""); loadAuditLogs(page).then((response) => {setItems(response.audit_logs);setPagination(response.pagination);}).catch((reason) => setError(errorMessage(reason))); };
+  useEffect(() => { load(); }, [page]);
   if (error) return <ErrorState message={error} retry={load} />;
   if (!items) return <LoadingState />;
   const descriptions:Record<string,string>={academic_year_created:"أنشأ سنة دراسية جديدة",academic_year_updated:"عدّل بيانات سنة دراسية",academic_year_content_copied:"نسخ محتوى سنة دراسية",academic_year_students_rolled_over:"رحّل الطلاب إلى سنة دراسية جديدة",announcement_created:"نشر إعلانًا جديدًا",announcement_updated:"عدّل إعلانًا",announcement_deleted:"حذف إعلانًا",student_status_updated:"غيّر حالة حساب طالب",student_enrollment_updated:"غيّر الصف أو السنة الدراسية لطالب",student_password_reset:"غيّر كلمة مرور طالب",student_parent_phone_updated:"غيّر رقم ولي أمر طالب",student_device_removed:"أزال جهازًا مسجلًا لطالب",support_request_approved:"وافق على طلب دعم",support_request_rejected:"رفض طلب دعم",session_started:"سجّل الدخول إلى المنصة",session_ended:"سجّل الخروج من المنصة",item_created:"أضاف عنصرًا جديدًا",item_updated:"عدّل بيانات موجودة",item_removed:"حذف أو أزال عنصرًا",operation_completed:"أكمل عملية",video_processing_retried:"أعاد محاولة معالجة فيديو",request_reviewed:"راجع طلبًا",administrative_action:"نفّذ إجراءً إداريًا"};
   const sections:Record<string,string>={academic_years:"السنوات الدراسية",announcements:"الإعلانات",students:"إدارة الطلاب",support_requests:"طلبات الدعم",content:"المحتوى",videos:"الفيديوهات",exams:"الاختبارات",activation_codes:"أكواد التفعيل",lesson_access:"صلاحيات الدروس",account:"الحساب",platform_management:"إدارة المنصة"};
-  return <div className="min-h-screen bg-background py-6 px-4"><div className="max-w-5xl mx-auto"><div className="mb-6"><h1 className="text-2xl font-black">متابعة نشاط المساعدين</h1><p className="mt-1 text-sm text-muted-foreground">يعرض الإجراءات الإدارية التي نفذها المساعدون فقط، دون إظهار بيانات الطلاب.</p></div><Card2 className="!p-0 overflow-hidden"><div className="overflow-x-auto"><table className="w-full text-sm"><thead className="bg-muted"><tr><th className="p-3 text-right">المساعد</th><th className="p-3 text-right">ما قام به</th><th className="p-3 text-right">القسم</th><th className="p-3 text-right">الوقت</th></tr></thead><tbody>{items.map((item) => <tr key={item.id} className="border-t border-border"><td className="p-3 font-semibold">{item.assistant.name}</td><td className="p-3">{descriptions[item.description_key]||descriptions.administrative_action}</td><td className="p-3"><Badge2 variant="primary">{sections[item.section_key]||sections.platform_management}</Badge2></td><td className="p-3 whitespace-nowrap">{new Date(item.created_at).toLocaleString("ar-EG")}</td></tr>)}</tbody></table></div>{items.length === 0 && <p className="p-8 text-center text-muted-foreground">لم ينفذ المساعدون أي إجراءات إدارية حتى الآن.</p>}</Card2></div></div>;
+  return <div className="min-h-screen bg-background py-6 px-4"><div className="max-w-5xl mx-auto"><div className="mb-6"><h1 className="text-2xl font-black">متابعة نشاط المساعدين</h1><p className="mt-1 text-sm text-muted-foreground">يعرض الإجراءات الإدارية التي نفذها المساعدون فقط، دون إظهار بيانات الطلاب.</p></div><Card2 className="!p-0 overflow-hidden"><div className="overflow-x-auto"><table className="w-full text-sm"><thead className="bg-muted"><tr><th className="p-3 text-right">المساعد</th><th className="p-3 text-right">ما قام به</th><th className="p-3 text-right">القسم</th><th className="p-3 text-right">الوقت</th></tr></thead><tbody>{items.map((item) => <tr key={item.id} className="border-t border-border"><td className="p-3 font-semibold">{item.assistant.name}</td><td className="p-3">{descriptions[item.description_key]||descriptions.administrative_action}</td><td className="p-3"><Badge2 variant="primary">{sections[item.section_key]||sections.platform_management}</Badge2></td><td className="p-3 whitespace-nowrap">{new Date(item.created_at).toLocaleString("ar-EG")}</td></tr>)}</tbody></table></div>{items.length === 0 && <p className="p-8 text-center text-muted-foreground">لم ينفذ المساعدون أي إجراءات إدارية حتى الآن.</p>}</Card2><PaginationControls pagination={pagination} onPageChange={setPage}/></div></div>;
 }

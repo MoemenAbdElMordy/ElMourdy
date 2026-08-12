@@ -16,6 +16,7 @@ import {
   type ActivationCodeBatch,
 } from "../../shared/activation-codes/api";
 import { loadCurriculum, type Curriculum } from "../../shared/curriculum/api";
+import { emptyPagination, PaginationControls, type PaginationMeta } from "../../shared/pagination";
 import {
   Badge2,
   Btn,
@@ -38,6 +39,8 @@ export function ConnectedActivationCodesPage() {
   const [grades, setGrades] = useState<Grade[]>([]);
   const [tree, setTree] = useState<Curriculum | null>(null);
   const [modal, setModal] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState<PaginationMeta>(emptyPagination);
   const [form, setForm] = useState({
     name: "",
     quantity: 10,
@@ -60,8 +63,8 @@ export function ConnectedActivationCodesPage() {
   );
   const selectedLessonId = form.lesson_id || lessons[0]?.id || 0;
   const refresh = () =>
-    loadCodeBatches()
-      .then((r) => setBatches(r.batches))
+    loadCodeBatches(page)
+      .then((r) => { setBatches(r.batches); setPagination(r.pagination); })
       .catch((error) =>
         notify(
           error instanceof ApiError ? error.message : "تعذر تحميل الأكواد",
@@ -70,6 +73,8 @@ export function ConnectedActivationCodesPage() {
       );
   useEffect(() => {
     void refresh();
+  }, [page]);
+  useEffect(() => {
     Promise.all([loadAcademicYears(), loadGrades()]).then(([y, g]) => {
       setYears(y.academic_years);
       setGrades(g.grades);
@@ -204,6 +209,7 @@ export function ConnectedActivationCodesPage() {
             </Card2>
           ))}
         </div>
+        <PaginationControls pagination={pagination} onPageChange={setPage} />
         <Modal2
           open={modal}
           onClose={() => setModal(false)}

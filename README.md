@@ -13,6 +13,7 @@ ElMourdy combines structured curriculum delivery, protected video lessons, asses
 - Fine-grained role and assistant permission enforcement
 - Student progress, examination results, error review, and attendance insights
 - Teacher tools for managing the complete academic and operational workflow
+- Paginated administration screens for large operational datasets
 - Locally hosted Cairo fonts, responsive layouts, dark mode, and accessible navigation
 
 ## Platform Experiences
@@ -42,6 +43,7 @@ ElMourdy combines structured curriculum delivery, protected video lessons, asses
 - Preview the platform exactly as a selected student sees it
 - Create and organize academic years and curriculum content
 - Upload, process, publish, retry, and remove lecture videos
+- Add lecture thumbnails, descriptions, attachments, scheduling, and free-preview access
 - Create examinations, announcements, and activation-code batches
 - Review detailed reports and support requests
 - Create assistants and assign granular permissions
@@ -130,6 +132,8 @@ Vite will print the local URL, normally `http://localhost:5173`.
 
 The player requests a short-lived playback session from the backend and plays HLS manifests through HLS.js where necessary. It supports multiple qualities, secure delivery URLs, playback-position persistence, moving student watermarks, curriculum navigation, and lecture notes.
 
+Lecture cards use teacher-managed thumbnails and show the student's saved progress. The dashboard identifies the most recently watched unfinished lecture and opens it at the last persisted playback position.
+
 Original media files and storage credentials never pass through the frontend repository.
 
 ## Performance and User Experience
@@ -140,6 +144,7 @@ Original media files and storage credentials never pass through the frontend rep
 - Scrollbars remain visually hidden without disabling mouse, keyboard, or touch scrolling
 - Modals preserve focus and scroll position during controlled input updates
 - Layouts adapt across mobile, tablet, and desktop breakpoints
+- Shared pagination keeps large administrative lists responsive and consistent
 
 ## Security Model
 

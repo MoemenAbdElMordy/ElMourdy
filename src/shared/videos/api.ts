@@ -6,6 +6,7 @@ export type VideoAsset = {
   processing_status: "uploaded" | "processing" | "ready" | "failed";
   duration_seconds?: number;
   available_qualities?: string[];
+  variants?: Array<{ quality: string; status: string; size_bytes?: number }>;
 };
 
 type UploadInstructions = {
@@ -16,7 +17,7 @@ type UploadInstructions = {
 };
 
 export type Playback = {
-  lecture: { id: number; title: string; duration_seconds?: number };
+  lecture: { id: number; title: string; description?: string; attachment_name?: string; attachment_url?: string; has_thumbnail?: boolean; duration_seconds?: number };
   video_asset_id: number;
   qualities: Record<string, string>;
   watch_event_id?: number;
@@ -81,6 +82,8 @@ export const retryVideoProcessing = (id: number) =>
     `/video_assets/${id}/retry_processing`,
     { method: "POST" },
   );
+export const deleteVideoAsset = (id: number) =>
+  apiRequest<void>(`/video_assets/${id}`, { method: "DELETE" });
 export const loadVideoPlayback = (lectureId: number) =>
   apiRequest<{ playback: Playback }>(`/lectures/${lectureId}/video_playback`);
 export const saveWatchProgress = (eventId: number, positionSeconds: number) =>

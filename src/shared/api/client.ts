@@ -1,13 +1,52 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000/api";
 const TOKEN_KEY = "elmourdy-session-token";
 
+const errorMessagesByCode: Record<string, string> = {
+  unauthorized: "يجب تسجيل الدخول أولًا",
+  forbidden: "ليس لديك صلاحية لتنفيذ هذا الإجراء",
+  not_found: "العنصر المطلوب غير موجود",
+  bad_request: "البيانات المرسلة غير صحيحة",
+  unprocessable_entity: "تعذر معالجة البيانات المدخلة",
+  business_rule_violation: "لا يمكن تنفيذ هذا الإجراء حاليًا",
+  dependency_conflict: "احذف المحتوى المرتبط أولًا قبل حذف هذا العنصر",
+  invalid_credentials: "رقم الهاتف أو كلمة المرور غير صحيحة",
+  invalid_password: "كلمة المرور الحالية غير صحيحة",
+  invalid_parent_phone: "يجب أن يختلف رقم ولي الأمر عن رقم الطالب",
+  current_device: "لا يمكن إزالة الجهاز المستخدم حاليًا",
+  video_not_ready: "الفيديو غير جاهز للمشاهدة حتى الآن",
+};
+
+function localizeApiError(message: string, status: number, code?: string) {
+  const normalized = message.toLowerCase();
+  if (normalized.includes("three active devices")) return "وصل الحساب إلى الحد الأقصى وهو ثلاثة أجهزة نشطة";
+  if (normalized.includes("phone number or password")) return "رقم الهاتف أو كلمة المرور غير صحيحة";
+  if (normalized.includes("already been taken")) return "هذه البيانات مستخدمة في حساب آخر";
+  if (normalized.includes("password") && normalized.includes("incorrect")) return "كلمة المرور غير صحيحة";
+  if (normalized.includes("expired")) return "انتهت صلاحية الطلب، حاول مرة أخرى";
+  if (normalized.includes("not found")) return "العنصر المطلوب غير موجود";
+  if (normalized.includes("permission")) return "ليس لديك صلاحية لتنفيذ هذا الإجراء";
+
+  if (code && errorMessagesByCode[code]) return errorMessagesByCode[code];
+
+  if (status === 401) return "تعذر التحقق من بيانات الدخول";
+  if (status === 403) return "ليس لديك صلاحية لتنفيذ هذا الإجراء";
+  if (status === 404) return "العنصر المطلوب غير موجود";
+  if (status === 409) return "يتعارض هذا الإجراء مع بيانات موجودة حاليًا";
+  if (status === 422) return "راجع البيانات المدخلة وحاول مرة أخرى";
+  if (status >= 500) return "حدث خطأ في الخادم، حاول مرة أخرى بعد قليل";
+  return "تعذر إكمال الطلب، حاول مرة أخرى";
+}
+
 export class ApiError extends Error {
+  public readonly rawMessage: string;
+
   constructor(
     message: string,
     public readonly status: number,
     public readonly code?: string,
   ) {
-    super(message);
+    super(localizeApiError(message, status, code));
+    this.rawMessage = message;
   }
 }
 
@@ -30,7 +69,7 @@ export async function apiRequest<T>(path: string, options: RequestInit = {}): Pr
   if (API_BASE_URL.includes(".ngrok-free.")) {
     headers.set("ngrok-skip-browser-warning", "true");
   }
-  if (options.body) headers.set("Content-Type", "application/json");
+  if (options.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
   const response = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
@@ -50,4 +89,15 @@ export async function apiRequest<T>(path: string, options: RequestInit = {}): Pr
   }
 
   return body as T;
+}
+
+export async function apiRequestBlob(path: string) {
+  const token = getSessionToken();
+  const headers = new Headers({ Accept: "image/*" });
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  if (API_BASE_URL.includes(".ngrok-free.")) headers.set("ngrok-skip-browser-warning", "true");
+
+  const response = await fetch(`${API_BASE_URL}${path}`, { headers });
+  if (!response.ok) throw new ApiError("The requested image could not be loaded", response.status);
+  return response.blob();
 }

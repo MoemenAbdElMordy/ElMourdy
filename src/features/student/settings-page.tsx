@@ -136,7 +136,7 @@ export function StudentSettingsPage({
             })}
           </Card2>
           <div>
-            {tab === "profile" && <Card2>
+            {tab === "profile" && <Card2><form onSubmit={(event) => { event.preventDefault(); void saveProfile(); }}>
               <h2 className="font-bold mb-5">البيانات الشخصية والدراسية</h2>
               <div className="grid sm:grid-cols-2 gap-4">
                 <Input2 label="الاسم الكامل" value={profileForm.name} onChange={(event) => setProfileForm((value) => ({ ...value, name: event.target.value }))}/>
@@ -146,18 +146,18 @@ export function StudentSettingsPage({
                 <Input2 label="المحافظة" value={profileForm.governorate} onChange={(event) => setProfileForm((value) => ({ ...value, governorate: event.target.value }))}/>
               </div>
               <div className="mt-4 p-3 rounded-xl bg-muted text-xs text-muted-foreground">لتغيير رقم الهاتف أو رقم ولي الأمر تواصل مع خدمة العملاء.</div>
-              <Btn className="mt-5" onClick={saveProfile} disabled={savingProfile}>حفظ التعديلات</Btn>
-            </Card2>}
-            {tab === "security" && <Card2>
+              <Btn type="submit" className="mt-5" disabled={savingProfile}>حفظ التعديلات</Btn>
+            </form></Card2>}
+            {tab === "security" && <Card2><form onSubmit={(event) => { event.preventDefault(); void savePassword(); }}>
               <h2 className="font-bold mb-1">تغيير كلمة المرور</h2>
               <p className="text-sm text-muted-foreground mb-5">سيتم إنهاء كل الجلسات الأخرى بعد تغيير كلمة المرور.</p>
               <div className="space-y-4 max-w-lg">
                 <Input2 label="كلمة المرور الحالية" type="password" value={passwords.current} onChange={(event) => setPasswords((value) => ({ ...value, current: event.target.value }))}/>
                 <Input2 label="كلمة المرور الجديدة" type="password" value={passwords.next} onChange={(event) => setPasswords((value) => ({ ...value, next: event.target.value }))}/>
                 <Input2 label="تأكيد كلمة المرور" type="password" value={passwords.confirm} onChange={(event) => setPasswords((value) => ({ ...value, confirm: event.target.value }))}/>
-                <Btn disabled={savingPassword || !passwords.current || passwords.next.length < 8 || passwords.next !== passwords.confirm} onClick={savePassword}>تحديث كلمة المرور</Btn>
+                <Btn type="submit" disabled={savingPassword || !passwords.current || passwords.next.length < 8 || passwords.next !== passwords.confirm}>تحديث كلمة المرور</Btn>
               </div>
-            </Card2>}
+            </form></Card2>}
             {tab === "devices" && <div className="space-y-4">
               <Card2>
                 <div className="flex items-start justify-between gap-4 flex-wrap">

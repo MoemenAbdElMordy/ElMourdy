@@ -30,6 +30,7 @@ import {
   type Playback,
 } from "../../shared/videos/api";
 import { Btn, Card2, cn, notify } from "../../shared/ui";
+import { useLectureThumbnailUrl } from "../../shared/media/lecture-thumbnail";
 
 const preferredQualityOrder = ["480p", "720p", "360p"];
 const displayedQualityOrder = ["720p", "480p", "360p"];
@@ -109,6 +110,10 @@ export function ConnectedVideoPage({
   const [openChapters, setOpenChapters] = useState<Set<number>>(new Set());
   const [activeTab, setActiveTab] = useState<PageTab>("overview");
   const [notes, setNotes] = useState("");
+  const thumbnailUrl = useLectureThumbnailUrl(
+    playback?.lecture.id,
+    playback?.lecture.has_thumbnail,
+  );
 
   useEffect(() => {
     loadCurriculum()
@@ -367,6 +372,7 @@ export function ConnectedVideoPage({
               ref={videoRef}
               controls
               playsInline
+              poster={thumbnailUrl}
               className="h-full w-full"
               onTimeUpdate={(event) =>
                 setCurrentPosition(event.currentTarget.currentTime)
@@ -486,9 +492,9 @@ export function ConnectedVideoPage({
             {activeTab === "overview" ? (
               <div className="max-w-3xl space-y-4 text-sm">
                 <p className="leading-loose text-muted-foreground">
-                  {context
+                  {playback.lecture.description || (context
                     ? `هذه المحاضرة جزء من درس ${context.lesson.title} في ${context.chapter.title}.`
-                    : "يمكنك مشاهدة المحاضرة واختيار الجودة المناسبة لسرعة اتصالك."}
+                    : "يمكنك مشاهدة المحاضرة واختيار الجودة المناسبة لسرعة اتصالك.")}
                 </p>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <InfoCard
@@ -508,10 +514,17 @@ export function ConnectedVideoPage({
                 </div>
               </div>
             ) : activeTab === "files" ? (
-              <div className="flex max-w-2xl items-center gap-3 rounded-2xl border border-dashed border-border bg-muted/40 p-5 text-sm text-muted-foreground">
-                <FileText size={22} />
-                لا توجد ملفات مرفقة بهذه المحاضرة حاليًا.
-              </div>
+              playback.lecture.attachment_url ? (
+                <a href={playback.lecture.attachment_url} target="_blank" rel="noreferrer" className="flex max-w-2xl items-center gap-3 rounded-2xl border border-border bg-card p-5 text-sm font-semibold hover:border-primary hover:text-primary">
+                  <FileText size={22} />
+                  {playback.lecture.attachment_name || "فتح ملف المحاضرة"}
+                </a>
+              ) : (
+                <div className="flex max-w-2xl items-center gap-3 rounded-2xl border border-dashed border-border bg-muted/40 p-5 text-sm text-muted-foreground">
+                  <FileText size={22} />
+                  لا توجد ملفات مرفقة بهذه المحاضرة حاليًا.
+                </div>
+              )
             ) : (
               <div className="max-w-2xl">
                 <label htmlFor="lecture-notes" className="mb-2 block text-sm font-bold">

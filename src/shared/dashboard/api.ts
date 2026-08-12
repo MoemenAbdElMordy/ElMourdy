@@ -1,4 +1,5 @@
 import { apiRequest } from "../api/client";
+import type { PaginationMeta } from "../pagination";
 
 export type StudentDashboardData = {
   role: "student";
@@ -12,6 +13,17 @@ export type StudentDashboardData = {
     active_access_grants: number;
   };
   subjects: Array<{ id: number; title: string; total_lectures: number; completed_lectures: number }>;
+  continue_watching: {
+    lecture_id: number;
+    title: string;
+    lesson_title: string;
+    chapter_title: string;
+    subject_title: string;
+    last_position_seconds: number;
+    duration_seconds: number;
+    progress_percent: number;
+    has_thumbnail: boolean;
+  } | null;
   announcements: Array<{ id: number; title: string; body: string; publish_at?: string | null }>;
 };
 
@@ -26,6 +38,9 @@ export type ManagementDashboardData = {
     ready_videos: number;
     processing_videos: number;
     failed_videos: number;
+    queued_jobs: number;
+    failed_jobs: number;
+    queue_workers: number;
     draft_content: number;
   };
   top_students: Array<{ id: number; name: string; highest_score: number }>;
@@ -44,4 +59,4 @@ export type AuditLog = {
 };
 
 export const loadDashboard = () => apiRequest<{ dashboard: DashboardData }>("/dashboard");
-export const loadAuditLogs = () => apiRequest<{ audit_logs: AuditLog[] }>("/audit_logs");
+export const loadAuditLogs = (page=1) => apiRequest<{ audit_logs: AuditLog[]; pagination: PaginationMeta }>(`/audit_logs?page=${page}`);

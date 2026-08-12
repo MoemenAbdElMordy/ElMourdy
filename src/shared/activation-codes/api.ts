@@ -1,10 +1,11 @@
 import { apiRequest, getSessionToken } from "../api/client";
+import type { PaginationMeta } from "../pagination";
 
 export type ActivationCodeRecord={id:number;code:string;status:"unused"|"redeemed"|"disabled"|"deleted";redeemed_by?:string;redeemed_at?:string};
 export type ActivationCodeBatch={id:number;name:string;lesson_id:number;lesson:string;academic_year_id:number;academic_year:string;grade_id:number;grade:string;quantity:number;expires_on:string;created_at:string;counts:Record<string,number>;codes:ActivationCodeRecord[]};
 export type AccessGrant={id:number;student_user_id:number;lesson_id:number;lesson:string;academic_year_id:number;academic_year:string;source:"code"|"free"|"manual";expires_on:string;status:"active"|"expired"|"revoked"};
 
-export const loadCodeBatches=()=>apiRequest<{batches:ActivationCodeBatch[]}>("/activation_code_batches");
+export const loadCodeBatches=(page=1)=>apiRequest<{batches:ActivationCodeBatch[];pagination:PaginationMeta}>(`/activation_code_batches?page=${page}`);
 export const createCodeBatch=(input:Record<string,unknown>)=>apiRequest<{batch:ActivationCodeBatch;generated_codes:string[]}>("/activation_code_batches",{method:"POST",body:JSON.stringify({activation_code_batch:input})});
 export const disableCode=(id:number)=>apiRequest(`/activation_codes/${id}`,{method:"PATCH"});
 export const deleteCode=(id:number)=>apiRequest<void>(`/activation_codes/${id}`,{method:"DELETE"});

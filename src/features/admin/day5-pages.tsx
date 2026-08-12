@@ -5,6 +5,7 @@ import { archiveAssistant, copyAcademicYearContent, createAcademicYear, createAs
 import { Badge2, Btn, Card2, Field, Input2, Modal2, Select2, StatCard, notify } from "../../shared/ui";
 import { createManualGrant, loadAccessGrants, revokeGrant, type AccessGrant } from "../../shared/activation-codes/api";
 import { loadCurriculum, type Curriculum } from "../../shared/curriculum/api";
+import { emptyPagination, PaginationControls, type PaginationMeta } from "../../shared/pagination";
 
 const permissionLabels: Record<string, string> = {
   manage_students: "إدارة الطلاب",
@@ -28,10 +29,12 @@ export function Day5StudentsListPage({ nav }: any) {
   const [gradeId, setGradeId] = useState("");
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState<PaginationMeta>(emptyPagination);
   const refresh = () => {
     setLoading(true);
-    loadStudents({ query, gradeId, status })
-      .then((r) => setStudents(r.students))
+    loadStudents({ query, gradeId, status, page })
+      .then((r) => { setStudents(r.students); setPagination(r.pagination); })
       .catch((e) => notify(e instanceof ApiError ? e.message : "تعذر تحميل الطلاب", "error"))
       .finally(() => setLoading(false));
   };
@@ -41,13 +44,14 @@ export function Day5StudentsListPage({ nav }: any) {
   useEffect(() => {
     const timer = setTimeout(refresh, 250);
     return () => clearTimeout(timer);
-  }, [query, gradeId, status]);
+  }, [query, gradeId, status, page]);
+  useEffect(() => { setPage(1); }, [query, gradeId, status]);
   return (
     <div className="min-h-screen bg-background py-6 px-4">
       <div className="max-w-6xl mx-auto">
         <div className="flex justify-between items-center mb-5">
           <h1 className="text-2xl font-black">قائمة الطلاب</h1>
-          <Badge2 variant="primary">{students.length} طالب</Badge2>
+          <Badge2 variant="primary">{pagination.total_count} طالب</Badge2>
         </div>
         <Card2 className="mb-4">
           <div className="grid md:grid-cols-3 gap-3">
@@ -122,6 +126,7 @@ export function Day5StudentsListPage({ nav }: any) {
           {!loading && students.length === 0 && <p className="p-8 text-center text-muted-foreground">لا توجد نتائج مطابقة</p>}
           {loading && <p className="p-8 text-center text-muted-foreground">جارٍ التحميل…</p>}
         </Card2>
+        <PaginationControls pagination={pagination} onPageChange={setPage} />
       </div>
     </div>
   );
@@ -496,6 +501,8 @@ export function Day5AcademicYearsPage() {
 export function Day5AssistantsPage() {
   const [assistants, setAssistants] = useState<AssistantRecord[]>([]);
   const [keys, setKeys] = useState<string[]>([]);
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState<PaginationMeta>(emptyPagination);
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState<AssistantRecord | null>(null);
   const empty = {
@@ -509,15 +516,16 @@ export function Day5AssistantsPage() {
   };
   const [form, setForm] = useState(empty);
   const refresh = () =>
-    loadAssistants()
+    loadAssistants(page)
       .then((r) => {
         setAssistants(r.assistants);
         setKeys(r.permission_keys);
+        setPagination(r.pagination);
       })
       .catch((e) => notify(e instanceof ApiError ? e.message : "تعذر تحميل المساعدين", "error"));
   useEffect(() => {
     void refresh();
-  }, []);
+  }, [page]);
   const open = (assistant?: AssistantRecord) => {
     setEditing(assistant || null);
     setForm(
@@ -592,6 +600,7 @@ export function Day5AssistantsPage() {
             </Card2>
           ))}
         </div>
+        <PaginationControls pagination={pagination} onPageChange={setPage} />
         <Modal2 open={modal} onClose={() => setModal(false)} title={editing ? "تعديل المساعد" : "إضافة مساعد"} onSubmit={save}>
           <div className="space-y-3">
             <Input2 label="الاسم" value={form.name} onChange={(e) => setForm((v) => ({ ...v, name: e.target.value }))} />

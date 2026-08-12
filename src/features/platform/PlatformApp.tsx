@@ -219,6 +219,25 @@ export default function App() {
   },[dark]);
 
   useEffect(() => {
+    const submitFormOnEnter = (event: KeyboardEvent) => {
+      if (
+        event.defaultPrevented ||
+        event.key !== "Enter" ||
+        event.isComposing ||
+        !(event.target instanceof HTMLInputElement) ||
+        ["checkbox", "radio", "file", "button", "submit"].includes(event.target.type) ||
+        !event.target.form
+      ) return;
+
+      event.preventDefault();
+      event.target.form.requestSubmit();
+    };
+
+    document.addEventListener("keydown", submitFormOnEnter);
+    return () => document.removeEventListener("keydown", submitFormOnEnter);
+  }, []);
+
+  useEffect(() => {
     const publicMetadata: Partial<Record<AppRoute, { title: string; description: string }>> = {
       home: {
         title: "منصة المرضي | اللغة العربية للمرحلة الثانوية",

@@ -31,6 +31,7 @@ import {
   cn,
   notify,
 } from "../../shared/ui";
+import { emptyPagination, PaginationControls, type PaginationMeta } from "../../shared/pagination";
 
 const errorMessage = (error: unknown) =>
   error instanceof Error ? error.message : "تعذر إكمال العملية";
@@ -49,6 +50,7 @@ const statusLabel: Record<string, string> = {
 
 export function ConnectedExamManagePage() {
   const [exams, setExams] = useState<Exam[]>([]);
+  const [page,setPage]=useState(1);const [pagination,setPagination]=useState<PaginationMeta>(emptyPagination);
   const [context, setContext] = useState<{
     yearId: number;
     gradeId: number;
@@ -74,8 +76,8 @@ export function ConnectedExamManagePage() {
   });
   const [form, setForm] = useState(blank);
   const refresh = () =>
-    loadExams()
-      .then((r) => setExams(r.exams))
+    loadExams({page})
+      .then((r) => {setExams(r.exams);setPagination(r.pagination);})
       .catch((e) => notify(errorMessage(e), "error"));
   useEffect(() => {
     refresh();
@@ -97,7 +99,7 @@ export function ConnectedExamManagePage() {
           });
       })
       .catch((e) => notify(errorMessage(e), "error"));
-  }, []);
+  }, [page]);
   const edit = async (exam: Exam) => {
     const full = (await loadExam(exam.id)).exam;
     setEditing(full);
@@ -377,6 +379,7 @@ export function ConnectedExamManagePage() {
             </Card2>
           ))}
         </div>
+        <PaginationControls pagination={pagination} onPageChange={setPage}/>
       </div>
     </Page>
   );
@@ -601,11 +604,12 @@ export function ConnectedResultsPage({
   role: Role;
 }) {
   const [items, setItems] = useState<ExamAttempt[]>([]);
+  const [page,setPage]=useState(1);const [pagination,setPagination]=useState<PaginationMeta>(emptyPagination);
   useEffect(() => {
-    loadAttempts()
-      .then((r) => setItems(r.attempts))
+    loadAttempts(undefined,page)
+      .then((r) => {setItems(r.attempts);setPagination(r.pagination);})
       .catch((e) => notify(errorMessage(e), "error"));
-  }, []);
+  }, [page]);
   const submitted = items.filter((a) => a.status === "submitted");
   return (
     <Page title={role === "parent" ? "نتائج الأبناء" : "تقدمي ونتائجي"}>
@@ -660,6 +664,7 @@ export function ConnectedResultsPage({
           </table>
         </div>
       </Card2>
+      <PaginationControls pagination={pagination} onPageChange={setPage}/>
     </Page>
   );
 }
@@ -670,6 +675,7 @@ export function ConnectedAnnouncementsPage({
   manage?: boolean;
 }) {
   const [items, setItems] = useState<Announcement[]>([]);
+  const [page,setPage]=useState(1);const [pagination,setPagination]=useState<PaginationMeta>(emptyPagination);
   const [grades, setGrades] = useState<Grade[]>([]);
   const [students, setStudents] = useState<StudentRecord[]>([]);
   const [editingId, setEditingId] = useState<number | undefined>();
@@ -681,8 +687,8 @@ export function ConnectedAnnouncementsPage({
     user_id: "",
   });
   const refresh = () =>
-    loadAnnouncements()
-      .then((r) => setItems(r.announcements))
+    loadAnnouncements(page)
+      .then((r) => {setItems(r.announcements);setPagination(r.pagination);})
       .catch((e) => notify(errorMessage(e), "error"));
   useEffect(() => {
     void refresh();
@@ -690,7 +696,7 @@ export function ConnectedAnnouncementsPage({
       void loadGrades().then((response) => setGrades(response.grades));
       void loadStudents().then((response) => setStudents(response.students));
     }
-  }, [manage]);
+  }, [manage,page]);
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -812,19 +818,21 @@ export function ConnectedAnnouncementsPage({
           </Card2>
         ))}
       </div>
+      <PaginationControls pagination={pagination} onPageChange={setPage}/>
     </Page>
   );
 }
 
 export function ConnectedSupportRequestsPage() {
   const [items, setItems] = useState<SupportRequest[]>([]);
+  const [page,setPage]=useState(1);const [pagination,setPagination]=useState<PaginationMeta>(emptyPagination);
   const refresh = () =>
-    loadSupportRequests()
-      .then((r) => setItems(r.support_requests))
+    loadSupportRequests(page)
+      .then((r) => {setItems(r.support_requests);setPagination(r.pagination);})
       .catch((e) => notify(errorMessage(e), "error"));
   useEffect(() => {
     void refresh();
-  }, []);
+  }, [page]);
   const review = (id: number, decision: "approve" | "reject") =>
     reviewSupportRequest(id, decision)
       .then(() => {
@@ -887,6 +895,7 @@ export function ConnectedSupportRequestsPage() {
           </Card2>
         ))}
       </div>
+      <PaginationControls pagination={pagination} onPageChange={setPage}/>
     </Page>
   );
 }

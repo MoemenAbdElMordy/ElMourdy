@@ -233,7 +233,7 @@ export function LoginPage({ nav, setRole, onLogin }: any) {
           <p className="text-muted-foreground text-sm mt-1">منصة الأستاذ محمود عبدالمرضي</p>
         </div>
         <Card2>
-          <div className="space-y-4">
+          <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); void doLogin(); }}>
             <Input2 label="رقم الهاتف" type="tel" inputMode="numeric" placeholder="01xxxxxxxxx" value={phone} onChange={(e:any)=>setPhone(e.target.value.replace(/\D/g,"").slice(0,11))} dir="ltr"/>
             <Input2 label="كلمة المرور" type="password" placeholder="••••••••" value={pass} onChange={(e:any)=>setPass(e.target.value)}/>
             {err && (
@@ -241,7 +241,7 @@ export function LoginPage({ nav, setRole, onLogin }: any) {
                 <AlertCircle size={15}/> {err}
               </div>
             )}
-            <Btn className="w-full" onClick={doLogin} disabled={loading}>
+            <Btn type="submit" className="w-full" disabled={loading}>
               {loading ? <><RefreshCw size={15} className="animate-spin"/> جارٍ الدخول…</> : "دخول"}
             </Btn>
             <div className="flex items-center justify-center text-sm">
@@ -251,7 +251,7 @@ export function LoginPage({ nav, setRole, onLogin }: any) {
               <Btn variant="outline" onClick={()=>nav("register")}>إنشاء حساب طالب</Btn>
               <Btn variant="outline" onClick={()=>nav("parent-register")}>إنشاء حساب ولي أمر</Btn>
             </div>
-          </div>
+          </form>
         </Card2>
       </div>
     </div>
@@ -335,7 +335,7 @@ export function RegisterPage({ nav }: any) {
         </div>
         <Card2>
           {step===1 && (
-            <div className="space-y-4">
+            <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); if(form.name&&form.birthDate&&form.phone&&form.parentPhone&&form.email&&form.phone!==form.parentPhone)setStep(2);else validate(); }}>
               <h3 className="font-bold">البيانات الشخصية</h3>
               <Input2 label="الاسم الكامل" placeholder="محمد أحمد علي" value={form.name} onChange={(e:any)=>set("name",e.target.value)} error={errors.name}/>
               <Input2 label="تاريخ الميلاد" type="date" value={form.birthDate} onInput={(e:any)=>set("birthDate",e.currentTarget.value)} error={errors.birthDate}/>
@@ -344,11 +344,11 @@ export function RegisterPage({ nav }: any) {
                 <Input2 label="هاتف ولي الأمر" placeholder="01xxxxxxxxx" value={form.parentPhone} onChange={(e:any)=>set("parentPhone",e.target.value)} error={errors.parentPhone} dir="ltr"/>
               </div>
               <Input2 label="البريد الإلكتروني (فريد)" type="email" placeholder="example@email.com" value={form.email} onChange={(e:any)=>set("email",e.target.value)} error={errors.email} dir="ltr"/>
-              <Btn className="w-full" onClick={()=>{ if(form.name&&form.birthDate&&form.phone&&form.parentPhone&&form.email&&form.phone!==form.parentPhone)setStep(2);else validate(); }}>التالي</Btn>
-            </div>
+              <Btn type="submit" className="w-full">التالي</Btn>
+            </form>
           )}
           {step===2 && (
-            <div className="space-y-4">
+            <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); if(form.grade&&form.governorate&&form.school)setStep(3);else validate(); }}>
               <h3 className="font-bold">البيانات الدراسية</h3>
               <Select2 label="الصف الدراسي" value={form.grade} onChange={(e:any)=>set("grade",e.target.value)}
                 options={[{value:"",label:"اختر الصف"},...grades.map((grade)=>({value:grade.level,label:grade.name}))]}/>
@@ -360,23 +360,23 @@ export function RegisterPage({ nav }: any) {
               <Input2 label="اسم المدرسة" placeholder="مدرسة القاهرة الثانوية" value={form.school} onChange={(e:any)=>set("school",e.target.value)} error={errors.school}/>
               <div className="flex gap-2">
                 <Btn variant="outline" className="flex-1" onClick={()=>setStep(1)}>السابق</Btn>
-                <Btn className="flex-1" onClick={()=>{ if(form.grade&&form.governorate&&form.school)setStep(3);else validate(); }}>التالي</Btn>
+                <Btn type="submit" className="flex-1">التالي</Btn>
               </div>
-            </div>
+            </form>
           )}
           {step===3 && (
-            <div className="space-y-4">
+            <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
               <h3 className="font-bold">كلمة المرور</h3>
               <Input2 label="كلمة المرور" type="password" placeholder="8 أحرف على الأقل" value={form.password} onChange={(e:any)=>set("password",e.target.value)} error={errors.password}/>
               <Input2 label="تأكيد كلمة المرور" type="password" placeholder="أعد كتابة كلمة المرور" value={form.confirm} onChange={(e:any)=>set("confirm",e.target.value)} error={errors.confirm}/>
               <div className="flex gap-2">
                 <Btn variant="outline" className="flex-1" onClick={()=>setStep(2)}>السابق</Btn>
-                <Btn className="flex-1" onClick={submit} disabled={loading}>
+                <Btn type="submit" className="flex-1" disabled={loading}>
                   {loading?<><RefreshCw size={15} className="animate-spin"/> جارٍ التسجيل…</>:"إنشاء الحساب"}
                 </Btn>
               </div>
               {errors.submit && <div role="alert" className="p-3 rounded-xl bg-red-50 text-red-700 text-sm">{errors.submit}</div>}
-            </div>
+            </form>
           )}
         </Card2>
         <p className="text-center text-sm mt-4">
@@ -427,7 +427,7 @@ export function ParentRegisterPage({ nav }: any) {
           <p className="text-sm text-muted-foreground mt-1">استخدم نفس الرقم الذي سجله الطالب في خانة رقم ولي الأمر</p>
         </div>
         <Card2>
-          <div className="space-y-4">
+          <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
             <Input2 label="الاسم الكامل" value={form.name} onChange={(e:any)=>setForm(current=>({...current,name:e.target.value}))}/>
             <Input2 label="رقم الهاتف" type="tel" inputMode="numeric" placeholder="01xxxxxxxxx" dir="ltr" value={form.phone} onChange={(e:any)=>setForm(current=>({...current,phone:e.target.value.replace(/\D/g,"").slice(0,11)}))}/>
             <div className="rounded-xl bg-primary/5 border border-primary/20 p-3 text-xs text-muted-foreground">
@@ -436,8 +436,8 @@ export function ParentRegisterPage({ nav }: any) {
             <Input2 label="كلمة المرور" type="password" value={form.password} onChange={(e:any)=>setForm(current=>({...current,password:e.target.value}))}/>
             <Input2 label="تأكيد كلمة المرور" type="password" value={form.confirm} onChange={(e:any)=>setForm(current=>({...current,confirm:e.target.value}))}/>
             {error && <div role="alert" className="p-3 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 text-sm"><AlertCircle size={15} className="inline ml-1"/>{error}</div>}
-            <Btn className="w-full" onClick={submit} disabled={loading}>{loading?<><RefreshCw size={15} className="animate-spin"/> جارٍ التحقق…</>:"متابعة التحقق"}</Btn>
-          </div>
+            <Btn type="submit" className="w-full" disabled={loading}>{loading?<><RefreshCw size={15} className="animate-spin"/> جارٍ التحقق…</>:"متابعة التحقق"}</Btn>
+          </form>
         </Card2>
         <button onClick={()=>nav("login")} className="block mx-auto mt-4 text-sm text-primary hover:underline">العودة لتسجيل الدخول</button>
       </div>
@@ -690,12 +690,12 @@ export function ForgotPage({ nav }: any) {
         <Card2>
           {error && <div role="alert" className="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</div>}
           {status === "request" && (
-            <div className="space-y-4">
+            <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); void submitPhone(); }}>
               <Input2 label="رقم الهاتف" type="tel" placeholder="01xxxxxxxxx" value={phone} onChange={(event) => setPhone(event.target.value)} dir="ltr"/>
-              <Btn className="w-full" onClick={submitPhone} disabled={loading || phone.trim().length < 11}>
+              <Btn type="submit" className="w-full" disabled={loading || phone.trim().length < 11}>
                 {loading ? <><RefreshCw size={15} className="animate-spin"/> جارٍ التجهيز…</> : "متابعة عبر واتساب"}
               </Btn>
-            </div>
+            </form>
           )}
           {status === "pending" && reset && (
             <div className="text-center py-2">
@@ -708,12 +708,12 @@ export function ForgotPage({ nav }: any) {
             </div>
           )}
           {status === "verified" && (
-            <div className="space-y-4">
+            <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); void submitPassword(); }}>
               <div className="text-center"><CheckCircle size={42} className="text-primary mx-auto mb-2"/><p className="font-bold">تم التحقق من الرقم</p></div>
               <Input2 label="كلمة المرور الجديدة" type="password" value={password} onChange={(event) => setPassword(event.target.value)} dir="ltr"/>
               <Input2 label="تأكيد كلمة المرور" type="password" value={passwordConfirmation} onChange={(event) => setPasswordConfirmation(event.target.value)} dir="ltr"/>
-              <Btn className="w-full" onClick={submitPassword} disabled={loading || password.length < 8 || password !== passwordConfirmation}>{loading ? <><RefreshCw size={15} className="animate-spin"/> جارٍ الحفظ…</> : "حفظ كلمة المرور الجديدة"}</Btn>
-            </div>
+              <Btn type="submit" className="w-full" disabled={loading || password.length < 8 || password !== passwordConfirmation}>{loading ? <><RefreshCw size={15} className="animate-spin"/> جارٍ الحفظ…</> : "حفظ كلمة المرور الجديدة"}</Btn>
+            </form>
           )}
           {status === "success" && (
             <div className="text-center py-4">

@@ -2,10 +2,10 @@ import { apiRequest } from "../api/client";
 
 export type ContentStatus = "draft" | "published" | "hidden" | "archived";
 export type VideoAssetSummary = { id:number; processing_status:"uploaded"|"processing"|"ready"|"failed"; duration_seconds?:number; available_qualities?:string[] };
-export type Lecture = { id:number; title:string; position:number; status:ContentStatus; publish_at?:string; is_free:boolean; duration_seconds?:number; video_asset?:VideoAssetSummary|null };
+export type Lecture = { id:number; title:string; description?:string; attachment_name?:string; attachment_url?:string; has_thumbnail?:boolean; position:number; status:ContentStatus; publish_at?:string; is_free:boolean; duration_seconds?:number; progress?:{last_position_seconds:number;completed:boolean}|null; video_asset?:VideoAssetSummary|null };
 export type Lesson = { id:number; title:string; position:number; status:ContentStatus; publish_at?:string; is_free:boolean; has_access?:boolean; lectures:Lecture[] };
-export type Chapter = { id:number; title:string; position:number; status:ContentStatus; lessons:Lesson[] };
-export type Branch = { id:number; title:string; position:number; status:ContentStatus; chapters:Chapter[] };
+export type Chapter = { id:number; title:string; position:number; status:ContentStatus; publish_at?:string; lessons:Lesson[] };
+export type Branch = { id:number; title:string; position:number; status:ContentStatus; publish_at?:string; chapters:Chapter[] };
 export type Curriculum = { academic_year:{id:number;name:string}|null; grade:{id:number;name:string;level:number}|null; branches:Branch[] };
 export type ResourceType = "branches"|"chapters"|"lessons"|"lectures";
 const singularName:Record<ResourceType,string>={branches:"branch",chapters:"chapter",lessons:"lesson",lectures:"lecture"};
