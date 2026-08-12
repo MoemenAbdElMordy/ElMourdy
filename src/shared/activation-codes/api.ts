@@ -1,4 +1,4 @@
-import { apiRequest, getSessionToken } from "../api/client";
+import { API_BASE_URL, apiRequest, getSessionToken } from "../api/client";
 import type { PaginationMeta } from "../pagination";
 
 export type ActivationCodeRecord={id:number;code:string;status:"unused"|"redeemed"|"disabled"|"deleted";redeemed_by?:string;redeemed_at?:string};
@@ -15,7 +15,7 @@ export const createManualGrant=(input:Record<string,unknown>)=>apiRequest<{acces
 export const revokeGrant=(id:number)=>apiRequest<{access_grant:AccessGrant}>(`/lesson_access_grants/${id}`,{method:"PATCH",body:JSON.stringify({lesson_access_grant:{status:"revoked"}})});
 
 export async function exportCodeBatch(id:number){
-  const response=await fetch(`${import.meta.env.VITE_API_URL??"http://localhost:3000/api"}/activation_code_batches/${id}/export`,{headers:{Authorization:`Bearer ${getSessionToken()}`}});
+  const response=await fetch(`${API_BASE_URL}/activation_code_batches/${id}/export`,{headers:{Authorization:`Bearer ${getSessionToken()}`}});
   if(!response.ok)throw new Error("Export failed");
   const url=URL.createObjectURL(await response.blob());
   const link=document.createElement("a");

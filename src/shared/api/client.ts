@@ -1,4 +1,5 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000/api";
+export const API_BASE_URL = import.meta.env.VITE_API_URL ??
+  (import.meta.env.PROD ? "https://api.mourdy.com/api" : "http://localhost:3000/api");
 const TOKEN_KEY = "elmourdy-session-token";
 
 const errorMessagesByCode: Record<string, string> = {
@@ -66,9 +67,6 @@ export async function apiRequest<T>(path: string, options: RequestInit = {}): Pr
   const token = getSessionToken();
   const headers = new Headers(options.headers);
   headers.set("Accept", "application/json");
-  if (API_BASE_URL.includes(".ngrok-free.")) {
-    headers.set("ngrok-skip-browser-warning", "true");
-  }
   if (options.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
@@ -95,7 +93,6 @@ export async function apiRequestBlob(path: string) {
   const token = getSessionToken();
   const headers = new Headers({ Accept: "image/*" });
   if (token) headers.set("Authorization", `Bearer ${token}`);
-  if (API_BASE_URL.includes(".ngrok-free.")) headers.set("ngrok-skip-browser-warning", "true");
 
   const response = await fetch(`${API_BASE_URL}${path}`, { headers });
   if (!response.ok) throw new ApiError("The requested image could not be loaded", response.status);

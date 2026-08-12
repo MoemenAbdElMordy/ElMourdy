@@ -245,7 +245,7 @@ export function LoginPage({ nav, setRole, onLogin }: any) {
               {loading ? <><RefreshCw size={15} className="animate-spin"/> جارٍ الدخول…</> : "دخول"}
             </Btn>
             <div className="flex items-center justify-center text-sm">
-              <button onClick={()=>nav("forgot")} className="text-primary hover:underline">نسيت كلمة المرور؟</button>
+              <button type="button" onClick={()=>nav("forgot")} className="text-primary hover:underline">نسيت كلمة المرور؟</button>
             </div>
             <div className="grid grid-cols-2 gap-2 border-t border-border pt-4">
               <Btn variant="outline" onClick={()=>nav("register")}>إنشاء حساب طالب</Btn>

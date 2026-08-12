@@ -104,6 +104,7 @@ export function ConnectedVideoPage({
   const [curriculum, setCurriculum] = useState<Curriculum | null>(null);
   const [quality, setQuality] = useState("");
   const [error, setError] = useState("");
+  const [accessDenied, setAccessDenied] = useState(false);
   const [currentPosition, setCurrentPosition] = useState(0);
   const [watermarkPosition, setWatermarkPosition] = useState(0);
   const [mobileSidebar, setMobileSidebar] = useState(false);
@@ -128,6 +129,7 @@ export function ConnectedVideoPage({
     }
 
     setError("");
+    setAccessDenied(false);
     setPlayback(null);
     loadVideoPlayback(lectureId)
       .then((response) => {
@@ -140,13 +142,14 @@ export function ConnectedVideoPage({
           ) ?? Object.keys(response.playback.qualities)[0];
         setQuality(available ?? "");
       })
-      .catch((reason) =>
+      .catch((reason) => {
+        setAccessDenied(reason instanceof ApiError && reason.status === 403);
         setError(
           reason instanceof ApiError
             ? reason.message
             : "تعذر تشغيل الفيديو",
-        ),
-      );
+        );
+      });
   }, [lectureId]);
 
   const context = useMemo(
@@ -202,14 +205,7 @@ export function ConnectedVideoPage({
     };
 
     if (Hls.isSupported()) {
-      hls = new Hls({
-        enableWorker: true,
-        xhrSetup: (request, url) => {
-          if (url.includes(".ngrok-free.")) {
-            request.setRequestHeader("ngrok-skip-browser-warning", "true");
-          }
-        },
-      });
+      hls = new Hls({ enableWorker: true });
       hls.loadSource(source);
       hls.attachMedia(video);
       hls.on(Hls.Events.MANIFEST_PARSED, restorePosition);
@@ -276,7 +272,7 @@ export function ConnectedVideoPage({
       />
     );
   }
-  if (error) return <CenteredMessage message={error} onBack={goBack} />;
+  if (error) return <CenteredMessage message={error} onBack={goBack} action={accessDenied && role === "student" ? { label: "إدخال كود التفعيل", onClick: () => nav("activation") } : undefined} />;
   if (!playback) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
@@ -791,10 +787,12 @@ function CenteredMessage({
   message,
   onBack,
   icon,
+  action,
 }: {
   message: string;
   onBack: () => void;
   icon?: ReactNode;
+  action?: { label: string; onClick: () => void };
 }) {
   return (
     <div className="flex min-h-[70vh] items-center justify-center p-4">
@@ -805,7 +803,10 @@ function CenteredMessage({
           </div>
         )}
         <p className="mb-4 font-bold">{message}</p>
-        <Btn onClick={onBack}>العودة</Btn>
+        <div className="flex justify-center gap-2">
+          <Btn variant="outline" onClick={onBack}>العودة</Btn>
+          {action && <Btn onClick={action.onClick}>{action.label}</Btn>}
+        </div>
       </Card2>
     </div>
   );

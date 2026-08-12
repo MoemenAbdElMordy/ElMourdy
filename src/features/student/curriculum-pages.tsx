@@ -15,7 +15,7 @@ function LectureCard({ lecture, open }: { lecture: StudentLecture; open: () => v
   const progress = lecture.progress?.completed ? 100 : duration > 0 ? Math.min(100, Math.round((position / duration) * 100)) : 0;
 
   return (
-    <button type="button" onClick={open} disabled={!lecture.has_access || !ready} className="group overflow-hidden rounded-2xl border border-border bg-card text-right shadow-sm transition hover:-translate-y-0.5 hover:border-primary hover:shadow-md disabled:cursor-not-allowed disabled:opacity-65">
+    <button type="button" onClick={open} disabled={!ready} className="group overflow-hidden rounded-2xl border border-border bg-card text-right shadow-sm transition hover:-translate-y-0.5 hover:border-primary hover:shadow-md disabled:cursor-not-allowed disabled:opacity-65">
       <div className="relative aspect-video overflow-hidden bg-muted">
         {thumbnailUrl ? <img src={thumbnailUrl} alt={`صورة محاضرة ${lecture.title}`} className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]" /> : <div className="grid h-full place-items-center bg-gradient-to-br from-primary/15 to-primary/5"><BookOpen className="text-primary" size={38} /></div>}
         {ready && lecture.has_access && <span className="absolute inset-0 grid place-items-center bg-black/10 opacity-0 transition group-hover:opacity-100"><span className="grid h-12 w-12 place-items-center rounded-full bg-white/90 text-primary shadow"><Play size={20} fill="currentColor" /></span></span>}

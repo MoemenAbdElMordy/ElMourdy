@@ -89,6 +89,8 @@ The route policy is enforced before rendering protected pages. Authentication st
 
 ## Local Development
 
+Copy `.env.example` to `.env.local` when you need to override the API endpoint. Production defaults to `https://api.mourdy.com/api`, while local development defaults to `http://localhost:3000/api`.
+
 ### Requirements
 
 - Node.js 20 or newer
