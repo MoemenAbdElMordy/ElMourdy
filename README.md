@@ -183,6 +183,6 @@ Build output is generated in `dist/` and must not be committed.
 
 The Rails API, MySQL schema, authentication, authorization, media processing, and operational services are maintained in [ElMourdy_Backend](https://github.com/MoemenAbdElMordy/ElMourdy_Backend).
 
-## License
+## Source Availability
 
-Private and proprietary software. All rights reserved.
+This repository is public for portfolio and technical-review purposes. No license is granted for copying, redistribution, or commercial reuse. All rights reserved.
