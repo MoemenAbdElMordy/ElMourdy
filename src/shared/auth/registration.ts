@@ -10,8 +10,8 @@ export type PendingRegistration = {
   role: Extract<AuthRole, "student" | "parent">;
   resendAfterSeconds: number;
   expiresAt: string;
-  verificationMethod: "whatsapp_inbound";
-  whatsappUrl: string;
+  verificationMethod: "email";
+  emailHint: string;
   clientToken: string;
 };
 
@@ -34,8 +34,8 @@ type RegistrationResponse = {
   phone: string;
   expires_at: string;
   resend_after_seconds: number;
-  verification_method: "whatsapp_inbound";
-  whatsapp_url: string;
+  verification_method: "email";
+  email_hint: string;
   client_token: string;
 };
 
@@ -48,7 +48,7 @@ function pendingRegistration(response: RegistrationResponse, role: PendingRegist
     resendAfterSeconds: response.resend_after_seconds,
     expiresAt: response.expires_at,
     verificationMethod: response.verification_method,
-    whatsappUrl: response.whatsapp_url,
+    emailHint: response.email_hint,
     clientToken: response.client_token,
   };
 }
@@ -88,6 +88,7 @@ export async function registerStudent(input: {
 export async function registerParent(input: {
   name: string;
   phone: string;
+  email: string;
   password: string;
   passwordConfirmation: string;
 }) {
@@ -97,12 +98,31 @@ export async function registerParent(input: {
       registration: {
         name: input.name,
         phone: input.phone,
+        email: input.email,
         password: input.password,
         password_confirmation: input.passwordConfirmation,
       },
     }),
   });
   return pendingRegistration(response, "parent");
+}
+
+export async function verifyRegistration(registration: PendingRegistration, code: string) {
+  const response = await apiRequest<{ token: string; user: AuthUser }>(
+    `/registrations/${registration.registrationId}/verify`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        registration: {
+          verification_id: registration.verificationId,
+          code,
+          device_fingerprint: registration.role === "student" ? deviceFingerprint() : undefined,
+          ...(registration.role === "student" ? deviceMetadata() : {}),
+        },
+      }),
+    },
+  );
+  return acceptSession(response);
 }
 
 export async function loadRegistrationStatus(registration: PendingRegistration) {

@@ -13,13 +13,12 @@ import { Badge2, Btn, Card2, Field, Input2, Modal2, Pager, Select2, StatCard, cn
 import { ApiError } from "../../shared/api/client";
 import {
   clearPendingRegistration,
-  completeRegistration,
   loadPendingRegistration,
-  loadRegistrationStatus,
   registerParent,
   registerStudent,
   resendRegistration,
   storePendingRegistration,
+  verifyRegistration,
 } from "../../shared/auth/registration";
 import {
   clearPendingPasswordReset,
@@ -391,13 +390,13 @@ export function RegisterPage({ nav }: any) {
 // PARENT REGISTER
 // ============================================================
 export function ParentRegisterPage({ nav }: any) {
-  const [form, setForm] = useState({name:"",phone:"",password:"",confirm:""});
+  const [form, setForm] = useState({name:"",phone:"",email:"",password:"",confirm:""});
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const validPhone = /^01[0125][0-9]{8}$/.test(form.phone);
 
   const submit = async () => {
-    if (!form.name.trim() || !validPhone || form.password.length < 8 || form.password !== form.confirm) {
+    if (!form.name.trim() || !validPhone || !/^\S+@\S+\.\S+$/.test(form.email) || form.password.length < 8 || form.password !== form.confirm) {
       setError("راجع الاسم ورقم الهاتف وتطابق كلمة المرور (8 أحرف على الأقل).");
       return;
     }
@@ -407,6 +406,7 @@ export function ParentRegisterPage({ nav }: any) {
       const registration = await registerParent({
         name: form.name,
         phone: form.phone,
+        email: form.email,
         password: form.password,
         passwordConfirmation: form.confirm,
       });
@@ -430,6 +430,7 @@ export function ParentRegisterPage({ nav }: any) {
           <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
             <Input2 label="الاسم الكامل" value={form.name} onChange={(e:any)=>setForm(current=>({...current,name:e.target.value}))}/>
             <Input2 label="رقم الهاتف" type="tel" inputMode="numeric" placeholder="01xxxxxxxxx" dir="ltr" value={form.phone} onChange={(e:any)=>setForm(current=>({...current,phone:e.target.value.replace(/\D/g,"").slice(0,11)}))}/>
+            <Input2 label="البريد الإلكتروني" type="email" dir="ltr" value={form.email} onChange={(e:any)=>setForm(current=>({...current,email:e.target.value}))}/>
             <div className="rounded-xl bg-primary/5 border border-primary/20 p-3 text-xs text-muted-foreground">
               بعد تأكيد الرقم سيتم ربط الحساب تلقائيًا بكل الطلاب الذين سجلوا هذا الرقم كولي أمر.
             </div>
@@ -450,11 +451,10 @@ export function ParentRegisterPage({ nav }: any) {
 // ============================================================
 export function OTPPage({ nav, params, setRole, setAuthUser }: any) {
   const [registration, setRegistration] = useState(() => loadPendingRegistration());
+  const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [resendRemaining, setResendRemaining] = useState(registration?.resendAfterSeconds ?? 0);
   const [error, setError] = useState("");
-  const [verificationStatus, setVerificationStatus] = useState<"pending" | "verified" | "expired" | "failed">("pending");
-  const completingRef = useRef(false);
 
   useEffect(() => {
     if (resendRemaining <= 0) return;
@@ -462,59 +462,26 @@ export function OTPPage({ nav, params, setRole, setAuthUser }: any) {
     return () => window.clearInterval(timer);
   }, [resendRemaining]);
 
-  const finishRegistration = useCallback(async () => {
-    if (!registration || completingRef.current) return;
-
-    completingRef.current = true;
+  const submit = async () => {
+    if (!registration || code.length !== 6) {
+      setError("أدخل كود التحقق المكون من 6 أرقام.");
+      return;
+    }
     setLoading(true);
     setError("");
     try {
-      const user = await completeRegistration(registration);
+      const user = await verifyRegistration(registration, code);
       clearPendingRegistration();
       setAuthUser(user);
       setRole(user.role);
       nav(user.role === "parent" ? "parent-dashboard" : "student-dashboard", {}, user.role);
-      notify(user.role === "parent" ? "تم التحقق وربط الطلاب بحسابك" : "تم التحقق بنجاح! مرحبًا بك", "success");
+      notify("تم التحقق من البريد الإلكتروني بنجاح", "success");
     } catch (requestError) {
-      completingRef.current = false;
+      setError(requestError instanceof ApiError ? requestError.message : "تعذر التحقق من الكود.");
+    } finally {
       setLoading(false);
-      setError(requestError instanceof ApiError ? requestError.message : "تعذر إكمال تسجيل الحساب.");
     }
-  }, [nav, registration, setAuthUser, setRole]);
-
-  useEffect(() => {
-    if (!registration) return;
-
-    let active = true;
-    let timer: number | undefined;
-    const checkStatus = async () => {
-      try {
-        const result = await loadRegistrationStatus(registration);
-        if (!active) return;
-
-        setVerificationStatus(result.status);
-        if (result.status === "verified") {
-          await finishRegistration();
-          return;
-        }
-        if (result.status === "expired" || result.status === "failed") {
-          setError("انتهت صلاحية رابط التحقق. أنشئ رابطًا جديدًا للمتابعة.");
-          return;
-        }
-      } catch (requestError) {
-        if (!active) return;
-        setError(requestError instanceof ApiError ? requestError.message : "تعذر متابعة حالة التحقق.");
-      }
-
-      if (active) timer = window.setTimeout(checkStatus, 2000);
-    };
-
-    void checkStatus();
-    return () => {
-      active = false;
-      if (timer) window.clearTimeout(timer);
-    };
-  }, [finishRegistration, registration]);
+  };
 
   const resend = async () => {
     if (!registration || resendRemaining > 0) return;
@@ -526,9 +493,7 @@ export function OTPPage({ nav, params, setRole, setAuthUser }: any) {
       storePendingRegistration(nextRegistration);
       setRegistration(nextRegistration);
       setResendRemaining(nextRegistration.resendAfterSeconds);
-      setVerificationStatus("pending");
-      completingRef.current = false;
-      notify("تم إنشاء رابط تحقق جديد", "success");
+      notify("تم إرسال كود تحقق جديد إلى بريدك الإلكتروني", "success");
     } catch (requestError) {
       setError(requestError instanceof ApiError ? requestError.message : "تعذر إنشاء رابط تحقق جديد.");
     } finally {
@@ -541,39 +506,19 @@ export function OTPPage({ nav, params, setRole, setAuthUser }: any) {
         <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
           <Shield size={28} className="text-primary"/>
         </div>
-        <h1 className="text-2xl font-black mb-2">التحقق من الهاتف</h1>
+        <h1 className="text-2xl font-black mb-2">التحقق من البريد الإلكتروني</h1>
         <p className="text-muted-foreground text-sm mb-6">
-          افتح واتساب وأرسل الرسالة الجاهزة من الرقم<br/>
-          <span className="font-bold text-foreground" dir="ltr">{registration?.phone || params?.phone || "01xxxxxxxxx"}</span>
+          أرسلنا كودًا مكونًا من 6 أرقام إلى<br/>
+          <span className="font-bold text-foreground" dir="ltr">{registration?.emailHint || "بريدك الإلكتروني"}</span>
         </p>
         <Card2>
-          <div className="mb-5 rounded-2xl border border-primary/20 bg-primary/5 p-4 text-right">
-            <div className="mb-2 flex items-center gap-2 font-bold">
-              <MessageCircle size={20} className="text-primary"/>
-              خطوة واحدة للتأكيد
-            </div>
-            <p className="text-sm text-muted-foreground">
-              اضغط الزر، ثم اضغط إرسال داخل واتساب. سيتم تأكيد حسابك تلقائيًا عند وصول الرسالة.
-            </p>
-          </div>
-          {error && <div role="alert" className="mb-3 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</div>}
-          {registration?.whatsappUrl && (
-            <a
-              href={registration.whatsappUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="mb-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 py-3 font-bold text-white transition-opacity hover:opacity-90"
-            >
-              <MessageCircle size={20}/>
-              فتح واتساب وإرسال رسالة التحقق
-            </a>
-          )}
-          <div className="mb-3 flex items-center justify-center gap-2 text-sm text-muted-foreground" aria-live="polite">
-            <RefreshCw size={15} className={verificationStatus === "pending" ? "animate-spin" : ""}/>
-            {loading ? "جارٍ فتح حسابك…" : "في انتظار وصول رسالة واتساب…"}
-          </div>
+          <form onSubmit={(event) => { event.preventDefault(); void submit(); }} className="space-y-4">
+            <Input2 label="كود التحقق" inputMode="numeric" dir="ltr" maxLength={6} value={code} onChange={(event:any)=>setCode(event.target.value.replace(/\D/g, "").slice(0, 6))}/>
+            {error && <div role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+            <Btn type="submit" className="w-full" disabled={loading || code.length !== 6}>{loading ? "جارٍ التحقق…" : "تأكيد الكود"}</Btn>
+          </form>
           <button disabled={loading || resendRemaining > 0} onClick={resend} className="text-sm text-primary hover:underline disabled:opacity-50 disabled:no-underline">
-            {resendRemaining > 0 ? `إنشاء رابط جديد خلال ${resendRemaining} ثانية` : "إنشاء رابط تحقق جديد"}
+            {resendRemaining > 0 ? `إرسال كود جديد خلال ${resendRemaining} ثانية` : "إرسال كود جديد"}
           </button>
         </Card2>
       </div>
