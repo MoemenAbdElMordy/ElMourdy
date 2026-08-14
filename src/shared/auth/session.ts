@@ -7,6 +7,7 @@ export type AuthUser = {
   name: string;
   phone: string;
   role: AuthRole;
+  verified: boolean;
   permissions: string[];
 };
 

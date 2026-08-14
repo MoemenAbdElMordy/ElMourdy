@@ -13,6 +13,7 @@ import { parseLocation, routeToPath } from "../../app/routing/hash-router";
 import { canAccess, ROLE_DEFAULT } from "../../app/routing/policy";
 import type { AppRoute, Navigate, Role, RouteParams } from "../../app/routing/types";
 import { AboutPage, HomePage, LoginPage, RegisterPage, ParentRegisterPage, OTPPage, ForgotPage, FreeContentPage } from "../public/pages";
+import { AccountVerificationGate } from "../public/account-verification-gate";
 import { StudentSettingsPage } from "../student/settings-page";
 import { ConnectedVideoPage } from "../student/connected-video-page";
 import { ParentDashboard } from "../parent/pages";
@@ -334,6 +335,15 @@ export default function App() {
 
   if (!authReady) {
     return <div className="min-h-screen bg-background" role="status" aria-label="جاري تحميل الحساب" />;
+  }
+
+  if (authUser && !authUser.verified) {
+    return <AccountVerificationGate user={authUser} onVerified={(user) => setAuthUser(user)} onLogout={async () => {
+      await onLogout();
+      setRole("guest");
+      setView("login");
+      window.history.replaceState({}, "", "/login");
+    }}/>;
   }
 
   const render = () => {
