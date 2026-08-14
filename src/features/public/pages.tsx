@@ -30,6 +30,16 @@ import {
 } from "../../shared/auth/password-reset";
 import { loadFreeLectures, loadGrades, type FreeLecture, type PublicGrade } from "../../shared/public/api";
 import { EGYPTIAN_GOVERNORATES } from "../../shared/public/registration-options";
+
+const ARABIC_GRADE_NAMES: Record<number, string> = {
+  1: "الصف الأول الثانوي",
+  2: "الصف الثاني الثانوي",
+  3: "الصف الثالث الثانوي",
+};
+
+function arabicGradeName(grade: PublicGrade) {
+  return ARABIC_GRADE_NAMES[grade.level] ?? `الصف الدراسي ${grade.level}`;
+}
 // ============================================================
 export function HomePage({ nav }: any) {
   const [lectures, setLectures] = useState<FreeLecture[]>([]);
@@ -350,7 +360,7 @@ export function RegisterPage({ nav }: any) {
             <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); if(form.grade&&form.governorate&&form.school)setStep(3);else validate(); }}>
               <h3 className="font-bold">البيانات الدراسية</h3>
               <Select2 label="الصف الدراسي" value={form.grade} onChange={(e:any)=>set("grade",e.target.value)}
-                options={[{value:"",label:"اختر الصف"},...grades.map((grade)=>({value:grade.level,label:grade.name}))]}/>
+                options={[{value:"",label:"اختر الصف"},...grades.map((grade)=>({value:grade.level,label:arabicGradeName(grade)}))]}/>
               {errors.grade && <p className="text-xs text-red-500 -mt-2">{errors.grade}</p>}
               {errors.grades && <p className="text-xs text-red-500 -mt-2">{errors.grades}</p>}
               <Select2 label="المحافظة" value={form.governorate} onChange={(e:any)=>set("governorate",e.target.value)}
