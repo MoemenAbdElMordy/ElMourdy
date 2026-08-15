@@ -73,39 +73,44 @@ export function HomePage({ nav }: any) {
 
   const gradeCount = new Set(lectures.map((lecture) => lecture.grade.id)).size;
   const totalDurationHours = Math.round(lectures.reduce((total, lecture) => total + (lecture.duration_seconds ?? 0), 0) / 3600);
-  const decorations = [
-    { width: 84, height: 84, top: "12%", left: "8%" },
-    { width: 52, height: 52, top: "68%", left: "18%" },
-    { width: 112, height: 112, top: "20%", left: "78%" },
-    { width: 66, height: 66, top: "72%", left: "88%" },
-  ];
-
   return (
     <div className="bg-background">
       {/* Hero */}
-      <section className="relative bg-primary text-primary-foreground overflow-hidden">
-        <div className="absolute inset-0 opacity-10">
-          {decorations.map((style, index) => (
-            <div key={index} className="absolute rounded-full bg-white opacity-30" style={style}/>
-          ))}
-        </div>
-        <div className="relative max-w-4xl mx-auto px-4 py-20 text-center">
-          <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur px-4 py-1.5 rounded-full text-sm font-semibold mb-5">
+      <section className="relative min-h-[680px] overflow-hidden bg-[#123d2e] text-primary-foreground md:min-h-[620px] lg:min-h-[656px]">
+        <picture className="absolute inset-0 block h-full w-full">
+          <source media="(max-width: 767px)" srcSet="/images/teacher-hero-mobile.webp" type="image/webp" />
+          <source media="(max-width: 767px)" srcSet="/images/teacher-hero-mobile.png" type="image/png" />
+          <source srcSet="/images/teacher-hero-desktop.webp" type="image/webp" />
+          <img
+            src="/images/teacher-hero-desktop.png"
+            alt="الأستاذ محمود عبدالمرضي مدرس اللغة العربية للمرحلة الثانوية"
+            className="h-full w-full object-cover object-center"
+            width="1920"
+            height="720"
+            loading="eager"
+            decoding="async"
+          />
+        </picture>
+        <div className="absolute inset-0 bg-gradient-to-b from-[#071c15]/80 via-[#0a2d22]/20 to-transparent md:bg-gradient-to-r md:from-[#071c15]/70 md:via-[#071c15]/15 md:to-transparent" />
+        <div className="relative mx-auto flex min-h-[680px] max-w-7xl items-start px-4 pb-6 pt-8 text-center md:min-h-[620px] md:items-center md:px-8 md:py-14 lg:min-h-[656px]">
+          <div className="w-full md:mr-auto md:ml-0 md:w-[58%] lg:w-[56%]">
+          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/20 bg-[#0b2d22]/45 px-4 py-1.5 text-sm font-semibold shadow-sm backdrop-blur-sm md:mb-5">
             <Star size={13}/> خادم لغة أهل الجنة
           </div>
-          <h1 className="text-4xl md:text-6xl font-black mb-5 leading-tight">
+          <h1 className="mb-3 text-3xl font-black leading-tight drop-shadow-sm sm:text-4xl md:mb-5 md:text-5xl lg:text-6xl">
             منصة الأستاذ<br className="hidden md:block"/> محمود عبدالمرضي
           </h1>
-          <p className="text-lg opacity-90 max-w-2xl mx-auto mb-8 leading-relaxed">
+          <p className="mx-auto mb-4 max-w-2xl text-sm leading-7 opacity-95 drop-shadow-sm sm:text-base md:mb-8 md:text-lg md:leading-relaxed">
             منصة تعليمية متكاملة لتعليم اللغة العربية للمرحلة الثانوية — محاضرات، اختبارات تفاعلية، متابعة دقيقة
           </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Btn size="lg" className="!bg-white !text-primary font-black hover:!opacity-90" onClick={() => nav("register")}>
+          <div className="flex flex-row justify-center gap-2 sm:gap-3">
+            <Btn size="lg" className="whitespace-nowrap !bg-white !px-3 !text-sm !text-primary font-black hover:!opacity-90 sm:!px-6 sm:!text-base" onClick={() => nav("register")}>
               ابدأ التعلم الآن
             </Btn>
-            <Btn size="lg" className="border-2 border-white/50 text-white hover:!bg-white/20" variant="ghost" onClick={() => nav("free-content")}>
+            <Btn size="lg" className="whitespace-nowrap border-2 border-white/50 !px-3 !text-sm text-white hover:!bg-white/20 sm:!px-6 sm:!text-base" variant="ghost" onClick={() => nav("free-content")}>
               تصفّح المجاني
             </Btn>
+          </div>
           </div>
         </div>
       </section>
