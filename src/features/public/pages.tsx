@@ -696,7 +696,7 @@ export function AboutPage({ nav }: any) {
       <div className="max-w-4xl mx-auto space-y-6">
         <section className="rounded-3xl bg-primary p-8 text-primary-foreground md:p-10">
           <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/15 text-3xl font-black">م</div>
-          <h1 className="mb-3 text-3xl font-black">عن منصة المرضي</h1>
+          <h1 className="mb-3 text-3xl font-black">عن منصة المرضي والأستاذ محمود عبدالمرضي</h1>
           <p className="max-w-2xl text-base leading-8 opacity-90">
             منصة تعليمية متخصصة في اللغة العربية للمرحلة الثانوية، تساعد الطالب على فهم المنهج من خلال المحاضرات المسجلة والاختبارات والمتابعة المستمرة.
           </p>
@@ -729,6 +729,13 @@ export function AboutPage({ nav }: any) {
             <Btn variant="outline" onClick={() => nav("free-content")}>المحتوى المجاني</Btn>
             <Btn onClick={() => nav("register")}>إنشاء حساب</Btn>
           </div>
+        </Card2>
+
+        <Card2>
+          <h2 className="mb-3 text-xl font-black">تعليم اللغة العربية للمرحلة الثانوية</h2>
+          <p className="text-sm leading-7 text-muted-foreground">
+            تجمع المنصة بين شرح النحو والصرف والبلاغة، والتدريب على الأسئلة، وقياس مستوى الطالب بعد كل جزء؛ حتى يعرف الطالب وولي الأمر ما تم إنجازه وما يحتاج إلى مراجعة.
+          </p>
         </Card2>
       </div>
     </div>
@@ -776,8 +783,8 @@ export function FreeContentPage({ nav, role }: any) {
   return (
     <div className="min-h-screen bg-background py-6 px-4">
       <div className="max-w-3xl mx-auto">
-        <h1 className="text-2xl font-black mb-2">المحتوى المجاني</h1>
-        <p className="text-muted-foreground mb-6">محاضرات مجانية متاحة للجميع بدون اشتراك</p>
+        <h1 className="text-2xl font-black mb-2">محاضرات لغة عربية مجانية للمرحلة الثانوية</h1>
+        <p className="text-muted-foreground mb-6">محتوى مجاني في النحو والصرف والبلاغة مع الأستاذ محمود عبدالمرضي</p>
 
         {loading && <Card2 className="text-center text-muted-foreground">جارٍ تحميل المحاضرات…</Card2>}
         {!loading && error && <Card2 className="text-center text-red-600">{error}</Card2>}
@@ -824,6 +831,12 @@ export function FreeContentPage({ nav, role }: any) {
           <p className="text-muted-foreground mb-4">المحاضرات مجانية ولا تحتاج كودًا، لكن يلزم تسجيل حساب طالب للمشاهدة وحفظ التقدم.</p>
           <Btn onClick={()=>nav(role==="student"?"student-dashboard":"register")}>{role==="student"?"العودة للوحة الطالب":"التسجيل الآن"}</Btn>
         </div>
+        <section className="mt-6 rounded-2xl border border-border bg-card p-5">
+          <h2 className="mb-2 text-lg font-black">ابدأ التعلم مجانًا واحفظ تقدمك</h2>
+          <p className="text-sm leading-7 text-muted-foreground">
+            المحاضرات المجانية مرتبة حسب الصف والفرع. أنشئ حساب طالب لتكمل المشاهدة من آخر نقطة وصلت إليها وتتابع المحتوى الجديد عند نشره.
+          </p>
+        </section>
       </div>
     </div>
   );

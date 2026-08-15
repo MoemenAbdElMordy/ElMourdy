@@ -11,6 +11,8 @@
     }
   ],
   "rewrites": [
+    { "source": "/about", "destination": "/about/index.html" },
+    { "source": "/free-content", "destination": "/free-content/index.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

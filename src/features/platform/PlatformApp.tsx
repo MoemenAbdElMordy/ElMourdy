@@ -239,31 +239,48 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const publicMetadata: Partial<Record<AppRoute, { title: string; description: string }>> = {
+    const publicMetadata: Partial<Record<AppRoute, { title: string; description: string; imageAlt: string }>> = {
       home: {
         title: "منصة المرضي | اللغة العربية للمرحلة الثانوية",
         description: "منصة الأستاذ محمود عبدالمرضي لتعليم اللغة العربية لطلاب المرحلة الثانوية من خلال المحاضرات والاختبارات والمتابعة المستمرة.",
+        imageAlt: "منصة المرضي لتعليم اللغة العربية للمرحلة الثانوية",
       },
       about: {
         title: "عن الأستاذ محمود عبدالمرضي | منصة المرضي",
-        description: "تعرف على الأستاذ محمود عبدالمرضي ومنهج منصة المرضي في شرح اللغة العربية لطلاب المرحلة الثانوية.",
+        description: "تعرف على الأستاذ محمود عبدالمرضي ومنهج منصة المرضي في شرح اللغة العربية لطلاب المرحلة الثانوية ومتابعة تقدمهم.",
+        imageAlt: "الأستاذ محمود عبدالمرضي ومنصة المرضي التعليمية",
       },
       "free-content": {
-        title: "المحتوى المجاني | منصة المرضي",
-        description: "شاهد المحتوى المجاني المتاح لطلاب المرحلة الثانوية على منصة الأستاذ محمود عبدالمرضي.",
+        title: "محاضرات لغة عربية مجانية للثانوية | منصة المرضي",
+        description: "شاهد محاضرات مجانية في اللغة العربية لطلاب المرحلة الثانوية مع الأستاذ محمود عبدالمرضي، وسجّل مجانًا لحفظ تقدم المشاهدة.",
+        imageAlt: "محاضرات اللغة العربية المجانية على منصة المرضي",
       },
     };
     const metadata = publicMetadata[view];
+    const path = metadata ? routeToPath(view, {}) : "/";
+    const canonicalUrl = `https://mourdy.com${path}`;
     document.title = metadata?.title ?? "منصة المرضي";
 
-    const description = document.querySelector<HTMLMetaElement>('meta[name="description"]');
-    if (description) description.content = metadata?.description ?? "منصة تعليمية خاصة بطلاب الأستاذ محمود عبدالمرضي.";
+    const setMeta = (selector: string, content: string) => {
+      const element = document.querySelector<HTMLMetaElement>(selector);
+      if (element) element.content = content;
+    };
+
+    const description = metadata?.description ?? "منصة تعليمية خاصة بطلاب الأستاذ محمود عبدالمرضي.";
+    setMeta('meta[name="description"]', description);
+    setMeta('meta[property="og:title"]', metadata?.title ?? "منصة المرضي");
+    setMeta('meta[property="og:description"]', description);
+    setMeta('meta[property="og:url"]', canonicalUrl);
+    setMeta('meta[property="og:image:alt"]', metadata?.imageAlt ?? "منصة المرضي");
+    setMeta('meta[name="twitter:title"]', metadata?.title ?? "منصة المرضي");
+    setMeta('meta[name="twitter:description"]', description);
+    setMeta('meta[name="twitter:image:alt"]', metadata?.imageAlt ?? "منصة المرضي");
 
     const robots = document.querySelector<HTMLMetaElement>('meta[name="robots"]');
     if (robots) robots.content = metadata ? "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" : "noindex, nofollow";
 
     const canonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
-    if (canonical) canonical.href = `https://mourdy.com${metadata ? routeToPath(view, {}) : "/"}`;
+    if (canonical) canonical.href = canonicalUrl;
   }, [view]);
 
   useEffect(() => {
