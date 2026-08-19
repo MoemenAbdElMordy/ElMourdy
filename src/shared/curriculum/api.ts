@@ -2,7 +2,8 @@ import { apiRequest } from "../api/client";
 
 export type ContentStatus = "draft" | "published" | "hidden" | "archived";
 export type VideoAssetSummary = { id:number; processing_status:"uploaded"|"processing"|"ready"|"failed"; duration_seconds?:number; available_qualities?:string[] };
-export type Lecture = { id:number; title:string; description?:string; attachment_name?:string; attachment_url?:string; has_thumbnail?:boolean; position:number; status:ContentStatus; publish_at?:string; is_free:boolean; duration_seconds?:number; progress?:{last_position_seconds:number;completed:boolean}|null; video_asset?:VideoAssetSummary|null };
+export type Lecture = { id:number; title:string; description?:string; attachment_name?:string; attachment_url?:string; has_thumbnail?:boolean; position:number; status:ContentStatus; publish_at?:string; is_free:boolean; has_access?:boolean; additional_lesson_ids?:number[]; duration_seconds?:number; progress?:{last_position_seconds:number;completed:boolean}|null; video_asset?:VideoAssetSummary|null };
+export type CurriculumLocation = { lesson_id:number; academic_year:string; grade:string; grade_level:number; branch:string; chapter:string; lesson:string };
 export type Lesson = { id:number; title:string; position:number; status:ContentStatus; publish_at?:string; is_free:boolean; has_access?:boolean; lectures:Lecture[] };
 export type Chapter = { id:number; title:string; position:number; status:ContentStatus; publish_at?:string; lessons:Lesson[] };
 export type Branch = { id:number; title:string; position:number; status:ContentStatus; publish_at?:string; chapters:Chapter[] };
@@ -16,6 +17,8 @@ export function loadCurriculum(filters:{academicYearId?:number;gradeId?:number}=
   if(filters.gradeId)query.set("grade_id",String(filters.gradeId));
   return apiRequest<{curriculum:Curriculum}>(`/curriculum?${query}`);
 }
+
+export const loadCurriculumLocations = () => apiRequest<{locations:CurriculumLocation[]}>("/curriculum_locations");
 
 export function createContent(type:ResourceType,input:Record<string,unknown>) {
   return apiRequest(`/${type}`,{method:"POST",body:JSON.stringify({[singularName[type]]:input})});

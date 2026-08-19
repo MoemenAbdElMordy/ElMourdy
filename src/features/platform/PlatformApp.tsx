@@ -118,7 +118,7 @@ function TopBar({ role, nav, dark, setDark, setRole, onLogout, authUser }: Shell
     <header className="sticky top-0 z-40 bg-card/95 backdrop-blur border-b border-border shadow-sm">
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-3">
         <a href={routeToPath(homeView, {})} onClick={(event) => { event.preventDefault(); nav(homeView); }} className="flex items-center gap-3 shrink-0">
-          <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-white font-black text-lg">م</div>
+          <img src="/images/mourdy-logo.png" alt="شعار منصة المرضي" className="h-10 w-10 rounded-full object-cover shadow-sm" width="40" height="40" />
           <div className="hidden sm:block leading-tight">
             <div className="font-black text-sm text-foreground">منصة المرضي</div>
             <div className="text-[10px] text-muted-foreground">خادم لغة أهل الجنة</div>
@@ -413,14 +413,14 @@ export default function App() {
       case "parent-detail":   return <ParentDetailPage {...ctx}/>;
       case "student-preview": return <StudentPreviewPage {...ctx}/>;
       case "management-reports": return <ManagementReportsPage {...ctx}/>;
-      case "content-subjects": return <CurriculumManagePage/>;
+      case "content-subjects": return <CurriculumManagePage {...ctx}/>;
       case "exam-manage":      return <ConnectedExamManagePage/>;
       case "activation-codes": return <ConnectedActivationCodesPage/>;
       case "announcements-admin": return <ConnectedAnnouncementsPage manage/>;
       case "assistants":       return <Day5AssistantsPage/>;
       case "audit-log":        return <ConnectedAuditLogPage/>;
       case "support-requests": return <ConnectedSupportRequestsPage/>;
-      case "academic-years":  return <Day5AcademicYearsPage/>;
+      case "academic-years":  return <Day5AcademicYearsPage {...ctx}/>;
       default:                 return <NotFoundPage {...ctx}/>;
     }
   };

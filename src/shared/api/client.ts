@@ -52,14 +52,24 @@ export class ApiError extends Error {
 }
 
 export function getSessionToken() {
-  return sessionStorage.getItem(TOKEN_KEY);
+  const persistentToken = localStorage.getItem(TOKEN_KEY);
+  if (persistentToken) return persistentToken;
+
+  const legacyToken = sessionStorage.getItem(TOKEN_KEY);
+  if (legacyToken) {
+    localStorage.setItem(TOKEN_KEY, legacyToken);
+    sessionStorage.removeItem(TOKEN_KEY);
+  }
+  return legacyToken;
 }
 
 export function setSessionToken(token: string) {
-  sessionStorage.setItem(TOKEN_KEY, token);
+  localStorage.setItem(TOKEN_KEY, token);
+  sessionStorage.removeItem(TOKEN_KEY);
 }
 
 export function clearSessionToken() {
+  localStorage.removeItem(TOKEN_KEY);
   sessionStorage.removeItem(TOKEN_KEY);
 }
 

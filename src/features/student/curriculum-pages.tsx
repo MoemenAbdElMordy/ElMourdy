@@ -51,7 +51,11 @@ export function StudentCurriculumPage({ nav, params }: any) {
   const requestedChapterId = Number(params?.chapterId);
   const branch = tree.branches.find((item) => item.id === Number(params?.subjectId)) ?? tree.branches.find((item) => item.chapters.some((chapter) => chapter.id === requestedChapterId));
   const chapter = branch?.chapters.find((item) => item.id === requestedChapterId);
-  const lectures: StudentLecture[] = chapter?.lessons.flatMap((lesson) => lesson.lectures.map((lecture) => ({ ...lecture, lesson_title: lesson.title, has_access: lesson.has_access }))) ?? [];
+  const lectures: StudentLecture[] = chapter?.lessons.flatMap((lesson) => lesson.lectures.map((lecture) => ({
+    ...lecture,
+    lesson_title: lesson.title,
+    has_access: lecture.has_access ?? (lecture.is_free || lesson.has_access),
+  }))) ?? [];
   const items = chapter ? lectures : (branch?.chapters ?? tree.branches);
   const title = chapter?.title ?? branch?.title ?? `منهج ${tree.grade?.name ?? "الطالب"}`;
   const open = (item: any) => chapter ? item.has_access && item.video_asset?.processing_status === "ready" ? nav("video", { lessonId: item.id }) : item.has_access ? undefined : nav("activation") : branch ? nav("lessons", { subjectId: branch.id, chapterId: item.id }) : nav("chapters", { subjectId: item.id });

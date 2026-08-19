@@ -378,10 +378,11 @@ export function Day5StudentDetailPage({ nav, params, authUser }: any) {
   );
 }
 
-export function Day5AcademicYearsPage() {
+export function Day5AcademicYearsPage({ nav }: any) {
   const [years, setYears] = useState<AcademicYear[]>([]);
   const [sourceYearId, setSourceYearId] = useState(0);
   const [modal, setModal] = useState(false);
+  const [selectedYearId, setSelectedYearId] = useState<number | null>(null);
   const [form, setForm] = useState({
     name: "",
     starts_on: "",
@@ -433,6 +434,7 @@ export function Day5AcademicYearsPage() {
       notify(error instanceof ApiError ? error.message : "تعذر ترحيل الطلاب", "error");
     }
   };
+  const selectedYear = years.find((year) => year.id === selectedYearId);
   return (
     <div className="min-h-screen bg-background py-6 px-4">
       <div className="max-w-4xl mx-auto">
@@ -443,9 +445,13 @@ export function Day5AcademicYearsPage() {
           </Btn>
         </div>
         {years.length > 1 && <Card2 className="mb-4"><Select2 label="السنة المصدر لنسخ المنهج أو ترحيل الطلاب" value={String(sourceYearId)} onChange={(e: any) => setSourceYearId(Number(e.target.value))} options={years.map((year) => ({ value: String(year.id), label: year.name }))} /></Card2>}
-        <div className="space-y-3">
+        {selectedYear ? <div>
+          <button type="button" onClick={() => setSelectedYearId(null)} className="mb-3 flex items-center gap-1 text-sm text-primary"><ChevronRight size={15}/> العودة إلى السنوات</button>
+          <Card2 className="mb-4"><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-xl font-black">{selectedYear.name}</h2><p className="mt-1 text-sm text-muted-foreground">اختر الصف لعرض بياناته أو فتح تقريره التفصيلي</p></div><Badge2 variant={selectedYear.status === "active" ? "success" : "default"}>{selectedYear.status === "active" ? "السنة الحالية" : "سنة مؤرشفة"}</Badge2></div></Card2>
+          <div className="grid gap-4 md:grid-cols-3">{selectedYear.grades.map((grade) => <Card2 key={grade.id}><h3 className="mb-3 text-lg font-black">{gradeLabel(grade.level, grade.name)}</h3><div className="grid grid-cols-2 gap-2 text-center text-sm"><div className="rounded-xl bg-muted p-2"><strong className="block text-lg">{grade.students_count}</strong>طالب</div><div className="rounded-xl bg-muted p-2"><strong className="block text-lg">{grade.branches_count}</strong>فرع</div><div className="rounded-xl bg-muted p-2"><strong className="block text-lg">{grade.lessons_count}</strong>درس</div><div className="rounded-xl bg-muted p-2"><strong className="block text-lg">{grade.lectures_count}</strong>محاضرة</div></div><div className="mt-3 grid gap-2"><Btn onClick={() => nav("management-reports", { yearId: selectedYear.id, gradeId: grade.id })}>عرض التقرير</Btn><Btn variant="outline" onClick={() => nav("content-subjects", { yearId: selectedYear.id, gradeId: grade.id })}>إدارة المحتوى</Btn></div></Card2>)}</div>
+        </div> : <div className="space-y-3">
           {years.map((year) => (
-            <Card2 key={year.id}>
+            <Card2 key={year.id} className="cursor-pointer transition hover:border-primary" onClick={() => setSelectedYearId(year.id)}>
               <div className="flex gap-3 items-start">
                 <CalendarDays className="text-primary" />
                 <div className="flex-1">
@@ -458,15 +464,16 @@ export function Day5AcademicYearsPage() {
                   </p>
                   <p className="text-sm mt-2">{year.students_count} طالب</p>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2" onClick={(event) => event.stopPropagation()}>
                   {year.status === "draft" && sourceYearId !== year.id && <Btn size="sm" variant="outline" onClick={() => copyContent(year)}>نسخ هيكل المنهج</Btn>}
                   {year.status === "draft" && sourceYearId !== year.id && <Btn size="sm" onClick={() => rolloverStudents(year)}>ترحيل الطلاب وتفعيل السنة</Btn>}
                   {year.status === "active" && <Btn size="sm" variant="outline" onClick={() => archive(year)}>أرشفة</Btn>}
+                  <ChevronRight className="rotate-180 text-muted-foreground" />
                 </div>
               </div>
             </Card2>
           ))}
-        </div>
+        </div>}
         <Modal2 open={modal} onClose={() => setModal(false)} title="إنشاء سنة دراسية" onSubmit={save}>
           <div className="space-y-3">
             <Input2 label="اسم السنة" value={form.name} onChange={(e) => setForm((v) => ({ ...v, name: e.target.value }))} />

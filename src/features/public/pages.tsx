@@ -137,7 +137,7 @@ export function HomePage({ nav }: any) {
       <section className="py-14 px-4">
         <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-10 items-center">
           <div>
-            <div className="w-20 h-20 rounded-2xl bg-primary flex items-center justify-center text-white text-4xl font-black mb-5">م</div>
+            <img src="/images/mourdy-logo.png" alt="شعار منصة المرضي" className="mb-5 h-20 w-20 rounded-full object-cover shadow-md" width="80" height="80" loading="lazy" />
             <h2 className="text-2xl font-black mb-3">الأستاذ محمود عبدالمرضي</h2>
             <p className="text-muted-foreground mb-4 leading-relaxed">
               أستاذ لغة عربية للمرحلة الثانوية، متخصص في تبسيط النحو والصرف والبلاغة وربط الشرح بالتطبيق العملي.
@@ -242,7 +242,7 @@ export function LoginPage({ nav, setRole, onLogin }: any) {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 rounded-2xl bg-primary text-white flex items-center justify-center text-2xl font-black mx-auto mb-3">م</div>
+          <img src="/images/mourdy-logo.png" alt="شعار منصة المرضي" className="mx-auto mb-3 h-16 w-16 rounded-full object-cover shadow-md" width="64" height="64" />
           <h1 className="text-2xl font-black">تسجيل الدخول</h1>
           <p className="text-muted-foreground text-sm mt-1">منصة الأستاذ محمود عبدالمرضي</p>
         </div>
@@ -700,7 +700,7 @@ export function AboutPage({ nav }: any) {
     <div className="min-h-screen bg-background py-10 px-4">
       <div className="max-w-4xl mx-auto space-y-6">
         <section className="rounded-3xl bg-primary p-8 text-primary-foreground md:p-10">
-          <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/15 text-3xl font-black">م</div>
+          <img src="/images/mourdy-logo.png" alt="شعار منصة المرضي" className="mb-5 h-16 w-16 rounded-full object-cover shadow-md" width="64" height="64" loading="lazy" />
           <h1 className="mb-3 text-3xl font-black">عن منصة المرضي والأستاذ محمود عبدالمرضي</h1>
           <p className="max-w-2xl text-base leading-8 opacity-90">
             منصة تعليمية متخصصة في اللغة العربية للمرحلة الثانوية، تساعد الطالب على فهم المنهج من خلال المحاضرات المسجلة والاختبارات والمتابعة المستمرة.
