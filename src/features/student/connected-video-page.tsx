@@ -35,7 +35,7 @@ import { useLectureThumbnailUrl } from "../../shared/media/lecture-thumbnail";
 const preferredQualityOrder = ["480p", "720p", "360p"];
 const displayedQualityOrder = ["720p", "480p", "360p"];
 
-type LectureContext = {
+export type LectureContext = {
   branch: Branch;
   chapter: Chapter;
   lesson: Lesson;
@@ -72,9 +72,9 @@ function flattenBranchLectures(branch: Branch): LectureContext[] {
   );
 }
 
-function canPlay(item: LectureContext) {
+export function canPlay(item: LectureContext) {
   return (
-    item.lesson.has_access !== false &&
+    item.lecture.has_access !== false &&
     item.lecture.video_asset?.processing_status === "ready"
   );
 }
@@ -702,7 +702,7 @@ function CurriculumSidebar({
                       {lesson.lectures.map((lecture) => {
                         const item = { branch, chapter, lesson, lecture };
                         const isCurrent = lecture.id === currentLectureId;
-                        const accessible = lesson.has_access !== false;
+                        const accessible = lecture.has_access !== false;
                         const ready =
                           lecture.video_asset?.processing_status === "ready";
 
