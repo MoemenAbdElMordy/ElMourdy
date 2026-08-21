@@ -100,13 +100,17 @@ export function ConnectedVideoPage({
   const lectureId = Number(params?.lessonId);
   const videoRef = useRef<HTMLVideoElement>(null);
   const resumePositionRef = useRef(0);
+  const watchedDeltaRef = useRef(0);
+  const lastPlaybackPositionRef = useRef<number | null>(null);
+  const saveInFlightRef = useRef(false);
   const [playback, setPlayback] = useState<Playback | null>(null);
   const [curriculum, setCurriculum] = useState<Curriculum | null>(null);
   const [quality, setQuality] = useState("");
   const [error, setError] = useState("");
   const [accessDenied, setAccessDenied] = useState(false);
-  const [currentPosition, setCurrentPosition] = useState(0);
+  const [verifiedWatchedSeconds, setVerifiedWatchedSeconds] = useState(0);
   const [watermarkPosition, setWatermarkPosition] = useState(0);
+  const [watermarkTampered, setWatermarkTampered] = useState(false);
   const [mobileSidebar, setMobileSidebar] = useState(false);
   const [openChapters, setOpenChapters] = useState<Set<number>>(new Set());
   const [activeTab, setActiveTab] = useState<PageTab>("overview");
@@ -131,11 +135,12 @@ export function ConnectedVideoPage({
     setError("");
     setAccessDenied(false);
     setPlayback(null);
+    setWatermarkTampered(false);
     loadVideoPlayback(lectureId)
       .then((response) => {
         setPlayback(response.playback);
         resumePositionRef.current = response.playback.last_position_seconds;
-        setCurrentPosition(response.playback.last_position_seconds);
+        setVerifiedWatchedSeconds(response.playback.watched_seconds ?? 0);
         const available =
           preferredQualityOrder.find(
             (item) => response.playback.qualities[item],
@@ -226,10 +231,22 @@ export function ConnectedVideoPage({
 
   useEffect(() => {
     if (!playback?.watch_event_id) return;
-    const save = () => {
+    const save = async () => {
+      if (saveInFlightRef.current) return;
       const position = videoRef.current?.currentTime;
-      if (position !== undefined) {
-        void saveWatchProgress(playback.watch_event_id!, position);
+      if (position === undefined) return;
+
+      const delta = Math.floor(watchedDeltaRef.current);
+      watchedDeltaRef.current -= delta;
+      saveInFlightRef.current = true;
+      try {
+        const response = await saveWatchProgress(playback.watch_event_id!, position, delta);
+        setVerifiedWatchedSeconds(response.watch_event.verified_watched_seconds);
+        watchedDeltaRef.current += Math.max(0, delta - response.watch_event.accepted_seconds);
+      } catch {
+        watchedDeltaRef.current += delta;
+      } finally {
+        saveInFlightRef.current = false;
       }
     };
     const timer = window.setInterval(save, 15_000);
@@ -240,9 +257,28 @@ export function ConnectedVideoPage({
       window.clearInterval(timer);
       video?.removeEventListener("pause", save);
       video?.removeEventListener("ended", save);
-      save();
+      void save();
     };
   }, [playback?.watch_event_id]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      const video = videoRef.current;
+      if (!video || video.paused || video.seeking || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+        lastPlaybackPositionRef.current = video?.currentTime ?? null;
+        return;
+      }
+
+      const previous = lastPlaybackPositionRef.current;
+      const current = video.currentTime;
+      if (previous !== null) {
+        const advanced = current - previous;
+        if (advanced > 0 && advanced <= 1.75) watchedDeltaRef.current += advanced;
+      }
+      lastPlaybackPositionRef.current = current;
+    }, 1_000);
+    return () => window.clearInterval(timer);
+  }, [playback?.watch_event_id, quality]);
 
   useEffect(() => {
     const timer = window.setInterval(
@@ -251,6 +287,24 @@ export function ConnectedVideoPage({
     );
     return () => window.clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (!playback?.watermark) return;
+    const video = videoRef.current;
+    const container = video?.parentElement;
+    if (!video || !container) return;
+
+    const observer = new MutationObserver(() => {
+      const host = container.querySelector("[data-video-watermark]");
+      const marks = container.querySelectorAll("[data-watermark-mark]");
+      if (host && marks.length >= 7) return;
+
+      video.pause();
+      setWatermarkTampered(true);
+    });
+    observer.observe(container, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [playback?.watermark]);
 
   const goBack = () => {
     if (context) {
@@ -284,14 +338,8 @@ export function ConnectedVideoPage({
   const duration =
     playback.lecture.duration_seconds ?? context?.lecture.duration_seconds;
   const watchProgress = duration
-    ? Math.min(100, Math.round((currentPosition / duration) * 100))
+    ? Math.min(100, Math.round((verifiedWatchedSeconds / duration) * 100))
     : 0;
-  const watermarkPositions = [
-    "top-[15%] left-[10%]",
-    "top-[15%] right-[10%]",
-    "bottom-[18%] left-[10%]",
-    "bottom-[18%] right-[10%]",
-  ];
   const availableQualities = displayedQualityOrder.filter(
     (item) => playback.qualities[item],
   );
@@ -370,18 +418,16 @@ export function ConnectedVideoPage({
               playsInline
               poster={thumbnailUrl}
               className="h-full w-full"
-              onTimeUpdate={(event) =>
-                setCurrentPosition(event.currentTarget.currentTime)
-              }
+              onSeeking={(event) => {
+                lastPlaybackPositionRef.current = event.currentTarget.currentTime;
+              }}
             />
             {playback.watermark && (
-              <div
-                className={cn(
-                  "pointer-events-none absolute select-none rounded-lg border border-white/15 bg-black/20 px-3 py-1.5 text-xs font-bold text-white/30 transition-all duration-700",
-                  watermarkPositions[watermarkPosition],
-                )}
-              >
-                {playback.watermark.name} • {playback.watermark.phone}
+              <VideoWatermark watermark={playback.watermark} position={watermarkPosition} />
+            )}
+            {watermarkTampered && (
+              <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/90 p-6 text-center text-sm font-bold text-white">
+                تم إيقاف التشغيل لحماية محتوى المحاضرة. أعد تحميل الصفحة للمتابعة.
               </div>
             )}
             <label className="absolute left-3 top-3 z-10 flex items-center gap-2 rounded-lg border border-white/15 bg-black/65 px-2 py-1 text-xs text-white backdrop-blur-sm">
@@ -579,6 +625,54 @@ export function ConnectedVideoPage({
           </aside>
         </div>
       )}
+    </div>
+  );
+}
+
+function VideoWatermark({
+  watermark,
+  position,
+}: {
+  watermark: NonNullable<Playback["watermark"]>;
+  position: number;
+}) {
+  const [timestamp, setTimestamp] = useState(() => new Date());
+  useEffect(() => {
+    const timer = window.setInterval(() => setTimestamp(new Date()), 15_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const identity = `${watermark.name} • ${watermark.phone} • #${watermark.viewer_id}`;
+  const time = timestamp.toLocaleString("ar-EG", {
+    dateStyle: "short",
+    timeStyle: "medium",
+  });
+  const movingPositions = [
+    "top-[12%] left-[8%]",
+    "top-[18%] right-[9%]",
+    "bottom-[20%] left-[12%]",
+    "bottom-[16%] right-[8%]",
+  ];
+
+  return (
+    <div data-video-watermark aria-hidden="true" className="pointer-events-none absolute inset-0 z-[5] select-none overflow-hidden">
+      <div className="absolute inset-0 grid grid-cols-2 grid-rows-3 opacity-[0.11]">
+        {Array.from({ length: 6 }, (_, index) => (
+          <div data-watermark-mark key={index} className="flex rotate-[-16deg] items-center justify-center px-3 text-center text-[10px] font-black text-white sm:text-xs">
+            {identity}
+          </div>
+        ))}
+      </div>
+      <div
+        data-watermark-mark
+        className={cn(
+          "absolute rounded-lg border border-white/20 bg-black/25 px-3 py-1.5 text-[10px] font-bold text-white/45 shadow-sm transition-all duration-700 sm:text-xs",
+          movingPositions[position],
+        )}
+      >
+        <div>{identity}</div>
+        <div className="mt-0.5 font-mono text-[9px] opacity-80" dir="ltr">{time}</div>
+      </div>
     </div>
   );
 }

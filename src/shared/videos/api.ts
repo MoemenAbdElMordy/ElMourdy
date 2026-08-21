@@ -22,7 +22,18 @@ export type Playback = {
   qualities: Record<string, string>;
   watch_event_id?: number;
   last_position_seconds: number;
-  watermark?: { name: string; phone: string };
+  watched_seconds: number;
+  watermark?: { name: string; phone: string; viewer_id: number };
+};
+
+export type WatchProgress = {
+  id: number;
+  last_position_seconds: number;
+  watched_seconds: number;
+  verified_watched_seconds: number;
+  accepted_seconds: number;
+  progress_percent: number;
+  completed_at?: string;
 };
 
 export function createVideoUpload(lectureId: number, file: File) {
@@ -86,8 +97,15 @@ export const deleteVideoAsset = (id: number) =>
   apiRequest<void>(`/video_assets/${id}`, { method: "DELETE" });
 export const loadVideoPlayback = (lectureId: number) =>
   apiRequest<{ playback: Playback }>(`/lectures/${lectureId}/video_playback`);
-export const saveWatchProgress = (eventId: number, positionSeconds: number) =>
-  apiRequest(`/lecture_watch_events/${eventId}`, {
+export const saveWatchProgress = (
+  eventId: number,
+  positionSeconds: number,
+  watchedSecondsDelta: number,
+) =>
+  apiRequest<{ watch_event: WatchProgress }>(`/lecture_watch_events/${eventId}`, {
     method: "PATCH",
-    body: JSON.stringify({ position_seconds: Math.floor(positionSeconds) }),
+    body: JSON.stringify({
+      position_seconds: Math.floor(positionSeconds),
+      watched_seconds_delta: Math.floor(watchedSecondsDelta),
+    }),
   });
