@@ -71,8 +71,6 @@ export function HomePage({ nav }: any) {
     return Array.from(grouped.values());
   }, [lectures]);
 
-  const gradeCount = new Set(lectures.map((lecture) => lecture.grade.id)).size;
-  const totalDurationHours = Math.round(lectures.reduce((total, lecture) => total + (lecture.duration_seconds ?? 0), 0) / 3600);
   return (
     <div className="bg-background">
       {/* Hero */}
@@ -115,21 +113,31 @@ export function HomePage({ nav }: any) {
         </div>
       </section>
 
-      {/* Stats */}
-      <section className="py-10 px-4 bg-card border-b border-border">
-        <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-          {[
-            { value: lectures.length, label: "محاضرة مجانية", icon: Video },
-            { value: branches.length, label: "فرع دراسي", icon: BookOpen },
-            { value: gradeCount, label: "صف دراسي", icon: Users },
-            { value: totalDurationHours, label: "ساعة محتوى", icon: Clock },
-          ].map((stat) => (
-            <div key={stat.label}>
-              <stat.icon size={24} className="text-primary mx-auto mb-2"/>
-              <div className="text-2xl font-black">{loadingContent ? "—" : stat.value.toLocaleString("ar-EG")}</div>
-              <div className="text-sm text-muted-foreground">{stat.label}</div>
-            </div>
-          ))}
+      {/* Learning experience */}
+      <section className="relative border-b border-border bg-card px-4 py-12">
+        <div className="mx-auto max-w-6xl">
+          <div className="mb-8 text-center">
+            <span className="mb-3 inline-flex rounded-full bg-primary/10 px-4 py-1.5 text-xs font-bold text-primary">
+              تجربة تعليمية متكاملة
+            </span>
+            <h2 className="text-2xl font-black sm:text-3xl">كل ما تحتاجه لتتفوق في اللغة العربية</h2>
+          </div>
+          <div className="grid gap-4 md:grid-cols-3">
+            {[
+              { title: "شرح واضح ومنظم", description: "تبسيط القواعد وربطها بأمثلة وتطبيقات تساعدك على الفهم الحقيقي.", icon: BookOpen },
+              { title: "تدريب يقيس مستواك", description: "اختبارات وتدريبات تفاعلية تكشف نقاط القوة وما يحتاج إلى مراجعة.", icon: Award },
+              { title: "متابعة مستمرة للتقدم", description: "لوحة شخصية تعرض تقدمك ونتائجك وتساعدك على استكمال رحلتك.", icon: Activity },
+            ].map((feature) => (
+              <article key={feature.title} className="group relative overflow-hidden rounded-3xl border border-border bg-background p-6 shadow-sm transition-all hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg">
+                <div className="absolute -left-8 -top-8 h-24 w-24 rounded-full bg-primary/5 transition-transform group-hover:scale-125" />
+                <div className="relative mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-md shadow-primary/20">
+                  <feature.icon size={22} />
+                </div>
+                <h3 className="relative mb-2 text-lg font-black">{feature.title}</h3>
+                <p className="relative text-sm leading-7 text-muted-foreground">{feature.description}</p>
+              </article>
+            ))}
+          </div>
         </div>
       </section>
 
