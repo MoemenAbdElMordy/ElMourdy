@@ -3,12 +3,12 @@ import type { AppRoute, RouteParams } from "./types";
 const routes = new Set<AppRoute>([
   "not-found",
   "home", "login", "register", "parent-register", "otp", "forgot", "free-content", "about",
-  "student-dashboard", "subjects", "chapters", "lessons", "video", "exam",
+  "student-dashboard", "subjects", "chapters", "lessons", "video", "exam", "homeworks",
   "exam-result", "error-review", "progress", "announcements", "activation", "student-settings",
   "parent-dashboard", "parent-results", "parent-errors", "admin-dashboard",
   "assistant-dashboard", "students-list", "student-detail", "content-subjects",
   "parents-list", "parent-detail", "student-preview", "management-reports",
-  "exam-manage", "activation-codes", "announcements-admin", "assistants", "audit-log", "support-requests", "academic-years",
+  "exam-manage", "homework-manage", "activation-codes", "announcements-admin", "assistants", "audit-log", "support-requests", "academic-years",
 ]);
 
 export function parseLocation(): { route: AppRoute; params: RouteParams } {

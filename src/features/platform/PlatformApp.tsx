@@ -22,7 +22,7 @@ import { CurriculumManagePage } from "../admin/curriculum-page";
 import { StudentCurriculumPage } from "../student/curriculum-pages";
 import { ConnectedActivationCodesPage } from "../admin/activation-codes-page";
 import { ConnectedActivationPage } from "../student/activation-page";
-import { ConnectedAnnouncementsPage, ConnectedAttemptResultPage, ConnectedExamManagePage, ConnectedResultsPage, ConnectedStudentExamPage, ConnectedSupportRequestsPage } from "../learning/connected-pages";
+import { ConnectedAnnouncementsPage, ConnectedAttemptResultPage, ConnectedExamManagePage, ConnectedHomeworksPage, ConnectedResultsPage, ConnectedStudentExamPage, ConnectedSupportRequestsPage } from "../learning/connected-pages";
 import { ConnectedAuditLogPage, ConnectedManagementDashboard, ConnectedStudentDashboard } from "../dashboard/connected-dashboards";
 import { ManagementReportsPage, ParentDetailPage, ParentsListPage, StudentPreviewPage } from "../admin/teacher-control-pages";
 import { Badge2, Btn, Card2, Field, Input2, Modal2, Pager, Select2, StatCard, ToastContainer, cn, notify } from "../../shared/ui";
@@ -91,10 +91,10 @@ function TopBar({ role, nav, dark, setDark, setRole, onLogout, authUser }: Shell
 
   const links: Record<Role,NavItem[]> = {
     guest:    [{ l:"الرئيسية",view:"home"},{ l:"المحتوى المجاني",view:"free-content"},{ l:"من نحن",view:"about"}],
-    student:  [{ l:"لوحتي",view:"student-dashboard"},{ l:"موادي",view:"subjects"},{ l:"تقدمي",view:"progress"},{ l:"الإعلانات",view:"announcements"},{ l:"التفعيل",view:"activation"},{ l:"الإعدادات",view:"student-settings"}],
+    student:  [{ l:"لوحتي",view:"student-dashboard"},{ l:"موادي",view:"subjects"},{ l:"واجباتي",view:"homeworks"},{ l:"تقدمي",view:"progress"},{ l:"الإعلانات",view:"announcements"},{ l:"التفعيل",view:"activation"},{ l:"الإعدادات",view:"student-settings"}],
     parent:   [{ l:"لوحة الأهل",view:"parent-dashboard"},{ l:"النتائج والمحاولات",view:"parent-results"}],
-    teacher:  [{ l:"لوحة القيادة",view:"admin-dashboard"},{ l:"الطلاب",view:"students-list"},{ l:"أولياء الأمور",view:"parents-list"},{ l:"التقارير",view:"management-reports"},{ l:"المحتوى",view:"content-subjects"},{ l:"السنوات",view:"academic-years"},{ l:"الاختبارات",view:"exam-manage"},{ l:"الأكواد",view:"activation-codes"},{ l:"طلبات الدعم",view:"support-requests"},{ l:"الإعلانات",view:"announcements-admin"},{ l:"المساعدون",view:"assistants"},{ l:"نشاط المساعدين",view:"audit-log"}],
-    assistant:[{ l:"لوحتي",view:"admin-dashboard"},{ l:"الطلاب",view:"students-list"},{ l:"التقارير",view:"management-reports"},{ l:"المحتوى",view:"content-subjects"},{ l:"السنوات",view:"academic-years"},{ l:"الاختبارات",view:"exam-manage"},{ l:"الأكواد",view:"activation-codes"},{ l:"طلبات الدعم",view:"support-requests"},{ l:"الإعلانات",view:"announcements-admin"},{ l:"نشاط المساعدين",view:"audit-log"}],
+    teacher:  [{ l:"لوحة القيادة",view:"admin-dashboard"},{ l:"الطلاب",view:"students-list"},{ l:"أولياء الأمور",view:"parents-list"},{ l:"التقارير",view:"management-reports"},{ l:"المحتوى",view:"content-subjects"},{ l:"السنوات",view:"academic-years"},{ l:"الاختبارات",view:"exam-manage"},{ l:"الواجبات",view:"homework-manage"},{ l:"الأكواد",view:"activation-codes"},{ l:"طلبات الدعم",view:"support-requests"},{ l:"الإعلانات",view:"announcements-admin"},{ l:"المساعدون",view:"assistants"},{ l:"نشاط المساعدين",view:"audit-log"}],
+    assistant:[{ l:"لوحتي",view:"admin-dashboard"},{ l:"الطلاب",view:"students-list"},{ l:"التقارير",view:"management-reports"},{ l:"المحتوى",view:"content-subjects"},{ l:"السنوات",view:"academic-years"},{ l:"الاختبارات",view:"exam-manage"},{ l:"الواجبات",view:"homework-manage"},{ l:"الأكواد",view:"activation-codes"},{ l:"طلبات الدعم",view:"support-requests"},{ l:"الإعلانات",view:"announcements-admin"},{ l:"نشاط المساعدين",view:"audit-log"}],
   };
   const assistantRoutePermissions: Partial<Record<AppRoute, string>> = {
     "students-list": "manage_students",
@@ -104,6 +104,7 @@ function TopBar({ role, nav, dark, setDark, setRole, onLogout, authUser }: Shell
     "audit-log": "view_reports",
     "academic-years": "manage_academic_years",
     "exam-manage": "manage_exams",
+    "homework-manage": "manage_homeworks",
     "activation-codes": "manage_codes",
     "management-reports": "view_reports",
   };
@@ -373,6 +374,7 @@ export default function App() {
       "audit-log": "view_reports",
       "academic-years": "manage_academic_years",
       "exam-manage": "manage_exams",
+      "homework-manage": "manage_homeworks",
       "activation-codes": "manage_codes",
       "management-reports": "view_reports",
     };
@@ -396,6 +398,7 @@ export default function App() {
       case "lessons":          return <StudentCurriculumPage {...ctx}/>;
       case "video":            return <ConnectedVideoPage {...ctx} role={role}/>;
       case "exam":             return <ConnectedStudentExamPage {...ctx}/>;
+      case "homeworks":        return <ConnectedHomeworksPage {...ctx}/>;
       case "exam-result":      return <ConnectedAttemptResultPage {...ctx} role={role}/>;
       case "error-review":     return <ConnectedAttemptResultPage {...ctx} role={role}/>;
       case "progress":         return <ConnectedResultsPage {...ctx} role={role}/>;
@@ -415,6 +418,7 @@ export default function App() {
       case "management-reports": return <ManagementReportsPage {...ctx}/>;
       case "content-subjects": return <CurriculumManagePage {...ctx}/>;
       case "exam-manage":      return <ConnectedExamManagePage/>;
+      case "homework-manage":  return <ConnectedExamManagePage assessmentType="homework"/>;
       case "activation-codes": return <ConnectedActivationCodesPage/>;
       case "announcements-admin": return <ConnectedAnnouncementsPage manage/>;
       case "assistants":       return <Day5AssistantsPage/>;

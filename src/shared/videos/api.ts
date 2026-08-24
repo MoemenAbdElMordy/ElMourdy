@@ -7,6 +7,10 @@ export type VideoAsset = {
   duration_seconds?: number;
   available_qualities?: string[];
   variants?: Array<{ quality: string; status: string; size_bytes?: number }>;
+  lecture_title?: string;
+  storage_size_bytes?: number;
+  used_by_lectures_count?: number;
+  can_delete?: boolean;
 };
 
 type UploadInstructions = {
@@ -18,7 +22,9 @@ type UploadInstructions = {
 
 export type Playback = {
   lecture: { id: number; title: string; description?: string; attachment_name?: string; attachment_url?: string; has_thumbnail?: boolean; duration_seconds?: number };
-  video_asset_id: number;
+  source_type: "uploaded" | "youtube";
+  video_asset_id?: number;
+  youtube_video_id?: string;
   qualities: Record<string, string>;
   watch_event_id?: number;
   last_position_seconds: number;
@@ -86,6 +92,12 @@ export const completeVideoUpload = (lectureId: number, videoAssetId: number) =>
       body: JSON.stringify({ video_asset_id: videoAssetId }),
     },
   );
+export const attachYouTubeVideo = (lectureId:number,url:string) =>
+  apiRequest(`/lectures/${lectureId}/video_upload/youtube`,{method:"POST",body:JSON.stringify({url})});
+export const reuseVideoAsset = (lectureId:number,videoAssetId:number) =>
+  apiRequest<{video_asset:VideoAsset}>(`/lectures/${lectureId}/video_upload/reuse`,{method:"POST",body:JSON.stringify({video_asset_id:videoAssetId})});
+export const loadReusableVideoAssets = () =>
+  apiRequest<{video_assets:VideoAsset[]}>("/video_assets?per_page=100");
 export const loadVideoAsset = (id: number) =>
   apiRequest<{ video_asset: VideoAsset }>(`/video_assets/${id}`);
 export const retryVideoProcessing = (id: number) =>

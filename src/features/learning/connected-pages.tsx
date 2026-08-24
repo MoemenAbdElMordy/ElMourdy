@@ -5,6 +5,7 @@ import { loadCurriculum } from "../../shared/curriculum/api";
 import { loadGrades, loadStudents, type Grade, type StudentRecord } from "../../shared/admin/day5";
 import {
   createSupportRequest,
+  answerExamQuestion,
   deleteAnnouncement,
   loadAnnouncements,
   loadAttempt,
@@ -48,7 +49,8 @@ const statusLabel: Record<string, string> = {
   failed: "راسب",
 };
 
-export function ConnectedExamManagePage() {
+export function ConnectedExamManagePage({ assessmentType = "exam" }: { assessmentType?: "exam" | "homework" }) {
+  const isHomework = assessmentType === "homework";
   const [exams, setExams] = useState<Exam[]>([]);
   const [page,setPage]=useState(1);const [pagination,setPagination]=useState<PaginationMeta>(emptyPagination);
   const [context, setContext] = useState<{
@@ -71,12 +73,14 @@ export function ConnectedExamManagePage() {
     max_attempts: 3,
     pass_percent: 60,
     status: "draft",
+    show_answers_after_submission: true,
+    correct_after_each_answer: false,
     lesson_id: "",
     questions: [blankQuestion()],
   });
   const [form, setForm] = useState(blank);
   const refresh = () =>
-    loadExams({page})
+    loadExams({page, assessmentType})
       .then((r) => {setExams(r.exams);setPagination(r.pagination);})
       .catch((e) => notify(errorMessage(e), "error"));
   useEffect(() => {
@@ -109,6 +113,8 @@ export function ConnectedExamManagePage() {
       max_attempts: full.max_attempts,
       pass_percent: full.pass_percent,
       status: full.status,
+      show_answers_after_submission: full.show_answers_after_submission,
+      correct_after_each_answer: full.correct_after_each_answer,
       lesson_id: String(full.lesson_id ?? ""),
       questions: (full.questions ?? []).map((question) => ({
         body: question.body,
@@ -132,6 +138,9 @@ export function ConnectedExamManagePage() {
     try {
       const payload: Record<string, unknown> = {
         title: form.title,
+        assessment_type: assessmentType,
+        show_answers_after_submission: form.show_answers_after_submission,
+        correct_after_each_answer: form.correct_after_each_answer,
         scope_type: "lesson",
         lesson_id: Number(form.lesson_id),
         academic_year_id: context.yearId,
@@ -160,7 +169,7 @@ export function ConnectedExamManagePage() {
         }));
       }
       await saveExam(payload, editing?.id);
-      notify(editing ? "تم تحديث الاختبار" : "تم إنشاء الاختبار", "success");
+      notify(editing ? `تم تحديث ${isHomework ? "الواجب" : "الاختبار"}` : `تم إنشاء ${isHomework ? "الواجب" : "الاختبار"}`, "success");
       setEditing(null);
       setForm(blank());
       refresh();
@@ -172,17 +181,17 @@ export function ConnectedExamManagePage() {
   };
   return (
     <Page
-      title="إدارة الاختبارات"
-      subtitle="إنشاء الاختبارات وربطها بالدروس ومتابعة محاولات الطلاب"
+      title={isHomework ? "إدارة الواجبات" : "إدارة الاختبارات"}
+      subtitle={isHomework ? "إنشاء واجبات اختيارية وتحديد طريقة عرض التصحيح والإجابات" : "إنشاء الاختبارات وربطها بالدروس ومتابعة محاولات الطلاب"}
     >
       <div className="grid lg:grid-cols-[1fr_1.2fr] gap-5">
         <Card2>
           <h2 className="font-bold mb-4">
-            {editing ? "تعديل الاختبار" : "اختبار جديد"}
+            {editing ? `تعديل ${isHomework ? "الواجب" : "الاختبار"}` : `${isHomework ? "واجب" : "اختبار"} جديد`}
           </h2>
           <form className="space-y-3" onSubmit={submit}>
             <Input2
-              label="عنوان الاختبار"
+              label={isHomework ? "عنوان الواجب" : "عنوان الاختبار"}
               required
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
@@ -239,6 +248,19 @@ export function ConnectedExamManagePage() {
                 { value: "hidden", label: "مخفي" },
               ]}
             />
+            {isHomework && (
+              <div className="space-y-2 rounded-xl border border-border p-3">
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={form.correct_after_each_answer} onChange={(e) => setForm({ ...form, correct_after_each_answer: e.target.checked })}/>
+                  تصحيح السؤال فور إجابته
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={form.show_answers_after_submission} onChange={(e) => setForm({ ...form, show_answers_after_submission: e.target.checked })}/>
+                  إظهار الإجابات الصحيحة بعد تسليم الواجب
+                </label>
+                <p className="text-xs text-muted-foreground">عند تفعيل التصحيح الفوري تُحفظ أول إجابة للسؤال ولا يمكن تجربة الاختيارات حتى الوصول للإجابة الصحيحة.</p>
+              </div>
+            )}
             {editing?.attempts_count ? (
               <div className="rounded-xl bg-yellow-50 p-3 text-xs text-yellow-800">
                 بدأت محاولات الطلاب بالفعل، لذلك يمكن تعديل إعدادات الاختبار فقط
@@ -335,7 +357,7 @@ export function ConnectedExamManagePage() {
                   ? "جاري الحفظ..."
                   : editing
                     ? "حفظ التعديل"
-                    : "إنشاء الاختبار"}
+                    : `إنشاء ${isHomework ? "الواجب" : "الاختبار"}`}
               </Btn>
               {editing && (
                 <Btn
@@ -385,6 +407,21 @@ export function ConnectedExamManagePage() {
   );
 }
 
+export function ConnectedHomeworksPage({ nav }: { nav: Navigate }) {
+  const [items,setItems]=useState<Exam[]>([]);
+  const [page,setPage]=useState(1);
+  const [pagination,setPagination]=useState<PaginationMeta>(emptyPagination);
+  useEffect(()=>{loadExams({assessmentType:"homework",page}).then(response=>{setItems(response.exams);setPagination(response.pagination);}).catch(error=>notify(errorMessage(error),"error"));},[page]);
+  return <Page title="واجباتي" subtitle="الواجبات المنشورة المرتبطة بصفك الدراسي">
+    <div className="grid gap-4 md:grid-cols-2">{items.map(item=><Card2 key={item.id} className="flex flex-col justify-between gap-4">
+      <div><h2 className="font-bold">{item.title}</h2><p className="mt-2 text-sm text-muted-foreground">{item.questions_count} سؤال • {item.duration_minutes} دقيقة • {item.max_attempts} محاولة</p></div>
+      <Btn onClick={()=>nav("exam",{examId:item.id})}>فتح الواجب</Btn>
+    </Card2>)}</div>
+    {items.length===0&&<Card2><p className="py-8 text-center text-muted-foreground">لا توجد واجبات منشورة حاليًا.</p></Card2>}
+    <PaginationControls pagination={pagination} onPageChange={setPage}/>
+  </Page>;
+}
+
 export function ConnectedStudentExamPage({
   nav,
   params,
@@ -395,6 +432,7 @@ export function ConnectedStudentExamPage({
   const [exam, setExam] = useState<Exam | null>(null);
   const [attempt, setAttempt] = useState<ExamAttempt | null>(null);
   const [answers, setAnswers] = useState<Record<number, number>>({});
+  const [feedback, setFeedback] = useState<Record<number, {is_correct?:boolean;correct_choice_id?:number;explanation?:string|null}>>({});
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     const request = params.examId
@@ -435,10 +473,21 @@ export function ConnectedStudentExamPage({
       setBusy(false);
     }
   };
+  const choose = async (questionId:number, choiceId:number) => {
+    if (!attempt || feedback[questionId]) return;
+    setAnswers((current) => ({ ...current, [questionId]: choiceId }));
+    if (!exam?.correct_after_each_answer) return;
+    try {
+      const response = await answerExamQuestion(attempt.id, questionId, choiceId);
+      setFeedback((current) => ({ ...current, [questionId]: response.answer }));
+    } catch (error) {
+      notify(errorMessage(error), "error");
+    }
+  };
   if (!exam)
     return (
-      <Page title="الاختبار">
-        <Card2>لا يوجد اختبار منشور مرتبط بهذا الدرس حاليًا.</Card2>
+      <Page title="التقييم">
+        <Card2>لا يوجد تقييم منشور مرتبط بهذا الدرس حاليًا.</Card2>
       </Page>
     );
   if (!attempt)
@@ -451,7 +500,7 @@ export function ConnectedStudentExamPage({
             <Metric label="النجاح" value={`${exam.pass_percent}%`} />
           </div>
           <Btn className="w-full" onClick={begin} disabled={busy}>
-            {busy ? "جاري البدء..." : "ابدأ الاختبار"}
+            {busy ? "جاري البدء..." : `ابدأ ${exam.assessment_type === "homework" ? "الواجب" : "الاختبار"}`}
           </Btn>
         </Card2>
       </Page>
@@ -481,18 +530,21 @@ export function ConnectedStudentExamPage({
                     type="radio"
                     name={`q-${q.id}`}
                     checked={answers[q.id] === choice.id}
-                    onChange={() =>
-                      setAnswers({ ...answers, [q.id]: choice.id })
-                    }
+                    disabled={Boolean(feedback[q.id])}
+                    onChange={() => void choose(q.id, choice.id)}
                   />
                   {choice.body}
                 </label>
               ))}
             </div>
+            {feedback[q.id] && <div className={cn("mt-3 rounded-xl p-3 text-sm",feedback[q.id].is_correct?"bg-green-100 text-green-900":"bg-red-100 text-red-900")}>
+              {feedback[q.id].is_correct ? "إجابة صحيحة" : "إجابة غير صحيحة"}
+              {feedback[q.id].explanation && <p className="mt-1">{feedback[q.id].explanation}</p>}
+            </div>}
           </Card2>
         ))}
         <Btn onClick={finish} disabled={busy}>
-          <Send size={15} /> {busy ? "جاري التسليم..." : "تسليم الاختبار"}
+          <Send size={15} /> {busy ? "جاري التسليم..." : `تسليم ${exam.assessment_type === "homework" ? "الواجب" : "الاختبار"}`}
         </Btn>
       </div>
     </Page>
@@ -515,10 +567,11 @@ export function ConnectedAttemptResultPage({
   }, [params.attemptId]);
   if (!attempt)
     return (
-      <Page title="نتيجة الاختبار">
+      <Page title="نتيجة التقييم">
         <Card2>جاري تحميل النتيجة...</Card2>
       </Page>
     );
+  const isHomework = attempt.assessment_type === "homework";
   const requestExtra = () =>
     createSupportRequest({
       request_type: "extra_exam_attempt",
@@ -528,7 +581,7 @@ export function ConnectedAttemptResultPage({
       .then(() => notify("تم إرسال طلب المحاولة الإضافية", "success"))
       .catch((e) => notify(errorMessage(e), "error"));
   return (
-    <Page title="نتيجة الاختبار" subtitle={attempt.exam_title}>
+    <Page title={isHomework ? "نتيجة الواجب" : "نتيجة الاختبار"} subtitle={attempt.exam_title}>
       <div className="max-w-3xl mx-auto space-y-4">
         <Card2 className="text-center">
           <div className="text-5xl font-black text-primary mb-2">
@@ -549,13 +602,13 @@ export function ConnectedAttemptResultPage({
             {attempt.score_points} من {attempt.max_points} • المحاولة{" "}
             {attempt.attempt_number}
           </p>
-          {role === "student" && attempt.result_status !== "passed" && (
+          {role === "student" && !isHomework && attempt.result_status !== "passed" && (
             <Btn className="mt-4" variant="outline" onClick={requestExtra}>
               طلب محاولة إضافية
             </Btn>
           )}
         </Card2>
-        {attempt.questions?.map((q, index) => (
+        {attempt.questions?.some(q=>q.is_correct !== undefined) ? attempt.questions.map((q, index) => (
           <Card2
             key={q.id}
             className={q.is_correct ? "border-green-300" : "border-red-300"}
@@ -590,7 +643,7 @@ export function ConnectedAttemptResultPage({
               </p>
             )}
           </Card2>
-        ))}
+        )) : <Card2><p className="text-center text-muted-foreground">تم تسجيل النتيجة، والإجابات التفصيلية مخفية حسب إعدادات المدرس.</p></Card2>}
       </div>
     </Page>
   );

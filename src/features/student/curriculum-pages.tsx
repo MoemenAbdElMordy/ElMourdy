@@ -9,7 +9,7 @@ type StudentLecture = Lecture & { lesson_title: string; has_access?: boolean };
 
 function LectureCard({ lecture, open }: { lecture: StudentLecture; open: () => void }) {
   const thumbnailUrl = useLectureThumbnailUrl(lecture.id, lecture.has_thumbnail);
-  const ready = lecture.video_asset?.processing_status === "ready";
+  const ready = (lecture.video_source_type === "youtube" && Boolean(lecture.youtube_video_id)) || lecture.video_asset?.processing_status === "ready";
   const position = lecture.progress?.last_position_seconds ?? 0;
   const duration = lecture.duration_seconds ?? lecture.video_asset?.duration_seconds ?? 0;
   const progress = lecture.progress?.completed ? 100 : duration > 0 ? Math.min(100, Math.round((position / duration) * 100)) : 0;
@@ -58,7 +58,7 @@ export function StudentCurriculumPage({ nav, params }: any) {
   }))) ?? [];
   const items = chapter ? lectures : (branch?.chapters ?? tree.branches);
   const title = chapter?.title ?? branch?.title ?? `منهج ${tree.grade?.name ?? "الطالب"}`;
-  const open = (item: any) => chapter ? item.has_access && item.video_asset?.processing_status === "ready" ? nav("video", { lessonId: item.id }) : item.has_access ? undefined : nav("activation") : branch ? nav("lessons", { subjectId: branch.id, chapterId: item.id }) : nav("chapters", { subjectId: item.id });
+  const open = (item: any) => chapter ? item.has_access && ((item.video_source_type === "youtube" && item.youtube_video_id) || item.video_asset?.processing_status === "ready") ? nav("video", { lessonId: item.id }) : item.has_access ? undefined : nav("activation") : branch ? nav("lessons", { subjectId: branch.id, chapterId: item.id }) : nav("chapters", { subjectId: item.id });
 
   return (
     <div className="min-h-screen bg-background p-4 sm:p-6">

@@ -75,7 +75,7 @@ function flattenBranchLectures(branch: Branch): LectureContext[] {
 export function canPlay(item: LectureContext) {
   return (
     item.lecture.has_access !== false &&
-    item.lecture.video_asset?.processing_status === "ready"
+    ((item.lecture.video_source_type === "youtube" && Boolean(item.lecture.youtube_video_id)) || item.lecture.video_asset?.processing_status === "ready")
   );
 }
 
@@ -412,7 +412,13 @@ export function ConnectedVideoPage({
       <div className="flex flex-1 flex-col lg:h-[calc(100vh-64px)] lg:flex-row lg:overflow-hidden" dir="ltr">
         <main className="min-w-0 flex-1 overflow-y-auto" dir="rtl">
           <section className="group relative aspect-video w-full overflow-hidden bg-black">
-            <video
+            {playback.source_type === "youtube" && playback.youtube_video_id ? <iframe
+              title={playback.lecture.title}
+              src={`https://www.youtube-nocookie.com/embed/${playback.youtube_video_id}?rel=0&modestbranding=1&playsinline=1`}
+              className="h-full w-full border-0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+            /> : <video
               ref={videoRef}
               controls
               playsInline
@@ -421,7 +427,7 @@ export function ConnectedVideoPage({
               onSeeking={(event) => {
                 lastPlaybackPositionRef.current = event.currentTarget.currentTime;
               }}
-            />
+            />}
             {playback.watermark && (
               <VideoWatermark watermark={playback.watermark} position={watermarkPosition} />
             )}
@@ -430,7 +436,7 @@ export function ConnectedVideoPage({
                 تم إيقاف التشغيل لحماية محتوى المحاضرة. أعد تحميل الصفحة للمتابعة.
               </div>
             )}
-            <label className="absolute left-3 top-3 z-10 flex items-center gap-2 rounded-lg border border-white/15 bg-black/65 px-2 py-1 text-xs text-white backdrop-blur-sm">
+            {playback.source_type !== "youtube" && <label className="absolute left-3 top-3 z-10 flex items-center gap-2 rounded-lg border border-white/15 bg-black/65 px-2 py-1 text-xs text-white backdrop-blur-sm">
               الجودة
               <select
                 aria-label="جودة الفيديو"
@@ -444,7 +450,7 @@ export function ConnectedVideoPage({
                   </option>
                 ))}
               </select>
-            </label>
+            </label>}
           </section>
 
           <div className="flex items-center gap-3 border-b border-border bg-card/80 px-4 py-3">
@@ -797,8 +803,7 @@ function CurriculumSidebar({
                         const item = { branch, chapter, lesson, lecture };
                         const isCurrent = lecture.id === currentLectureId;
                         const accessible = lecture.has_access !== false;
-                        const ready =
-                          lecture.video_asset?.processing_status === "ready";
+                        const ready = canPlay(item);
 
                         return (
                           <button

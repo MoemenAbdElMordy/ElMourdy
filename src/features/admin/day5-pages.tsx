@@ -15,6 +15,7 @@ const permissionLabels: Record<string, string> = {
   manage_content: "إدارة المحتوى",
   upload_videos: "رفع الفيديو",
   manage_exams: "إدارة الاختبارات",
+  manage_homeworks: "إدارة الواجبات",
   manage_codes: "إدارة الأكواد",
   manage_announcements: "إدارة الإعلانات",
   view_reports: "عرض التقارير",
