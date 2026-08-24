@@ -79,6 +79,7 @@ function NotFoundPage({ nav }: Pick<ShellProps,"nav">) {
 function TopBar({ role, nav, dark, setDark, setRole, onLogout, authUser }: ShellProps) {
   const [mob, setMob] = useState(false);
   const [notif, setNotif] = useState(false);
+  const [more, setMore] = useState(false);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
 
   useEffect(() => {
@@ -113,6 +114,10 @@ function TopBar({ role, nav, dark, setDark, setRole, onLogout, authUser }: Shell
     const permission = assistantRoutePermissions[link.view];
     return !permission || authUser?.permissions.includes(permission);
   });
+  const compactNavigation = role === "teacher" || role === "assistant";
+  const primaryRoutes:AppRoute[] = ["admin-dashboard","students-list","content-subjects","exam-manage","homework-manage","management-reports","academic-years"];
+  const desktopLinks = compactNavigation ? primaryRoutes.map(route=>navLinks.find(link=>link.view===route)).filter((link):link is NavItem=>Boolean(link)) : navLinks;
+  const moreLinks = compactNavigation ? navLinks.filter(link=>!primaryRoutes.includes(link.view)) : [];
   const homeView = role==="student"?"student-dashboard":role==="parent"?"parent-dashboard":role==="teacher"||role==="assistant"?"admin-dashboard":"home";
 
   return (
@@ -126,12 +131,13 @@ function TopBar({ role, nav, dark, setDark, setRole, onLogout, authUser }: Shell
           </div>
         </a>
 
-        <nav className="hidden xl:flex items-center gap-0.5 flex-1 justify-center">
-          {navLinks.map(l => (
+        <nav className="hidden min-w-0 xl:flex items-center gap-0.5 flex-1 justify-center">
+          {desktopLinks.map(l => (
             <a key={l.view} href={routeToPath(l.view, {})} onClick={(event) => { event.preventDefault(); nav(l.view); }} className="px-3 py-2 rounded-xl text-sm font-medium hover:bg-accent transition-colors whitespace-nowrap">
               {l.l}
             </a>
           ))}
+          {moreLinks.length>0&&<div className="relative"><button type="button" onClick={()=>setMore(value=>!value)} className="flex items-center gap-1 rounded-xl px-3 py-2 text-sm font-medium transition-colors hover:bg-accent" aria-haspopup="menu" aria-expanded={more}>المزيد <ChevronDown size={14}/></button>{more&&<div role="menu" className="absolute left-0 top-11 z-50 grid min-w-52 gap-1 rounded-2xl border border-border bg-card p-2 shadow-xl">{moreLinks.map(link=><a role="menuitem" key={link.view} href={routeToPath(link.view,{})} onClick={event=>{event.preventDefault();nav(link.view);setMore(false);}} className="rounded-xl px-3 py-2 text-right text-sm font-medium whitespace-nowrap hover:bg-accent">{link.l}</a>)}</div>}</div>}
         </nav>
 
         <div className="flex items-center gap-1.5 shrink-0">
