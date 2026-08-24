@@ -15,12 +15,12 @@ export const createManualGrant=(input:Record<string,unknown>)=>apiRequest<{acces
 export const revokeGrant=(id:number)=>apiRequest<{access_grant:AccessGrant}>(`/lesson_access_grants/${id}`,{method:"PATCH",body:JSON.stringify({lesson_access_grant:{status:"revoked"}})});
 
 export async function exportCodeBatch(id:number){
-  const response=await fetch(`${API_BASE_URL}/activation_code_batches/${id}/export`,{headers:{Authorization:`Bearer ${getSessionToken()}`}});
+  const response=await fetch(`${API_BASE_URL}/activation_code_batches/${id}/export.docx`,{headers:{Authorization:`Bearer ${getSessionToken()}`}});
   if(!response.ok)throw new Error("Export failed");
   const url=URL.createObjectURL(await response.blob());
   const link=document.createElement("a");
   link.href=url;
-  link.download=`activation-codes-${id}.csv`;
+  link.download=`activation-codes-${id}.docx`;
   document.body.append(link);
   link.click();
   link.remove();

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { CheckCircle, Eye, Plus, Send, Trash2, XCircle } from "lucide-react";
+import { CheckCircle, Eye, Plus, Send, Trash2, Upload, XCircle } from "lucide-react";
 import type { Navigate, Role, RouteParams } from "../../app/routing/types";
 import { loadCurriculum } from "../../shared/curriculum/api";
 import { loadGrades, loadStudents, type Grade, type StudentRecord } from "../../shared/admin/day5";
@@ -13,6 +13,7 @@ import {
   loadExam,
   loadExams,
   loadSupportRequests,
+  importExamDocx,
   reviewSupportRequest,
   saveAnnouncement,
   saveExam,
@@ -60,12 +61,12 @@ export function ConnectedExamManagePage({ assessmentType = "exam" }: { assessmen
   } | null>(null);
   const [editing, setEditing] = useState<Exam | null>(null);
   const [busy, setBusy] = useState(false);
+  const [importWarnings,setImportWarnings]=useState<string[]>([]);
   const blankQuestion = () => ({
     body: "",
     explanation: "",
-    correct: "",
-    wrong1: "",
-    wrong2: "",
+    choices: ["", "", "", ""],
+    correctIndex: null as number|null,
   });
   const blank = () => ({
     title: "",
@@ -119,17 +120,12 @@ export function ConnectedExamManagePage({ assessmentType = "exam" }: { assessmen
       questions: (full.questions ?? []).map((question) => ({
         body: question.body,
         explanation: question.explanation ?? "",
-        correct:
-          question.choices.find((choice) => choice.is_correct)?.body ?? "",
-        wrong1:
-          question.choices.filter((choice) => !choice.is_correct)[0]?.body ??
-          "",
-        wrong2:
-          question.choices.filter((choice) => !choice.is_correct)[1]?.body ??
-          "",
+        choices: question.choices.map(choice=>choice.body),
+        correctIndex: question.choices.findIndex(choice=>choice.is_correct),
       })),
     });
   };
+  const importWord=async(file?:File)=>{if(!file)return;setBusy(true);try{const response=await importExamDocx(file,assessmentType);setForm(current=>({...current,questions:response.import.questions.map(question=>({body:question.body,explanation:question.explanation??"",choices:question.choices.map(choice=>choice.body),correctIndex:question.correct_choice_index}))}));setImportWarnings(response.import.warnings);notify(`تم استخراج ${response.import.stats.questions_count} سؤالًا للمراجعة`,"success");}catch(error){notify(errorMessage(error),"error");}finally{setBusy(false);}};
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!context || !form.lesson_id)
@@ -157,15 +153,12 @@ export function ConnectedExamManagePage({ assessmentType = "exam" }: { assessmen
         attempt_form_mode: "same_exam",
       };
       if (!editing?.attempts_count) {
+        if(form.questions.some(question=>question.correctIndex===null||question.choices.length<2||question.choices.some(choice=>!choice.trim())))return notify("حدد الإجابة الصحيحة وتأكد من اكتمال اختيارين على الأقل لكل سؤال","error");
         payload.questions = form.questions.map((question) => ({
           body: question.body,
           explanation: question.explanation,
           points: 1,
-          choices: [
-            { body: question.correct, is_correct: true },
-            { body: question.wrong1, is_correct: false },
-            { body: question.wrong2, is_correct: false },
-          ],
+          choices: question.choices.map((body,index)=>({body,is_correct:index===question.correctIndex})),
         }));
       }
       await saveExam(payload, editing?.id);
@@ -189,6 +182,7 @@ export function ConnectedExamManagePage({ assessmentType = "exam" }: { assessmen
           <h2 className="font-bold mb-4">
             {editing ? `تعديل ${isHomework ? "الواجب" : "الاختبار"}` : `${isHomework ? "واجب" : "اختبار"} جديد`}
           </h2>
+          {!editing?.attempts_count&&<div className="mb-4 rounded-2xl border border-dashed border-primary/40 bg-primary/5 p-4"><label className="flex cursor-pointer items-center justify-center gap-2 font-bold text-primary"><Upload size={17}/> استيراد الأسئلة من ملف Word<input type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" className="hidden" disabled={busy} onChange={event=>{void importWord(event.target.files?.[0]);event.target.value="";}}/></label><p className="mt-2 text-center text-xs text-muted-foreground">سيتم استخراج الأسئلة والاختيارات إلى مسودة، ولن يُحفظ شيء قبل مراجعتك وتحديد الإجابات الصحيحة.</p>{importWarnings.length>0&&<div className="mt-3 rounded-xl bg-yellow-50 p-3 text-xs text-yellow-900">راجع الأسئلة المستوردة بعناية؛ بعض أجزاء الملف احتاجت إلى استنتاج تلقائي.</div>}</div>}
           <form className="space-y-3" onSubmit={submit}>
             <Input2
               label={isHomework ? "عنوان الواجب" : "عنوان الاختبار"}
@@ -269,7 +263,7 @@ export function ConnectedExamManagePage({ assessmentType = "exam" }: { assessmen
             ) : (
               form.questions.map((question, index) => {
                 const updateQuestion = (
-                  field: keyof typeof question,
+                  field: "body"|"explanation",
                   value: string,
                 ) => {
                   const questions = [...form.questions];
@@ -306,26 +300,7 @@ export function ConnectedExamManagePage({ assessmentType = "exam" }: { assessmen
                       value={question.body}
                       onChange={(e) => updateQuestion("body", e.target.value)}
                     />
-                    <Input2
-                      label="الإجابة الصحيحة"
-                      required
-                      value={question.correct}
-                      onChange={(e) =>
-                        updateQuestion("correct", e.target.value)
-                      }
-                    />
-                    <Input2
-                      label="اختيار خاطئ"
-                      required
-                      value={question.wrong1}
-                      onChange={(e) => updateQuestion("wrong1", e.target.value)}
-                    />
-                    <Input2
-                      label="اختيار خاطئ آخر"
-                      required
-                      value={question.wrong2}
-                      onChange={(e) => updateQuestion("wrong2", e.target.value)}
-                    />
+                    <div className="space-y-2"><p className="text-xs font-bold text-muted-foreground">حدد الإجابة الصحيحة</p>{question.choices.map((choice,choiceIndex)=><div key={choiceIndex} className="flex items-center gap-2"><input type="radio" name={`correct-${index}`} aria-label={`الإجابة الصحيحة للسؤال ${index+1} الاختيار ${choiceIndex+1}`} checked={question.correctIndex===choiceIndex} onChange={()=>{const questions=[...form.questions];questions[index]={...question,correctIndex:choiceIndex};setForm({...form,questions});}}/><input required value={choice} onChange={event=>{const choices=[...question.choices];choices[choiceIndex]=event.target.value;const questions=[...form.questions];questions[index]={...question,choices};setForm({...form,questions});}} placeholder={`الاختيار ${choiceIndex+1}`} className="min-w-0 flex-1 rounded-xl border border-border bg-background p-2.5 text-sm"/>{question.choices.length>2&&<button type="button" aria-label={`حذف الاختيار ${choiceIndex+1}`} onClick={()=>{const choices=question.choices.filter((_,i)=>i!==choiceIndex);const correctIndex=question.correctIndex===choiceIndex?null:question.correctIndex!==null&&question.correctIndex>choiceIndex?question.correctIndex-1:question.correctIndex;const questions=[...form.questions];questions[index]={...question,choices,correctIndex};setForm({...form,questions});}}><Trash2 size={14} className="text-red-500"/></button>}</div>)}{question.choices.length<8&&<Btn type="button" size="sm" variant="outline" onClick={()=>{const questions=[...form.questions];questions[index]={...question,choices:[...question.choices,""]};setForm({...form,questions});}}><Plus size={13}/> إضافة اختيار</Btn>}</div>
                     <Input2
                       label="شرح الإجابة"
                       value={question.explanation}

@@ -1,4 +1,4 @@
-import { apiRequest } from "../api/client";
+import { apiRequest, downloadApiFile } from "../api/client";
 import { addPagination, type PaginationMeta } from "../pagination";
 
 export type ParentRecord = {
@@ -23,3 +23,4 @@ export const updateParent=(id:number,input:Record<string,unknown>)=>apiRequest<{
 export const resetParentPassword=(id:number,password:string)=>apiRequest<void>(`/parents/${id}/password`,{method:"PATCH",body:JSON.stringify({parent:{password}})});
 export const loadStudentPreview=(id:number)=>apiRequest<{preview:StudentPreview}>(`/students/${id}/preview`);
 export const loadManagementReport=(academicYearId?:number,gradeId?:number,page=1)=>{const params=new URLSearchParams();if(academicYearId)params.set("academic_year_id",String(academicYearId));if(gradeId)params.set("grade_id",String(gradeId));addPagination(params,page);return apiRequest<{report:ManagementReport;pagination:PaginationMeta}>(`/management_report?${params}`);};
+export const exportManagementReport=(academicYearId?:number,gradeId?:number)=>{const params=new URLSearchParams();if(academicYearId)params.set("academic_year_id",String(academicYearId));if(gradeId)params.set("grade_id",String(gradeId));return downloadApiFile(`/management_report/export?${params}`,"management-report.docx");};

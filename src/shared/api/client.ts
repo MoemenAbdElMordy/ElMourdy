@@ -77,7 +77,7 @@ export async function apiRequest<T>(path: string, options: RequestInit = {}): Pr
   const token = getSessionToken();
   const headers = new Headers(options.headers);
   headers.set("Accept", "application/json");
-  if (options.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
+  if (options.body && !(options.body instanceof FormData) && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
   const response = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
@@ -107,4 +107,12 @@ export async function apiRequestBlob(path: string) {
   const response = await fetch(`${API_BASE_URL}${path}`, { headers });
   if (!response.ok) throw new ApiError("The requested image could not be loaded", response.status);
   return response.blob();
+}
+
+export async function downloadApiFile(path:string,filename:string){
+  const token=getSessionToken();
+  const response=await fetch(`${API_BASE_URL}${path}`,{headers:{Accept:"application/vnd.openxmlformats-officedocument.wordprocessingml.document",...(token?{Authorization:`Bearer ${token}`}:{})}});
+  if(!response.ok)throw new ApiError("The report could not be exported",response.status);
+  const url=URL.createObjectURL(await response.blob());
+  const link=document.createElement("a");link.href=url;link.download=filename;document.body.append(link);link.click();link.remove();window.setTimeout(()=>URL.revokeObjectURL(url),1_000);
 }

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { CalendarDays, ChevronRight, Edit2, Eye, Plus, Search, Shield, Trash2 } from "lucide-react";
+import { CalendarDays, ChevronRight, Download, Edit2, Eye, Plus, Search, Shield, Trash2 } from "lucide-react";
 import { ApiError } from "../../shared/api/client";
-import { archiveAssistant, copyAcademicYearContent, createAcademicYear, createAssistant, loadAcademicYears, loadAssistants, loadGrades, loadStudent, loadStudents, removeStudentDevice, resetStudentPassword, rolloverAcademicYearStudents, updateAcademicYear, updateAssistant, updateStudentEnrollment, updateStudentParentPhone, updateStudentStatus, type AcademicYear, type AssistantRecord, type Grade, type StudentRecord } from "../../shared/admin/day5";
+import { archiveAssistant, copyAcademicYearContent, createAcademicYear, createAssistant, exportStudent, exportStudents, loadAcademicYears, loadAssistants, loadGrades, loadStudent, loadStudents, removeStudentDevice, resetStudentPassword, rolloverAcademicYearStudents, updateAcademicYear, updateAssistant, updateStudentEnrollment, updateStudentParentPhone, updateStudentStatus, type AcademicYear, type AssistantRecord, type Grade, type StudentRecord } from "../../shared/admin/day5";
 import { Badge2, Btn, Card2, Field, Input2, Modal2, Select2, StatCard, notify } from "../../shared/ui";
 import { createManualGrant, loadAccessGrants, revokeGrant, type AccessGrant } from "../../shared/activation-codes/api";
 import { loadCurriculum, type Curriculum } from "../../shared/curriculum/api";
@@ -52,7 +52,7 @@ export function Day5StudentsListPage({ nav }: any) {
       <div className="max-w-6xl mx-auto">
         <div className="flex justify-between items-center mb-5">
           <h1 className="text-2xl font-black">قائمة الطلاب</h1>
-          <Badge2 variant="primary">{pagination.total_count} طالب</Badge2>
+          <div className="flex items-center gap-2"><Btn size="sm" variant="outline" onClick={()=>exportStudents({query,gradeId,status}).catch(()=>notify("تعذر تصدير تقرير الطلاب","error"))}><Download size={14}/> تنزيل Word</Btn><Badge2 variant="primary">{pagination.total_count} طالب</Badge2></div>
         </div>
         <Card2 className="mb-4">
           <div className="grid md:grid-cols-3 gap-3">
@@ -274,6 +274,7 @@ export function Day5StudentDetailPage({ nav, params, authUser }: any) {
               <Badge2 variant={student.status === "active" ? "success" : "danger"}>{student.status === "active" ? "نشط" : "موقوف"}</Badge2>
             </div>
             <div className="flex flex-wrap gap-2">
+              <Btn variant="outline" onClick={()=>exportStudent(student.id).catch(()=>notify("تعذر تصدير تقرير الطالب","error"))}><Download size={14}/> تقرير Word</Btn>
               {authUser?.role === "teacher" && <Btn variant="outline" onClick={() => nav("student-preview", { studentId: student.id })}><Eye size={14}/> معاينة كطالب</Btn>}
               <Btn variant="outline" onClick={openEnrollment}>تغيير الصف أو السنة</Btn>
               {canManageParentPhone && <Btn variant="outline" onClick={openParentPhone}>تغيير رقم ولي الأمر</Btn>}

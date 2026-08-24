@@ -3,6 +3,7 @@ import { addPagination, type PaginationMeta } from "../pagination";
 
 export type ExamChoice = { id:number; body:string; is_correct?:boolean };
 export type ExamQuestion = { id:number; body:string; explanation?:string|null; points:number|string; choices:ExamChoice[]; selected_choice_id?:number|null; correct_choice_id?:number; is_correct?:boolean };
+export type ImportedExamQuestion = { body:string; explanation:string; choices:Array<{body:string}>; correct_choice_index:number|null; source:"paragraph"|"table" };
 export type Exam = {
   id:number; title:string; scope_type:"lesson"|"chapter"|"branch"|"comprehensive"; lesson_id?:number|null;
   assessment_type:"exam"|"homework"; show_answers_after_submission:boolean; correct_after_each_answer:boolean;
@@ -10,6 +11,7 @@ export type Exam = {
   max_attempts:number; pass_percent:number; risk_from_percent:number; risk_to_percent:number; status:"draft"|"published"|"hidden"|"archived";
   questions_count:number; attempts_count:number; questions?:ExamQuestion[];
 };
+export const importExamDocx=(file:File,assessmentType:"exam"|"homework")=>{const body=new FormData();body.append("file",file);body.append("assessment_type",assessmentType);return apiRequest<{import:{questions:ImportedExamQuestion[];warnings:string[];stats:{questions_count:number;warnings_count:number}}}>("/exam_imports",{method:"POST",body});};
 export type ExamAttempt = {
   id:number; exam_id:number; exam_title:string; student_profile_id:number; student_name:string; attempt_number:number;
   assessment_type:"exam"|"homework";

@@ -1,4 +1,4 @@
-import { apiRequest } from "../api/client";
+import { apiRequest, downloadApiFile } from "../api/client";
 import { addPagination, type PaginationMeta } from "../pagination";
 
 export type Grade = { id: number; name: string; level: number };
@@ -30,6 +30,8 @@ export const loadStudents = (filters:{query?:string;gradeId?:string;status?:stri
   addPagination(query,filters.page,filters.perPage);
   return apiRequest<{students:StudentRecord[];pagination:PaginationMeta}>(`/students?${query}`).then(response=>({...response,students:response.students.map(student=>({...student,grade:localizedGradeName(student)}))}));
 };
+export const exportStudents=(filters:{query?:string;gradeId?:string;status?:string}={})=>{const params=new URLSearchParams();if(filters.query)params.set("query",filters.query);if(filters.gradeId)params.set("grade_id",filters.gradeId);if(filters.status)params.set("status",filters.status);return downloadApiFile(`/students/export?${params}`,"students-report.docx");};
+export const exportStudent=(id:number)=>downloadApiFile(`/students/${id}/export`,`student-${id}-report.docx`);
 export const loadStudent = (id:number) => apiRequest<{student:StudentRecord}>(`/students/${id}`).then(response=>({student:{...response.student,grade:localizedGradeName(response.student)}}));
 export const updateStudentStatus = (id:number,status:"active"|"suspended") => apiRequest<{student:StudentRecord}>(`/students/${id}`,{method:"PATCH",body:JSON.stringify({student:{status}})});
 export const updateStudentEnrollment = (id:number,academicYearId:number,gradeId:number) => apiRequest<{student:StudentRecord}>(`/students/${id}/enrollment`,{method:"PATCH",body:JSON.stringify({enrollment:{academic_year_id:academicYearId,grade_id:gradeId}})});
