@@ -7,6 +7,7 @@ import { deleteLectureThumbnail, uploadLectureThumbnail, useLectureThumbnailUrl 
 import { Badge2, Btn, Card2, Field, Input2, Modal2, Select2, notify } from "../../shared/ui";
 import { VideoUploadModal } from "./video-upload-modal";
 import { deleteVideoAsset } from "../../shared/videos/api";
+import { VideoStoragePanel } from "./video-storage-panel";
 
 type Selection={branch?:Branch;chapter?:Chapter;lesson?:Lesson};
 type ContentItem=Branch|Chapter|Lesson|Lecture;
@@ -104,6 +105,7 @@ export function CurriculumManagePage({ params }: any){
   return <div className="min-h-screen bg-background p-4 sm:p-6"><div className="mx-auto max-w-6xl">
     <div className="mb-5 flex items-center justify-between gap-3"><div>{selection.branch&&<button onClick={back} className="mb-2 flex items-center gap-1 text-sm text-muted-foreground"><ChevronLeft size={14}/> رجوع</button>}<h1 className="text-2xl font-black">{heading}</h1><p className="mt-1 text-sm text-muted-foreground">إدارة {levelLabel[level]} وترتيبها وما يظهر منها للطالب</p></div><Btn onClick={()=>openEditor()}><Plus size={15}/> إضافة {levelLabel[level]}</Btn></div>
     <Card2 className="mb-4"><Select2 label="السنة الدراسية" value={String(yearId)} onChange={(event:any)=>setYearId(Number(event.target.value))} options={years.map(year=>({value:String(year.id),label:year.name}))}/><div className="mt-4"><p className="mb-2 text-sm font-bold">اختر الصف ثم أدِر فروعه ومحتواه</p><div className="grid gap-3 sm:grid-cols-3">{grades.map(grade=><button key={grade.id} type="button" onClick={()=>setGradeId(grade.id)} className={`rounded-2xl border p-4 text-right transition ${gradeId===grade.id?"border-primary bg-primary text-primary-foreground shadow-md":"border-border bg-background hover:border-primary/60"}`}><BookOpen className="mb-3" size={22}/><strong>{gradeLabel(grade)}</strong><span className="mt-1 block text-xs opacity-80">النحو والبلاغة والأدب وباقي الفروع</span></button>)}</div></div></Card2>
+    <VideoStoragePanel onChange={refresh}/>
     <div className="space-y-3">{items.map((item,index)=>{const lecture=level==="lectures"?item as Lecture:null;return <Card2 key={item.id}><div className="flex flex-wrap items-center gap-3">
       <div className="flex flex-col"><button aria-label="تحريك لأعلى" disabled={index===0} onClick={()=>move(item.id,-1)}><ChevronUp size={16}/></button><button aria-label="تحريك لأسفل" disabled={index===items.length-1} onClick={()=>move(item.id,1)}><ChevronDown size={16}/></button></div>
       {lecture?<LectureThumbnail lecture={lecture}/>:<BookOpen className="text-primary"/>}
