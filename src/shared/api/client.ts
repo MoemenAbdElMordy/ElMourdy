@@ -26,6 +26,9 @@ function localizeApiError(message: string, status: number, code?: string) {
   if (normalized.includes("expired")) return "انتهت صلاحية الطلب، حاول مرة أخرى";
   if (normalized.includes("not found")) return "العنصر المطلوب غير موجود";
   if (normalized.includes("permission")) return "ليس لديك صلاحية لتنفيذ هذا الإجراء";
+  if (normalized.includes("no multiple-choice questions")) return "لم يتم التعرف على أسئلة اختيار من متعدد داخل الملف؛ راجع تنسيق الأسئلة والاختيارات";
+  if (normalized.includes("readable docx")) return "ملف Word غير صالح أو تالف؛ احفظه بصيغة DOCX ثم حاول مرة أخرى";
+  if (normalized.includes("only docx")) return "يجب اختيار ملف Word بصيغة DOCX";
 
   if (code && errorMessagesByCode[code]) return errorMessagesByCode[code];
 
