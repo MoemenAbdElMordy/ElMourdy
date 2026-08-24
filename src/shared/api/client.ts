@@ -28,7 +28,10 @@ function localizeApiError(message: string, status: number, code?: string) {
   if (normalized.includes("permission")) return "ليس لديك صلاحية لتنفيذ هذا الإجراء";
   if (normalized.includes("no multiple-choice questions")) return "لم يتم التعرف على أسئلة اختيار من متعدد داخل الملف؛ راجع تنسيق الأسئلة والاختيارات";
   if (normalized.includes("readable docx")) return "ملف Word غير صالح أو تالف؛ احفظه بصيغة DOCX ثم حاول مرة أخرى";
+  if (normalized.includes("only docx and pdf")) return "يجب اختيار ملف Word بصيغة DOCX أو ملف PDF";
   if (normalized.includes("only docx")) return "يجب اختيار ملف Word بصيغة DOCX";
+  if (normalized.includes("requires ocr")) return "ملف PDF عبارة عن صور ولا يحتوي نصًا قابلًا للقراءة؛ استخدم ملفًا نصيًا أو طبّق OCR أولًا";
+  if (normalized.includes("readable pdf")) return "ملف PDF غير صالح أو مشفر أو تالف";
 
   if (code && errorMessagesByCode[code]) return errorMessagesByCode[code];
 
