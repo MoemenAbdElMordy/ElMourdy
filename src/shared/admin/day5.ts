@@ -6,7 +6,7 @@ export type GradeSummary = Grade & { students_count:number; branches_count:numbe
 export type AcademicYear = { id:number; name:string; starts_on:string; ends_on:string; status:"draft"|"active"|"archived"; students_count:number; grades:GradeSummary[] };
 export type StudentRecord = {
   id:number; name:string; phone:string; email?:string; status:"active"|"suspended"|"archived";
-  governorate?:string; school?:string; grade?:string; grade_id?:number; grade_level?:number; academic_year?:string; academic_year_id?:number;
+  governorate?:string; school?:string; center_name?:string; grade?:string; grade_id?:number; grade_level?:number; academic_year?:string; academic_year_id?:number;
   created_at:string; last_active_at?:string; birth_date?:string; parent_phone?:string; devices_count?:number;
   devices?:Array<{id:number;name?:string;browser?:string;os?:string;status:string;last_seen_at?:string}>;
   attempts?:Array<{id:number;exam_title:string;status:string;percent?:number|null;result_status?:string|null;submitted_at?:string|null}>;

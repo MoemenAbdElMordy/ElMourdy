@@ -94,6 +94,7 @@ export function Day5StudentsListPage({ nav }: any) {
                   <th className="text-right p-3">الطالب</th>
                   <th className="text-right p-3">الصف</th>
                   <th className="text-right p-3">المحافظة</th>
+                  <th className="text-right p-3">السنتر</th>
                   <th className="text-right p-3">السنة</th>
                   <th className="text-center p-3">الحالة</th>
                   <th className="p-3" />
@@ -110,6 +111,7 @@ export function Day5StudentsListPage({ nav }: any) {
                     </td>
                     <td className="p-3">{student.grade || "—"}</td>
                     <td className="p-3">{student.governorate || "—"}</td>
+                    <td className="p-3">{student.center_name || "—"}</td>
                     <td className="p-3">{student.academic_year || "—"}</td>
                     <td className="p-3 text-center">
                       <Badge2 variant={student.status === "active" ? "success" : "danger"}>{student.status === "active" ? "نشط" : "موقوف"}</Badge2>
@@ -223,6 +225,7 @@ export function Day5StudentDetailPage({ nav, params, authUser }: any) {
     ["السنة الدراسية", student.academic_year],
     ["المحافظة", student.governorate],
     ["المدرسة", student.school],
+    ["السنتر", student.center_name],
     ["هاتف الطالب", student.phone],
     ["هاتف ولي الأمر", student.parent_phone],
     ["البريد", student.email],

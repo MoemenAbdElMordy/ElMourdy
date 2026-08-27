@@ -14,7 +14,7 @@ export type StudentPreview = {
 };
 export type ManagementReport = {
   overview:{students_count:number;attempts_count:number;average_score?:number|null;passed_count:number;risk_count:number;failed_count:number;completed_lecture_events:number};
-  students:Array<{id:number;name:string;grade:string;academic_year:string;average_score?:number|null;completed_lectures:number;attempts_count:number;last_active_at?:string|null}>;
+  students:Array<{id:number;name:string;grade:string;academic_year:string;center_name?:string|null;average_score?:number|null;completed_lectures:number;attempts_count:number;last_active_at?:string|null}>;
 };
 
 export const loadParents=(query="",status="",page=1)=>{const params=new URLSearchParams();if(query)params.set("query",query);if(status)params.set("status",status);addPagination(params,page);return apiRequest<{parents:ParentRecord[];pagination:PaginationMeta}>(`/parents?${params}`);};
