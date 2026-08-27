@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { CheckCircle, Eye, Plus, Send, Trash2, Upload, XCircle } from "lucide-react";
 import type { Navigate, Role, RouteParams } from "../../app/routing/types";
 import { loadCurriculum } from "../../shared/curriculum/api";
-import { loadGrades, loadStudents, type Grade, type StudentRecord } from "../../shared/admin/day5";
+import { loadAcademicYears, loadGrades, loadStudents, type AcademicYear, type Grade, type StudentRecord } from "../../shared/admin/day5";
 import {
   createSupportRequest,
   answerExamQuestion,
@@ -59,6 +59,8 @@ export function ConnectedExamManagePage({ assessmentType = "exam" }: { assessmen
     gradeId: number;
     lessons: { id: number; title: string }[];
   } | null>(null);
+  const [years, setYears] = useState<AcademicYear[]>([]);
+  const [grades, setGrades] = useState<Grade[]>([]);
   const [editing, setEditing] = useState<Exam | null>(null);
   const [busy, setBusy] = useState(false);
   const [importWarnings,setImportWarnings]=useState<string[]>([]);
@@ -76,6 +78,8 @@ export function ConnectedExamManagePage({ assessmentType = "exam" }: { assessmen
     status: "draft",
     show_answers_after_submission: true,
     correct_after_each_answer: false,
+    academic_year_id: "",
+    grade_id: "",
     lesson_id: "",
     questions: [blankQuestion()],
   });
@@ -84,9 +88,19 @@ export function ConnectedExamManagePage({ assessmentType = "exam" }: { assessmen
     loadExams({page, assessmentType})
       .then((r) => {setExams(r.exams);setPagination(r.pagination);})
       .catch((e) => notify(errorMessage(e), "error"));
+  useEffect(() => { refresh(); }, [page, assessmentType]);
   useEffect(() => {
-    refresh();
-    loadCurriculum()
+    loadAcademicYears().then(({academic_years, grades: availableGrades}) => {
+      setYears(academic_years);
+      setGrades(availableGrades);
+      const year = academic_years.find(item => item.status === "active") ?? academic_years[0];
+      const grade = availableGrades[0];
+      if (year && grade) setForm(current => ({...current, academic_year_id: String(year.id), grade_id: String(grade.id)}));
+    }).catch((e) => notify(errorMessage(e), "error"));
+  }, []);
+  useEffect(() => {
+    if (!form.academic_year_id || !form.grade_id) { setContext(null); return; }
+    loadCurriculum({academicYearId:Number(form.academic_year_id), gradeId:Number(form.grade_id)})
       .then(({ curriculum }) => {
         const lessons = curriculum.branches.flatMap((b) =>
           b.chapters.flatMap((c) =>
@@ -104,7 +118,7 @@ export function ConnectedExamManagePage({ assessmentType = "exam" }: { assessmen
           });
       })
       .catch((e) => notify(errorMessage(e), "error"));
-  }, [page]);
+  }, [form.academic_year_id, form.grade_id]);
   const edit = async (exam: Exam) => {
     const full = (await loadExam(exam.id)).exam;
     setEditing(full);
@@ -116,6 +130,8 @@ export function ConnectedExamManagePage({ assessmentType = "exam" }: { assessmen
       status: full.status,
       show_answers_after_submission: full.show_answers_after_submission,
       correct_after_each_answer: full.correct_after_each_answer,
+      academic_year_id: String(full.academic_year_id),
+      grade_id: String(full.grade_id),
       lesson_id: String(full.lesson_id ?? ""),
       questions: (full.questions ?? []).map((question) => ({
         body: question.body,
@@ -128,8 +144,8 @@ export function ConnectedExamManagePage({ assessmentType = "exam" }: { assessmen
   const importDocument=async(file?:File)=>{if(!file)return;setBusy(true);try{const response=await importExamDocx(file,assessmentType);setForm(current=>({...current,questions:response.import.questions.map(question=>({body:question.body,explanation:question.explanation??"",choices:question.choices.map(choice=>choice.body),correctIndex:question.correct_choice_index}))}));setImportWarnings(response.import.warnings);notify(`تم استخراج ${response.import.stats.questions_count} سؤالًا للمراجعة`,"success");}catch(error){notify(errorMessage(error),"error");}finally{setBusy(false);}};
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!context || !form.lesson_id)
-      return notify("اختر درسًا للاختبار", "error");
+    if (!form.academic_year_id || !form.grade_id || !context || !form.lesson_id)
+      return notify("اختر السنة الدراسية والصف والدرس", "error");
     setBusy(true);
     try {
       const payload: Record<string, unknown> = {
@@ -139,8 +155,8 @@ export function ConnectedExamManagePage({ assessmentType = "exam" }: { assessmen
         correct_after_each_answer: form.correct_after_each_answer,
         scope_type: "lesson",
         lesson_id: Number(form.lesson_id),
-        academic_year_id: context.yearId,
-        grade_id: context.gradeId,
+        academic_year_id: Number(form.academic_year_id),
+        grade_id: Number(form.grade_id),
         duration_minutes: Number(form.duration_minutes),
         max_attempts: Number(form.max_attempts),
         pass_percent: Number(form.pass_percent),
@@ -164,7 +180,7 @@ export function ConnectedExamManagePage({ assessmentType = "exam" }: { assessmen
       await saveExam(payload, editing?.id);
       notify(editing ? `تم تحديث ${isHomework ? "الواجب" : "الاختبار"}` : `تم إنشاء ${isHomework ? "الواجب" : "الاختبار"}`, "success");
       setEditing(null);
-      setForm(blank());
+      setForm({...blank(), academic_year_id:form.academic_year_id, grade_id:form.grade_id});
       refresh();
     } catch (err) {
       notify(errorMessage(err), "error");
@@ -190,6 +206,20 @@ export function ConnectedExamManagePage({ assessmentType = "exam" }: { assessmen
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
             />
+            <div className="grid grid-cols-2 gap-2">
+              <Select2
+                label="السنة الدراسية"
+                value={form.academic_year_id}
+                onChange={(e) => setForm({ ...form, academic_year_id: e.target.value, lesson_id: "" })}
+                options={[{value:"",label:"اختر السنة"},...years.map(year=>({value:String(year.id),label:year.name}))]}
+              />
+              <Select2
+                label="الصف"
+                value={form.grade_id}
+                onChange={(e) => setForm({ ...form, grade_id: e.target.value, lesson_id: "" })}
+                options={[{value:"",label:"اختر الصف"},...grades.map(grade=>({value:String(grade.id),label:grade.level===1?"الصف الأول الثانوي":grade.level===2?"الصف الثاني الثانوي":grade.level===3?"الصف الثالث الثانوي":grade.name}))]}
+              />
+            </div>
             <Select2
               label="الدرس المرتبط"
               value={form.lesson_id}

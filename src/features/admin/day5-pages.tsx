@@ -149,6 +149,7 @@ export function Day5StudentDetailPage({ nav, params, authUser }: any) {
   const [gradeId, setGradeId] = useState(0);
   const [newPassword, setNewPassword] = useState("");
   const [newParentPhone, setNewParentPhone] = useState("");
+  const [videoFilter, setVideoFilter] = useState<"all" | "watched" | "unwatched" | "completed">("all");
   const canManageCodes = authUser?.role === "teacher" || authUser?.permissions?.includes("manage_codes");
   const canManageParentPhone = authUser?.role === "teacher" || authUser?.permissions?.includes("manage_parent_phone");
   const canManageDevices = authUser?.role === "teacher" || authUser?.permissions?.includes("manage_devices");
@@ -210,6 +211,13 @@ export function Day5StudentDetailPage({ nav, params, authUser }: any) {
     await refresh();
     notify("تم إلغاء صلاحية الوصول", "success");
   };
+  const visibleVideos = (student.video_progress ?? []).filter((video) =>
+    videoFilter === "all" ||
+    (videoFilter === "watched" && video.watched) ||
+    (videoFilter === "unwatched" && !video.watched) ||
+    (videoFilter === "completed" && video.completed)
+  );
+  const formatDuration = (seconds:number) => `${Math.floor(seconds / 60)} دقيقة`;
   const rows: Array<[string, string | undefined]> = [
     ["الصف", student.grade],
     ["السنة الدراسية", student.academic_year],
@@ -300,6 +308,20 @@ export function Day5StudentDetailPage({ nav, params, authUser }: any) {
           <StatCard label="محاضرات تمت مشاهدتها" value={student.progress?.watched_lectures ?? 0} icon={CalendarDays} />
           <StatCard label="أعلى نتيجة" value={student.progress?.highest_score == null ? "—" : `${Math.round(student.progress.highest_score)}%`} icon={Shield} />
         </div>
+        <Card2 className="mt-4">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div><h2 className="font-black">تقدم مشاهدة المحاضرات</h2><p className="mt-1 text-xs text-muted-foreground">كل فيديو متاح للصف الحالي وحالة مشاهدة الطالب الفعلية.</p></div>
+            <div className="flex flex-wrap gap-2">{([['all','الكل'],['watched','شاهدها'],['unwatched','لم يشاهدها'],['completed','مكتملة']] as const).map(([value,label])=><Btn key={value} size="sm" variant={videoFilter===value?"primary":"outline"} onClick={()=>setVideoFilter(value)}>{label}</Btn>)}</div>
+          </div>
+          <div className="space-y-3">
+            {visibleVideos.map(video=><div key={video.lecture_id} className="rounded-xl border border-border p-3">
+              <div className="flex flex-wrap items-start justify-between gap-2"><div><strong>{video.title}</strong><p className="mt-1 text-xs text-muted-foreground">{video.branch} — {video.chapter} — {video.lesson}</p></div><Badge2 variant={video.completed?"success":video.watched?"primary":"default"}>{video.completed?"مكتملة":video.watched?"بدأ المشاهدة":"لم يشاهدها"}</Badge2></div>
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-all" style={{width:`${video.progress_percent}%`}} /></div>
+              <div className="mt-2 flex flex-wrap justify-between gap-2 text-xs text-muted-foreground"><span>{video.progress_percent}% مشاهدة فعلية</span><span>{formatDuration(video.watched_seconds)} من {formatDuration(video.duration_seconds)}</span><span>{video.last_watched_at?`آخر مشاهدة: ${new Date(video.last_watched_at).toLocaleDateString("ar-EG")}`:"لم يبدأ بعد"}</span></div>
+            </div>)}
+            {!visibleVideos.length&&<p className="py-5 text-center text-sm text-muted-foreground">لا توجد محاضرات في هذا التصنيف.</p>}
+          </div>
+        </Card2>
         <Card2 className="mt-4">
           <h2 className="font-black mb-3">الأجهزة</h2>
           {student.devices?.map((device) => <div key={device.id} className="flex items-center justify-between gap-3 py-2 border-t border-border text-sm"><span className="flex-1">{device.name || [device.browser, device.os].filter(Boolean).join(" — ") || `جهاز ${device.id}`}</span><Badge2 variant={device.status === "active" ? "success" : "default"}>{device.status === "active" ? "نشط" : device.status === "removed" ? "تمت إزالته" : "محظور"}</Badge2>{canManageDevices && device.status === "active" && <Btn size="sm" variant="danger" onClick={() => removeDevice(device.id)}><Trash2 size={14}/> إزالة</Btn>}</div>)}

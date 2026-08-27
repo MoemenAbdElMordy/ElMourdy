@@ -11,6 +11,7 @@ export type StudentRecord = {
   devices?:Array<{id:number;name?:string;browser?:string;os?:string;status:string;last_seen_at?:string}>;
   attempts?:Array<{id:number;exam_title:string;status:string;percent?:number|null;result_status?:string|null;submitted_at?:string|null}>;
   progress?:{completed_lectures:number;watched_lectures:number;highest_score?:number|null};
+  video_progress?:Array<{lecture_id:number;title:string;lesson:string;chapter:string;branch:string;duration_seconds:number;watched_seconds:number;last_position_seconds:number;progress_percent:number;watched:boolean;completed:boolean;last_watched_at?:string|null}>;
 };
 export type AssistantRecord = {
   id:number; name:string; phone:string; email?:string; title?:string;
