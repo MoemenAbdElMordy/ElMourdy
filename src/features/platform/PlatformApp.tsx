@@ -14,6 +14,7 @@ import { canAccess, ROLE_DEFAULT } from "../../app/routing/policy";
 import type { AppRoute, Navigate, Role, RouteParams } from "../../app/routing/types";
 import { AboutPage, HomePage, LoginPage, RegisterPage, ParentRegisterPage, OTPPage, ForgotPage, FreeContentPage } from "../public/pages";
 import { AccountVerificationGate } from "../public/account-verification-gate";
+import { StudentProfileCompletionGate } from "../student/profile-completion-gate";
 import { StudentSettingsPage } from "../student/settings-page";
 import { ConnectedVideoPage } from "../student/connected-video-page";
 import { ParentDashboard } from "../parent/pages";
@@ -364,6 +365,15 @@ export default function App() {
 
   if (authUser && !authUser.verified) {
     return <AccountVerificationGate user={authUser} onVerified={(user) => setAuthUser(user)} onLogout={async () => {
+      await onLogout();
+      setRole("guest");
+      setView("login");
+      window.history.replaceState({}, "", "/login");
+    }}/>;
+  }
+
+  if (authUser?.role === "student" && !authUser.profile_complete) {
+    return <StudentProfileCompletionGate user={authUser} onCompleted={(user) => setAuthUser(user)} onLogout={async () => {
       await onLogout();
       setRole("guest");
       setView("login");

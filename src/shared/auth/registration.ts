@@ -61,6 +61,7 @@ export async function registerStudent(input: {
   governorate: string;
   email: string;
   school: string;
+  centerName: string;
   gradeLevel: number;
   password: string;
   passwordConfirmation: string;
@@ -76,6 +77,7 @@ export async function registerStudent(input: {
         governorate: input.governorate,
         email: input.email,
         school: input.school,
+        center_name: input.centerName,
         grade_level: input.gradeLevel,
         password: input.password,
         password_confirmation: input.passwordConfirmation,

@@ -8,6 +8,7 @@ export type LinkedStudent = {
   birth_date: string;
   governorate?: string;
   school?: string;
+  center_name?: string;
   status: string;
   grade?: string;
   grade_level?: number;
@@ -21,6 +22,7 @@ export type ProfileResponse = {
     birth_date?: string;
     parent_phone?: string;
     governorate?: string;
+    center_name?: string;
     verified_phone?: string;
     title?: string;
   };
@@ -31,7 +33,7 @@ export function loadProfile() {
   return apiRequest<ProfileResponse>("/profile");
 }
 
-export function updateProfile(input: { name?: string; governorate?: string }) {
+export function updateProfile(input: { name?: string; governorate?: string; center_name?: string }) {
   return apiRequest<ProfileResponse>("/profile", {
     method: "PATCH",
     body: JSON.stringify({ profile: input }),

@@ -288,7 +288,7 @@ export function RegisterPage({ nav }: any) {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<any>({});
   const [grades, setGrades] = useState<PublicGrade[]>([]);
-  const [form, setForm] = useState({ name:"",birthDate:"",phone:"",parentPhone:"",email:"",grade:"",governorate:"",school:"",password:"",confirm:"" });
+  const [form, setForm] = useState({ name:"",birthDate:"",phone:"",parentPhone:"",email:"",grade:"",governorate:"",school:"",centerName:"",password:"",confirm:"" });
   const set = (k:string,v:string) => setForm(f=>({...f,[k]:v}));
 
   useEffect(() => {
@@ -308,6 +308,7 @@ export function RegisterPage({ nav }: any) {
     if (!form.grade)                                        e.grade="يرجى اختيار الصف";
     if (!form.governorate)                                  e.governorate="يرجى اختيار المحافظة";
     if (!form.school.trim())                                e.school="اسم المدرسة مطلوب";
+    if (!form.centerName.trim())                            e.centerName="اسم السنتر مطلوب";
     if (form.password.length < 8)                          e.password="كلمة المرور يجب ألا تقل عن 8 أحرف";
     if (form.password !== form.confirm)                    e.confirm="كلمات المرور غير متطابقة";
     setErrors(e);
@@ -327,6 +328,7 @@ export function RegisterPage({ nav }: any) {
         governorate: form.governorate,
         email: form.email,
         school: form.school,
+        centerName: form.centerName,
         gradeLevel: Number(form.grade),
         password: form.password,
         passwordConfirmation: form.confirm,
@@ -370,7 +372,7 @@ export function RegisterPage({ nav }: any) {
             </form>
           )}
           {step===2 && (
-            <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); if(form.grade&&form.governorate&&form.school)setStep(3);else validate(); }}>
+            <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); if(form.grade&&form.governorate&&form.school&&form.centerName.trim())setStep(3);else validate(); }}>
               <h3 className="font-bold">البيانات الدراسية</h3>
               <Select2 label="الصف الدراسي" value={form.grade} onChange={(e:any)=>set("grade",e.target.value)}
                 options={[{value:"",label:"اختر الصف"},...grades.map((grade)=>({value:grade.level,label:arabicGradeName(grade)}))]}/>
@@ -380,6 +382,7 @@ export function RegisterPage({ nav }: any) {
                 options={[{value:"",label:"اختر المحافظة"},...EGYPTIAN_GOVERNORATES.map((governorate)=>({value:governorate,label:governorate}))]}/>
               {errors.governorate && <p className="text-xs text-red-500 -mt-2">{errors.governorate}</p>}
               <Input2 label="اسم المدرسة" placeholder="مدرسة القاهرة الثانوية" value={form.school} onChange={(e:any)=>set("school",e.target.value)} error={errors.school}/>
+              <Input2 label="اسم السنتر" placeholder="سنتر الأستاذ محمود عبدالمرضي" value={form.centerName} onChange={(e:any)=>set("centerName",e.target.value)} error={errors.centerName}/>
               <div className="flex gap-2">
                 <Btn variant="outline" className="flex-1" onClick={()=>setStep(1)}>السابق</Btn>
                 <Btn type="submit" className="flex-1">التالي</Btn>

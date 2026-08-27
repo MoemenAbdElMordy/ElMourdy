@@ -13,6 +13,7 @@ const errorMessagesByCode: Record<string, string> = {
   invalid_credentials: "رقم الهاتف أو كلمة المرور غير صحيحة",
   invalid_password: "كلمة المرور الحالية غير صحيحة",
   invalid_parent_phone: "يجب أن يختلف رقم ولي الأمر عن رقم الطالب",
+  student_profile_incomplete: "اكتب اسم السنتر أولًا للمتابعة",
   current_device: "لا يمكن إزالة الجهاز المستخدم حاليًا",
   video_not_ready: "الفيديو غير جاهز للمشاهدة حتى الآن",
 };

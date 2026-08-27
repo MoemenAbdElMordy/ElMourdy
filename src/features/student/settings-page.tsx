@@ -19,6 +19,7 @@ export function StudentSettingsPage({
     birthDate: "",
     parentPhone: "",
     governorate: "",
+    centerName: "",
   });
   const [savingProfile, setSavingProfile] = useState(false);
   const [devices, setDevices] = useState<StudentDevice[]>([]);
@@ -37,6 +38,7 @@ export function StudentSettingsPage({
         birthDate: response.profile.birth_date ?? "",
         parentPhone: response.profile.parent_phone ?? "",
         governorate: response.profile.governorate ?? "",
+        centerName: response.profile.center_name ?? "",
       });
     }).catch(() => notify("تعذر تحميل بيانات الحساب", "error"));
   }, []);
@@ -56,6 +58,7 @@ export function StudentSettingsPage({
       const response = await updateProfile({
         name: profileForm.name,
         governorate: profileForm.governorate,
+        center_name: profileForm.centerName,
       });
       setAuthUser(response.user);
       notify("تم حفظ البيانات", "success");
@@ -144,6 +147,7 @@ export function StudentSettingsPage({
                 <Input2 label="تاريخ الميلاد" type="date" value={profileForm.birthDate} disabled/>
                 <Input2 label="رقم ولي الأمر" value={profileForm.parentPhone} dir="ltr" disabled/>
                 <Input2 label="المحافظة" value={profileForm.governorate} onChange={(event) => setProfileForm((value) => ({ ...value, governorate: event.target.value }))}/>
+                <Input2 label="اسم السنتر" value={profileForm.centerName} onChange={(event) => setProfileForm((value) => ({ ...value, centerName: event.target.value }))}/>
               </div>
               <div className="mt-4 p-3 rounded-xl bg-muted text-xs text-muted-foreground">لتغيير رقم الهاتف أو رقم ولي الأمر تواصل مع خدمة العملاء.</div>
               <Btn type="submit" className="mt-5" disabled={savingProfile}>حفظ التعديلات</Btn>
