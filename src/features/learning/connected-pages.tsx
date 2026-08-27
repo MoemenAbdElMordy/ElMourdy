@@ -144,8 +144,8 @@ export function ConnectedExamManagePage({ assessmentType = "exam" }: { assessmen
   const importDocument=async(file?:File)=>{if(!file)return;setBusy(true);try{const response=await importExamDocx(file,assessmentType);setForm(current=>({...current,questions:response.import.questions.map(question=>({body:question.body,explanation:question.explanation??"",choices:question.choices.map(choice=>choice.body),correctIndex:question.correct_choice_index}))}));setImportWarnings(response.import.warnings);notify(`تم استخراج ${response.import.stats.questions_count} سؤالًا للمراجعة`,"success");}catch(error){notify(errorMessage(error),"error");}finally{setBusy(false);}};
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.academic_year_id || !form.grade_id || !context || !form.lesson_id)
-      return notify("اختر السنة الدراسية والصف والدرس", "error");
+    if (!form.academic_year_id || !form.grade_id)
+      return notify("اختر السنة الدراسية والصف", "error");
     setBusy(true);
     try {
       const payload: Record<string, unknown> = {
@@ -153,8 +153,8 @@ export function ConnectedExamManagePage({ assessmentType = "exam" }: { assessmen
         assessment_type: assessmentType,
         show_answers_after_submission: form.show_answers_after_submission,
         correct_after_each_answer: form.correct_after_each_answer,
-        scope_type: "lesson",
-        lesson_id: Number(form.lesson_id),
+        scope_type: form.lesson_id ? "lesson" : "comprehensive",
+        lesson_id: form.lesson_id ? Number(form.lesson_id) : null,
         academic_year_id: Number(form.academic_year_id),
         grade_id: Number(form.grade_id),
         duration_minutes: Number(form.duration_minutes),
@@ -221,11 +221,11 @@ export function ConnectedExamManagePage({ assessmentType = "exam" }: { assessmen
               />
             </div>
             <Select2
-              label="الدرس المرتبط"
+              label="الدرس المرتبط (اختياري)"
               value={form.lesson_id}
               onChange={(e) => setForm({ ...form, lesson_id: e.target.value })}
               options={[
-                { value: "", label: "اختر الدرس" },
+                { value: "", label: "غير مرتبط بدرس محدد" },
                 ...(context?.lessons ?? []).map((l) => ({
                   value: l.id,
                   label: l.title,
