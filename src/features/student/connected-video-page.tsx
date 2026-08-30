@@ -326,7 +326,7 @@ export function ConnectedVideoPage({
       />
     );
   }
-  if (error) return <CenteredMessage message={error} onBack={goBack} action={accessDenied && role === "student" ? { label: "إدخال كود التفعيل", onClick: () => nav("activation") } : undefined} />;
+  if (error) return <CenteredMessage message={error} onBack={goBack} action={accessDenied && role === "student" ? { label: "إدخال كود التفعيل", onClick: () => nav("activation", { lectureId: Number(params?.lessonId) }) } : undefined} />;
   if (!playback) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">

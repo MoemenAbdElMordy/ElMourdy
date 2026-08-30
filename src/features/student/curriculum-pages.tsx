@@ -58,7 +58,7 @@ export function StudentCurriculumPage({ nav, params }: any) {
   }))) ?? [];
   const items = chapter ? lectures : (branch?.chapters ?? tree.branches);
   const title = chapter?.title ?? branch?.title ?? `منهج ${tree.grade?.name ?? "الطالب"}`;
-  const open = (item: any) => chapter ? item.has_access && ((item.video_source_type === "youtube" && item.youtube_video_id) || item.video_asset?.processing_status === "ready") ? nav("video", { lessonId: item.id }) : item.has_access ? undefined : nav("activation") : branch ? nav("lessons", { subjectId: branch.id, chapterId: item.id }) : nav("chapters", { subjectId: item.id });
+  const open = (item: any) => chapter ? item.has_access && ((item.video_source_type === "youtube" && item.youtube_video_id) || item.video_asset?.processing_status === "ready") ? nav("video", { lessonId: item.id }) : item.has_access ? undefined : nav("activation", { lectureId: item.id }) : branch ? nav("lessons", { subjectId: branch.id, chapterId: item.id }) : nav("chapters", { subjectId: item.id });
 
   return (
     <div className="min-h-screen bg-background p-4 sm:p-6">

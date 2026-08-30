@@ -1,12 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Download, Key, Plus, Trash2, XCircle } from "lucide-react";
 import { ApiError } from "../../shared/api/client";
-import {
-  loadAcademicYears,
-  loadGrades,
-  type AcademicYear,
-  type Grade,
-} from "../../shared/admin/day5";
 import {
   createCodeBatch,
   deleteCode,
@@ -15,7 +9,6 @@ import {
   loadCodeBatches,
   type ActivationCodeBatch,
 } from "../../shared/activation-codes/api";
-import { loadCurriculum, type Curriculum } from "../../shared/curriculum/api";
 import { emptyPagination, PaginationControls, type PaginationMeta } from "../../shared/pagination";
 import {
   Badge2,
@@ -23,21 +16,11 @@ import {
   Card2,
   Input2,
   Modal2,
-  Select2,
   notify,
 } from "../../shared/ui";
 
-const gradeLabel = (grade: Grade) =>
-  grade.level === 1
-    ? "الصف الأول الثانوي"
-    : grade.level === 2
-      ? "الصف الثاني الثانوي"
-      : "الصف الثالث الثانوي";
 export function ConnectedActivationCodesPage() {
   const [batches, setBatches] = useState<ActivationCodeBatch[]>([]);
-  const [years, setYears] = useState<AcademicYear[]>([]);
-  const [grades, setGrades] = useState<Grade[]>([]);
-  const [tree, setTree] = useState<Curriculum | null>(null);
   const [modal, setModal] = useState(false);
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState<PaginationMeta>(emptyPagination);
@@ -45,23 +28,7 @@ export function ConnectedActivationCodesPage() {
     name: "",
     quantity: 10,
     expires_on: "",
-    academic_year_id: 0,
-    grade_id: 0,
-    lesson_id: 0,
   });
-  const lessons = useMemo(
-    () =>
-      tree?.branches.flatMap((branch) =>
-        branch.chapters.flatMap((chapter) =>
-          chapter.lessons.map((lesson) => ({
-            id: lesson.id,
-            label: `${branch.title} — ${chapter.title} — ${lesson.title}`,
-          })),
-        ),
-      ) ?? [],
-    [tree],
-  );
-  const selectedLessonId = form.lesson_id || lessons[0]?.id || 0;
   const refresh = () =>
     loadCodeBatches(page)
       .then((r) => { setBatches(r.batches); setPagination(r.pagination); })
@@ -74,32 +41,9 @@ export function ConnectedActivationCodesPage() {
   useEffect(() => {
     void refresh();
   }, [page]);
-  useEffect(() => {
-    Promise.all([loadAcademicYears(), loadGrades()]).then(([y, g]) => {
-      setYears(y.academic_years);
-      setGrades(g.grades);
-      setForm((current) => ({
-        ...current,
-        academic_year_id:
-          y.academic_years.find((item) => item.status === "active")?.id ?? 0,
-        grade_id: g.grades[0]?.id ?? 0,
-      }));
-    });
-  }, []);
-  useEffect(() => {
-    if (!form.academic_year_id || !form.grade_id) return;
-    loadCurriculum({
-      academicYearId: form.academic_year_id,
-      gradeId: form.grade_id,
-    }).then((r) => {
-      setTree(r.curriculum);
-      const first = r.curriculum.branches[0]?.chapters[0]?.lessons[0]?.id ?? 0;
-      setForm((current) => ({ ...current, lesson_id: first }));
-    });
-  }, [form.academic_year_id, form.grade_id]);
   const create = async () => {
     try {
-      await createCodeBatch({ ...form, lesson_id: selectedLessonId });
+      await createCodeBatch(form);
       setModal(false);
       await refresh();
       notify("تم إنشاء دفعة الأكواد", "success");
@@ -142,8 +86,7 @@ export function ConnectedActivationCodesPage() {
                 <div>
                   <h2 className="font-black">{batch.name}</h2>
                   <p className="text-xs text-muted-foreground">
-                    {batch.lesson} — {batch.academic_year} — ينتهي{" "}
-                    {batch.expires_on}
+                    {batch.generic ? "صالحة لأي محاضرة مدفوعة" : batch.lesson} — تنتهي {batch.expires_on}
                   </p>
                 </div>
                 <Btn
@@ -183,6 +126,7 @@ export function ConnectedActivationCodesPage() {
                           </Badge2>
                         </td>
                         <td>{code.redeemed_by ?? "—"}</td>
+                        <td>{code.redeemed_lecture ?? "—"}</td>
                         <td className="text-left">
                           {code.status === "unused" && (
                             <div className="flex justify-end gap-2">
@@ -241,46 +185,13 @@ export function ConnectedActivationCodesPage() {
             setForm((current) => ({ ...current, expires_on: value }));
           }}
         />
-            <Select2
-              label="السنة"
-              value={String(form.academic_year_id)}
-              onChange={(e: any) =>
-                setForm((v) => ({
-                  ...v,
-                  academic_year_id: Number(e.target.value),
-                }))
-              }
-              options={years.map((y) => ({
-                value: String(y.id),
-                label: y.name,
-              }))}
-            />
-            <Select2
-              label="الصف"
-              value={String(form.grade_id)}
-              onChange={(e: any) =>
-                setForm((v) => ({ ...v, grade_id: Number(e.target.value) }))
-              }
-              options={grades.map((g) => ({
-                value: String(g.id),
-                label: gradeLabel(g),
-              }))}
-            />
-            <Select2
-              label="الدرس"
-              value={String(selectedLessonId)}
-              onChange={(e: any) =>
-                setForm((v) => ({ ...v, lesson_id: Number(e.target.value) }))
-              }
-              options={lessons.map((l) => ({
-                value: String(l.id),
-                label: l.label,
-              }))}
-            />
+            <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 text-sm text-muted-foreground">
+              الأكواد غير مرتبطة بصف أو محاضرة عند إنشائها. كل كود يُستخدم مرة واحدة لفتح محاضرة مدفوعة يختارها الطالب من منهجه.
+            </div>
             <Btn
               type="submit"
               className="w-full"
-              disabled={!form.name || !form.expires_on || !selectedLessonId}
+              disabled={!form.name || !form.expires_on || form.quantity < 1}
             >
               <Key size={15} /> إنشاء الأكواد
             </Btn>
