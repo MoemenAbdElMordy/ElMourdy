@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { LogOut, Mail, RefreshCw, Shield } from "lucide-react";
 import { ApiError } from "../../shared/api/client";
-import { requestAccountVerification, verifyAccount, type AccountVerification } from "../../shared/auth/account-verification";
+import { changeAccountEmail, requestAccountVerification, verifyAccount, type AccountVerification } from "../../shared/auth/account-verification";
 import type { AuthUser } from "../../shared/auth/session";
 import { Btn, Card2, Input2, notify } from "../../shared/ui";
 
@@ -19,6 +19,8 @@ export function AccountVerificationGate({
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [remaining, setRemaining] = useState(0);
+  const [editingEmail, setEditingEmail] = useState(false);
+  const [email, setEmail] = useState("");
 
   useEffect(() => {
     if (remaining <= 0) return;
@@ -56,6 +58,25 @@ export function AccountVerificationGate({
     }
   };
 
+  const updateEmail = async () => {
+    if (!email.trim()) return;
+    setLoading(true);
+    setError("");
+    try {
+      const result = await changeAccountEmail(email.trim());
+      setVerification(result);
+      setRemaining(result.resendAfterSeconds);
+      setCode("");
+      setEmail("");
+      setEditingEmail(false);
+      notify("تم تغيير البريد وإرسال كود تفعيل جديد", "success");
+    } catch (requestError) {
+      setError(requestError instanceof ApiError ? requestError.message : "تعذر تغيير البريد الإلكتروني.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-4" dir="rtl">
       <div className="w-full max-w-md text-center">
@@ -69,12 +90,25 @@ export function AccountVerificationGate({
             </Btn>
           ) : (
             <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
-              <p className="text-sm text-muted-foreground">تم إرسال الكود إلى <strong dir="ltr">{verification.emailHint}</strong></p>
-              <Input2 label="كود التفعيل" inputMode="numeric" dir="ltr" maxLength={6} value={code} onChange={(event:any) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))}/>
-              <Btn type="submit" className="w-full" disabled={loading || code.length !== 6}>{loading ? "جارٍ التفعيل…" : "تفعيل الحساب"}</Btn>
-              <button type="button" className="text-sm text-primary disabled:opacity-50" disabled={loading || remaining > 0} onClick={sendCode}>
-                {remaining > 0 ? `إعادة الإرسال خلال ${remaining} ثانية` : "إرسال كود جديد"}
-              </button>
+              {editingEmail ? (
+                <div className="space-y-3 rounded-xl border border-border p-3 text-right">
+                  <Input2 label="البريد الإلكتروني الصحيح" type="email" dir="ltr" autoComplete="email" value={email} onChange={(event:any) => setEmail(event.target.value)} placeholder="name@example.com"/>
+                  <div className="flex gap-2">
+                    <Btn type="button" className="flex-1" disabled={loading || !email.trim()} onClick={() => void updateEmail()}>{loading ? "جارٍ الحفظ…" : "حفظ وإرسال كود جديد"}</Btn>
+                    <button type="button" className="px-3 text-sm text-muted-foreground" disabled={loading} onClick={() => { setEditingEmail(false); setEmail(""); setError(""); }}>إلغاء</button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <p className="text-sm text-muted-foreground">تم إرسال الكود إلى <strong dir="ltr">{verification.emailHint}</strong></p>
+                  <button type="button" className="text-sm font-semibold text-primary hover:underline" disabled={loading} onClick={() => { setEditingEmail(true); setError(""); }}>البريد غير صحيح؟ تغيير البريد الإلكتروني</button>
+                  <Input2 label="كود التفعيل" inputMode="numeric" dir="ltr" maxLength={6} value={code} onChange={(event:any) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))}/>
+                  <Btn type="submit" className="w-full" disabled={loading || code.length !== 6}>{loading ? "جارٍ التفعيل…" : "تفعيل الحساب"}</Btn>
+                  <button type="button" className="text-sm text-primary disabled:opacity-50" disabled={loading || remaining > 0} onClick={sendCode}>
+                    {remaining > 0 ? `إعادة الإرسال خلال ${remaining} ثانية` : "إرسال كود جديد"}
+                  </button>
+                </>
+              )}
             </form>
           )}
           {error && <div role="alert" className="mt-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</div>}

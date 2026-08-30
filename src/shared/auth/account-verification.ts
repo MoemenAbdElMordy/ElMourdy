@@ -31,3 +31,16 @@ export async function verifyAccount(verificationId: number, code: string) {
     body: JSON.stringify({ verification: { verification_id: verificationId, code } }),
   });
 }
+
+export async function changeAccountEmail(email: string): Promise<AccountVerification> {
+  const response = await apiRequest<VerificationResponse>("/account_verification/email", {
+    method: "PATCH",
+    body: JSON.stringify({ account: { email } }),
+  });
+  return {
+    verificationId: response.verification_id,
+    emailHint: response.email_hint,
+    expiresAt: response.expires_at,
+    resendAfterSeconds: response.resend_after_seconds,
+  };
+}
