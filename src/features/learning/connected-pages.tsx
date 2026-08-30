@@ -212,19 +212,21 @@ export function ConnectedExamManagePage({ assessmentType = "exam" }: { assessmen
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
             />
-            <div className="grid grid-cols-2 gap-2">
+            <div className={cn("grid gap-2", isHomework ? "grid-cols-1" : "grid-cols-2")}>
               <Select2
                 label="السنة الدراسية"
                 value={form.academic_year_id}
                 onChange={(e) => setForm({ ...form, academic_year_id: e.target.value, lesson_id: "" })}
                 options={[{value:"",label:"اختر السنة"},...years.map(year=>({value:String(year.id),label:year.name}))]}
               />
-              <Select2
-                label="الصف"
-                value={form.grade_id}
-                onChange={(e) => setForm({ ...form, grade_id: e.target.value, grade_ids: e.target.value ? [e.target.value] : [], lesson_id: "" })}
-                options={[{value:"",label:"اختر الصف"},...grades.map(grade=>({value:String(grade.id),label:grade.level===1?"الصف الأول الثانوي":grade.level===2?"الصف الثاني الثانوي":grade.level===3?"الصف الثالث الثانوي":grade.name}))]}
-              />
+              {!isHomework && (
+                <Select2
+                  label="الصف"
+                  value={form.grade_id}
+                  onChange={(e) => setForm({ ...form, grade_id: e.target.value, grade_ids: e.target.value ? [e.target.value] : [], lesson_id: "" })}
+                  options={[{value:"",label:"اختر الصف"},...grades.map(grade=>({value:String(grade.id),label:grade.level===1?"الصف الأول الثانوي":grade.level===2?"الصف الثاني الثانوي":grade.level===3?"الصف الثالث الثانوي":grade.name}))]}
+                />
+              )}
             </div>
             {isHomework && (
               <div className="rounded-2xl border border-border/80 bg-background/40 p-3">
@@ -239,20 +241,28 @@ export function ConnectedExamManagePage({ assessmentType = "exam" }: { assessmen
                     const value = String(grade.id);
                     const checked = form.grade_ids.includes(value);
                     const label = grade.level===1?"الصف الأول الثانوي":grade.level===2?"الصف الثاني الثانوي":grade.level===3?"الصف الثالث الثانوي":grade.name;
+                    const toggleGrade = () => {
+                      const next = checked
+                        ? form.grade_ids.filter((id) => id !== value)
+                        : [...form.grade_ids, value];
+                      setForm({ ...form, grade_ids: next, grade_id: next[0] ?? "", lesson_id: next.length === 1 ? form.lesson_id : "" });
+                    };
                     return (
-                      <label key={grade.id} className={cn("flex cursor-pointer items-center justify-between rounded-xl border px-3 py-2 text-sm transition", checked ? "border-primary bg-primary/10 text-primary" : "border-border bg-background/60 text-foreground")}>
-                        <span>{label}</span>
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={(event) => {
-                            const next = event.target.checked
-                              ? [...form.grade_ids, value]
-                              : form.grade_ids.filter((id) => id !== value);
-                            setForm({ ...form, grade_ids: next, grade_id: next[0] ?? "", lesson_id: next.length > 1 ? "" : form.lesson_id });
-                          }}
-                        />
-                      </label>
+                      <button
+                        key={grade.id}
+                        type="button"
+                        onClick={toggleGrade}
+                        aria-pressed={checked}
+                        className={cn(
+                          "flex min-h-[64px] w-full cursor-pointer items-center justify-between rounded-2xl border px-4 py-3 text-start text-sm transition hover:border-primary/70 hover:bg-primary/5",
+                          checked ? "border-primary bg-primary/10 text-primary shadow-[0_0_0_1px_hsl(var(--primary)/0.35)]" : "border-border bg-background/60 text-foreground",
+                        )}
+                      >
+                        <span className="font-bold leading-relaxed">{label}</span>
+                        <span className={cn("grid h-6 w-6 place-items-center rounded-full border text-xs", checked ? "border-primary bg-primary text-primary-foreground" : "border-border text-transparent")}>
+                          ✓
+                        </span>
+                      </button>
                     );
                   })}
                 </div>
