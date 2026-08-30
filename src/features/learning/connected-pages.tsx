@@ -49,6 +49,20 @@ const statusLabel: Record<string, string> = {
   risk: "يحتاج متابعة",
   failed: "راسب",
 };
+const escapeHtml = (value: string) =>
+  value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+const richTextHtml = (value: string) =>
+  escapeHtml(value)
+    .replace(/&lt;u&gt;/gi, "<u>")
+    .replace(/&lt;\/u&gt;/gi, "</u>");
+function RichText({ value, className = "" }: { value: string; className?: string }) {
+  return <span className={className} dangerouslySetInnerHTML={{ __html: richTextHtml(value) }} />;
+}
 
 export function ConnectedExamManagePage({ assessmentType = "exam" }: { assessmentType?: "exam" | "homework" }) {
   const isHomework = assessmentType === "homework";
@@ -203,6 +217,11 @@ export function ConnectedExamManagePage({ assessmentType = "exam" }: { assessmen
             {editing ? `تعديل ${isHomework ? "الواجب" : "الاختبار"}` : `${isHomework ? "واجب" : "اختبار"} جديد`}
           </h2>
           {!editing?.attempts_count&&<div className="mb-4 rounded-2xl border border-dashed border-primary/40 bg-primary/5 p-4"><label className="flex cursor-pointer items-center justify-center gap-2 font-bold text-primary"><Upload size={17}/> استيراد الأسئلة من ملف Word أو PDF<input type="file" accept=".docx,.pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf" className="hidden" disabled={busy} onChange={event=>{void importDocument(event.target.files?.[0]);event.target.value="";}}/></label><p className="mt-2 text-center text-xs text-muted-foreground">سيتم استخراج الأسئلة والاختيارات إلى مسودة، ولن يُحفظ شيء قبل مراجعتك وتحديد الإجابات الصحيحة. ملفات PDF المصورة تحتاج إلى نص قابل للتحديد.</p>{importWarnings.length>0&&<div className="mt-3 rounded-xl bg-yellow-50 p-3 text-xs text-yellow-900">راجع الأسئلة المستوردة بعناية؛ بعض أجزاء الملف احتاجت إلى استنتاج تلقائي.</div>}</div>}
+          <div className="mb-4 rounded-2xl border border-border bg-background/50 p-3 text-xs text-muted-foreground">
+            لو عايز كلمة تحتها خط داخل السؤال أو الاختيار اكتبها هكذا:
+            <code className="mx-1 rounded bg-muted px-1.5 py-0.5 text-foreground">&lt;u&gt;الكلمة&lt;/u&gt;</code>
+            وسيتم عرضها للطالب بخط تحتها.
+          </div>
           <form className="space-y-3" onSubmit={submit}>
             <Input2
               label={isHomework ? "عنوان الواجب" : "عنوان الاختبار"}
@@ -574,7 +593,7 @@ export function ConnectedStudentExamPage({
         {attempt.questions?.map((q, index) => (
           <Card2 key={q.id}>
             <h3 className="font-bold mb-3">
-              {index + 1}. {q.body}
+              {index + 1}. <RichText value={q.body} />
             </h3>
             <div className="space-y-2">
               {q.choices.map((choice) => (
@@ -593,7 +612,7 @@ export function ConnectedStudentExamPage({
                     disabled={Boolean(feedback[q.id])}
                     onChange={() => void choose(q.id, choice.id)}
                   />
-                  {choice.body}
+                  <RichText value={choice.body} />
                 </label>
               ))}
             </div>
@@ -679,7 +698,7 @@ export function ConnectedAttemptResultPage({
               ) : (
                 <XCircle className="text-red-600" />
               )}
-              {index + 1}. {q.body}
+              {index + 1}. <RichText value={q.body} />
             </div>
             {q.choices.map((c) => (
               <div
@@ -692,7 +711,7 @@ export function ConnectedAttemptResultPage({
                     "bg-red-100 text-red-900",
                 )}
               >
-                {c.body}
+                <RichText value={c.body} />
                 {c.id === q.correct_choice_id ? " — الإجابة الصحيحة" : ""}
                 {c.id === q.selected_choice_id ? " — إجابة الطالب" : ""}
               </div>
