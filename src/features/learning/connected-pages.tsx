@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CheckCircle, Eye, Plus, Send, Trash2, Upload, XCircle } from "lucide-react";
 import type { Navigate, Role, RouteParams } from "../../app/routing/types";
 import { loadCurriculum } from "../../shared/curriculum/api";
@@ -62,6 +62,70 @@ const richTextHtml = (value: string) =>
     .replace(/&lt;\/u&gt;/gi, "</u>");
 function RichText({ value, className = "" }: { value: string; className?: string }) {
   return <span className={className} dangerouslySetInnerHTML={{ __html: richTextHtml(value) }} />;
+}
+function RichTextInput({
+  label,
+  value,
+  onChange,
+  required = false,
+  placeholder,
+  rows = 2,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  required?: boolean;
+  placeholder?: string;
+  rows?: number;
+}) {
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const underlineSelection = () => {
+    const input = inputRef.current;
+    if (!input) return;
+    const start = input.selectionStart;
+    const end = input.selectionEnd;
+    if (start === end) {
+      input.focus();
+      return;
+    }
+    const selected = value.slice(start, end);
+    const next = `${value.slice(0, start)}<u>${selected}</u>${value.slice(end)}`;
+    onChange(next);
+    requestAnimationFrame(() => {
+      input.focus();
+      input.setSelectionRange(start + 3, start + 3 + selected.length);
+    });
+  };
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between gap-2">
+        <label className="text-sm font-bold">{label}</label>
+        <button
+          type="button"
+          onClick={underlineSelection}
+          className="rounded-lg border border-border bg-background px-2.5 py-1 text-xs font-black underline transition hover:border-primary hover:text-primary"
+          title="حدد كلمة أو جملة واضغط لوضع خط تحتها"
+        >
+          U
+        </button>
+      </div>
+      <textarea
+        ref={inputRef}
+        required={required}
+        value={value}
+        placeholder={placeholder}
+        rows={rows}
+        onChange={(event) => onChange(event.target.value)}
+        className="block w-full min-w-0 max-w-full resize-y rounded-xl border border-border bg-background p-2.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+      />
+      {value.includes("<u>") && (
+        <div className="rounded-xl border border-border/70 bg-background/50 p-2 text-sm">
+          <span className="ml-1 text-xs text-muted-foreground">معاينة:</span>
+          <RichText value={value} />
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function ConnectedExamManagePage({ assessmentType = "exam" }: { assessmentType?: "exam" | "homework" }) {
@@ -218,8 +282,7 @@ export function ConnectedExamManagePage({ assessmentType = "exam" }: { assessmen
           </h2>
           {!editing?.attempts_count&&<div className="mb-4 rounded-2xl border border-dashed border-primary/40 bg-primary/5 p-4"><label className="flex cursor-pointer items-center justify-center gap-2 font-bold text-primary"><Upload size={17}/> استيراد الأسئلة من ملف Word أو PDF<input type="file" accept=".docx,.pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf" className="hidden" disabled={busy} onChange={event=>{void importDocument(event.target.files?.[0]);event.target.value="";}}/></label><p className="mt-2 text-center text-xs text-muted-foreground">سيتم استخراج الأسئلة والاختيارات إلى مسودة، ولن يُحفظ شيء قبل مراجعتك وتحديد الإجابات الصحيحة. ملفات PDF المصورة تحتاج إلى نص قابل للتحديد.</p>{importWarnings.length>0&&<div className="mt-3 rounded-xl bg-yellow-50 p-3 text-xs text-yellow-900">راجع الأسئلة المستوردة بعناية؛ بعض أجزاء الملف احتاجت إلى استنتاج تلقائي.</div>}</div>}
           <div className="mb-4 rounded-2xl border border-border bg-background/50 p-3 text-xs text-muted-foreground">
-            لو عايز كلمة تحتها خط داخل السؤال أو الاختيار اكتبها هكذا:
-            <code className="mx-1 rounded bg-muted px-1.5 py-0.5 text-foreground">&lt;u&gt;الكلمة&lt;/u&gt;</code>
+            لتسطير كلمة: حددها داخل السؤال أو الاختيار ثم اضغط زر <span className="font-black underline">U</span>.
             وسيتم عرضها للطالب بخط تحتها.
           </div>
           <form className="space-y-3" onSubmit={submit}>
@@ -398,19 +461,17 @@ export function ConnectedExamManagePage({ assessmentType = "exam" }: { assessmen
                         </button>
                       )}
                     </div>
-                    <Input2
+                    <RichTextInput
                       label="نص السؤال"
                       required
                       value={question.body}
-                      onChange={(e) => updateQuestion("body", e.target.value)}
+                      onChange={(value) => updateQuestion("body", value)}
                     />
-                    <div className="space-y-2"><p className="text-xs font-bold text-muted-foreground">حدد الإجابة الصحيحة</p>{question.choices.map((choice,choiceIndex)=><div key={choiceIndex} className="flex items-center gap-2"><input type="radio" name={`correct-${index}`} aria-label={`الإجابة الصحيحة للسؤال ${index+1} الاختيار ${choiceIndex+1}`} checked={question.correctIndex===choiceIndex} onChange={()=>{const questions=[...form.questions];questions[index]={...question,correctIndex:choiceIndex};setForm({...form,questions});}}/><input required value={choice} onChange={event=>{const choices=[...question.choices];choices[choiceIndex]=event.target.value;const questions=[...form.questions];questions[index]={...question,choices};setForm({...form,questions});}} placeholder={`الاختيار ${choiceIndex+1}`} className="min-w-0 flex-1 rounded-xl border border-border bg-background p-2.5 text-sm"/>{question.choices.length>2&&<button type="button" aria-label={`حذف الاختيار ${choiceIndex+1}`} onClick={()=>{const choices=question.choices.filter((_,i)=>i!==choiceIndex);const correctIndex=question.correctIndex===choiceIndex?null:question.correctIndex!==null&&question.correctIndex>choiceIndex?question.correctIndex-1:question.correctIndex;const questions=[...form.questions];questions[index]={...question,choices,correctIndex};setForm({...form,questions});}}><Trash2 size={14} className="text-red-500"/></button>}</div>)}{question.choices.length<8&&<Btn type="button" size="sm" variant="outline" onClick={()=>{const questions=[...form.questions];questions[index]={...question,choices:[...question.choices,""]};setForm({...form,questions});}}><Plus size={13}/> إضافة اختيار</Btn>}</div>
-                    <Input2
+                    <div className="space-y-2"><p className="text-xs font-bold text-muted-foreground">حدد الإجابة الصحيحة</p>{question.choices.map((choice,choiceIndex)=><div key={choiceIndex} className="flex items-start gap-2"><input type="radio" name={`correct-${index}`} aria-label={`الإجابة الصحيحة للسؤال ${index+1} الاختيار ${choiceIndex+1}`} checked={question.correctIndex===choiceIndex} onChange={()=>{const questions=[...form.questions];questions[index]={...question,correctIndex:choiceIndex};setForm({...form,questions});}} className="mt-9"/><div className="min-w-0 flex-1"><RichTextInput label={`الاختيار ${choiceIndex+1}`} required value={choice} onChange={value=>{const choices=[...question.choices];choices[choiceIndex]=value;const questions=[...form.questions];questions[index]={...question,choices};setForm({...form,questions});}} placeholder={`الاختيار ${choiceIndex+1}`} rows={1}/></div>{question.choices.length>2&&<button type="button" className="mt-8" aria-label={`حذف الاختيار ${choiceIndex+1}`} onClick={()=>{const choices=question.choices.filter((_,i)=>i!==choiceIndex);const correctIndex=question.correctIndex===choiceIndex?null:question.correctIndex!==null&&question.correctIndex>choiceIndex?question.correctIndex-1:question.correctIndex;const questions=[...form.questions];questions[index]={...question,choices,correctIndex};setForm({...form,questions});}}><Trash2 size={14} className="text-red-500"/></button>}</div>)}{question.choices.length<8&&<Btn type="button" size="sm" variant="outline" onClick={()=>{const questions=[...form.questions];questions[index]={...question,choices:[...question.choices,""]};setForm({...form,questions});}}><Plus size={13}/> إضافة اختيار</Btn>}</div>
+                    <RichTextInput
                       label="شرح الإجابة"
                       value={question.explanation}
-                      onChange={(e) =>
-                        updateQuestion("explanation", e.target.value)
-                      }
+                      onChange={(value) => updateQuestion("explanation", value)}
                     />
                   </div>
                 );
