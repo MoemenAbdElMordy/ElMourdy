@@ -7,7 +7,7 @@ export type ImportedExamQuestion = { body:string; explanation:string; choices:Ar
 export type Exam = {
   id:number; title:string; scope_type:"lesson"|"chapter"|"branch"|"comprehensive"; lesson_id?:number|null;
   assessment_type:"exam"|"homework"; show_answers_after_submission:boolean; correct_after_each_answer:boolean;
-  chapter_id?:number|null; branch_id?:number|null; academic_year_id:number; grade_id:number; duration_minutes:number;
+  chapter_id?:number|null; branch_id?:number|null; academic_year_id:number; grade_id:number; grade_ids?:number[]; duration_minutes:number;
   max_attempts:number; pass_percent:number; risk_from_percent:number; risk_to_percent:number; status:"draft"|"published"|"hidden"|"archived";
   questions_count:number; attempts_count:number; questions?:ExamQuestion[];
 };

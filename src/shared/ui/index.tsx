@@ -203,6 +203,7 @@ export function Select2({
   value,
   onChange,
   className = "",
+  ...props
 }: SelectHTMLAttributes<HTMLSelectElement> & {
   label?: ReactNode;
   options: SelectOption[];
@@ -214,6 +215,7 @@ export function Select2({
         id={id}
         value={value}
         onChange={onChange}
+        {...props}
         className={cn(
           "block w-full min-w-0 max-w-full px-3 py-2.5 rounded-xl border border-border bg-background text-foreground",
           "focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary text-sm min-h-[44px]",

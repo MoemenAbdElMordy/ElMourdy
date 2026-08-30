@@ -80,6 +80,7 @@ export function ConnectedExamManagePage({ assessmentType = "exam" }: { assessmen
     correct_after_each_answer: false,
     academic_year_id: "",
     grade_id: "",
+    grade_ids: [] as string[],
     lesson_id: "",
     questions: [blankQuestion()],
   });
@@ -95,7 +96,7 @@ export function ConnectedExamManagePage({ assessmentType = "exam" }: { assessmen
       setGrades(availableGrades);
       const year = academic_years.find(item => item.status === "active") ?? academic_years[0];
       const grade = availableGrades[0];
-      if (year && grade) setForm(current => ({...current, academic_year_id: String(year.id), grade_id: String(grade.id)}));
+      if (year && grade) setForm(current => ({...current, academic_year_id: String(year.id), grade_id: String(grade.id), grade_ids: [String(grade.id)]}));
     }).catch((e) => notify(errorMessage(e), "error"));
   }, []);
   useEffect(() => {
@@ -132,6 +133,7 @@ export function ConnectedExamManagePage({ assessmentType = "exam" }: { assessmen
       correct_after_each_answer: full.correct_after_each_answer,
       academic_year_id: String(full.academic_year_id),
       grade_id: String(full.grade_id),
+      grade_ids: (full.grade_ids?.length ? full.grade_ids : [full.grade_id]).map(String),
       lesson_id: String(full.lesson_id ?? ""),
       questions: (full.questions ?? []).map((question) => ({
         body: question.body,
@@ -144,8 +146,11 @@ export function ConnectedExamManagePage({ assessmentType = "exam" }: { assessmen
   const importDocument=async(file?:File)=>{if(!file)return;setBusy(true);try{const response=await importExamDocx(file,assessmentType);setForm(current=>({...current,questions:response.import.questions.map(question=>({body:question.body,explanation:question.explanation??"",choices:question.choices.map(choice=>choice.body),correctIndex:question.correct_choice_index}))}));setImportWarnings(response.import.warnings);notify(`تم استخراج ${response.import.stats.questions_count} سؤالًا للمراجعة`,"success");}catch(error){notify(errorMessage(error),"error");}finally{setBusy(false);}};
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.academic_year_id || !form.grade_id)
+    const selectedGradeIds = isHomework ? form.grade_ids : form.grade_id ? [form.grade_id] : [];
+    if (!form.academic_year_id || selectedGradeIds.length === 0)
       return notify("اختر السنة الدراسية والصف", "error");
+    if (isHomework && selectedGradeIds.length > 1 && form.lesson_id)
+      return notify("عند نشر الواجب لأكثر من صف اجعل الدرس المرتبط غير محدد", "error");
     setBusy(true);
     try {
       const payload: Record<string, unknown> = {
@@ -156,7 +161,8 @@ export function ConnectedExamManagePage({ assessmentType = "exam" }: { assessmen
         scope_type: form.lesson_id ? "lesson" : "comprehensive",
         lesson_id: form.lesson_id ? Number(form.lesson_id) : null,
         academic_year_id: Number(form.academic_year_id),
-        grade_id: Number(form.grade_id),
+        grade_id: Number(selectedGradeIds[0]),
+        grade_ids: selectedGradeIds.map(Number),
         duration_minutes: Number(form.duration_minutes),
         max_attempts: Number(form.max_attempts),
         pass_percent: Number(form.pass_percent),
@@ -180,7 +186,7 @@ export function ConnectedExamManagePage({ assessmentType = "exam" }: { assessmen
       await saveExam(payload, editing?.id);
       notify(editing ? `تم تحديث ${isHomework ? "الواجب" : "الاختبار"}` : `تم إنشاء ${isHomework ? "الواجب" : "الاختبار"}`, "success");
       setEditing(null);
-      setForm({...blank(), academic_year_id:form.academic_year_id, grade_id:form.grade_id});
+      setForm({...blank(), academic_year_id:form.academic_year_id, grade_id:form.grade_id, grade_ids:form.grade_ids});
       refresh();
     } catch (err) {
       notify(errorMessage(err), "error");
@@ -216,14 +222,50 @@ export function ConnectedExamManagePage({ assessmentType = "exam" }: { assessmen
               <Select2
                 label="الصف"
                 value={form.grade_id}
-                onChange={(e) => setForm({ ...form, grade_id: e.target.value, lesson_id: "" })}
+                onChange={(e) => setForm({ ...form, grade_id: e.target.value, grade_ids: e.target.value ? [e.target.value] : [], lesson_id: "" })}
                 options={[{value:"",label:"اختر الصف"},...grades.map(grade=>({value:String(grade.id),label:grade.level===1?"الصف الأول الثانوي":grade.level===2?"الصف الثاني الثانوي":grade.level===3?"الصف الثالث الثانوي":grade.name}))]}
               />
             </div>
+            {isHomework && (
+              <div className="rounded-2xl border border-border/80 bg-background/40 p-3">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <label className="text-sm font-bold">الصفوف المستهدفة للواجب</label>
+                  <span className="rounded-full bg-primary/10 px-2 py-1 text-xs text-primary">
+                    {form.grade_ids.length || 0} محدد
+                  </span>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-3">
+                  {grades.map((grade) => {
+                    const value = String(grade.id);
+                    const checked = form.grade_ids.includes(value);
+                    const label = grade.level===1?"الصف الأول الثانوي":grade.level===2?"الصف الثاني الثانوي":grade.level===3?"الصف الثالث الثانوي":grade.name;
+                    return (
+                      <label key={grade.id} className={cn("flex cursor-pointer items-center justify-between rounded-xl border px-3 py-2 text-sm transition", checked ? "border-primary bg-primary/10 text-primary" : "border-border bg-background/60 text-foreground")}>
+                        <span>{label}</span>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(event) => {
+                            const next = event.target.checked
+                              ? [...form.grade_ids, value]
+                              : form.grade_ids.filter((id) => id !== value);
+                            setForm({ ...form, grade_ids: next, grade_id: next[0] ?? "", lesson_id: next.length > 1 ? "" : form.lesson_id });
+                          }}
+                        />
+                      </label>
+                    );
+                  })}
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  اختر صفًا أو أكثر لنشر نفس الواجب لهم بدون إعادة إنشاء الأسئلة.
+                </p>
+              </div>
+            )}
             <Select2
               label="الدرس المرتبط (اختياري)"
               value={form.lesson_id}
               onChange={(e) => setForm({ ...form, lesson_id: e.target.value })}
+              disabled={isHomework && form.grade_ids.length > 1}
               options={[
                 { value: "", label: "غير مرتبط بدرس محدد" },
                 ...(context?.lessons ?? []).map((l) => ({
