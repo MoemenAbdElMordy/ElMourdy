@@ -76,12 +76,17 @@ export function CurriculumManagePage({ params }: any){
       const lectureFields=level==="lectures"?{description:editor.description||null,attachment_name:editor.attachmentName||null,attachment_url:editor.attachmentUrl||null,publish_at:editor.publishAt||null,is_free:editor.isFree,additional_lesson_ids:editor.additionalLessonIds}:{};
       const payload={title:editor.title,...lectureFields};
       const response=editing?await updateContent(level,editing.id,payload):await createContent(level,{...parentInput(),...payload,status:"draft"});
-      const recordId=editing?.id??(response as {lecture?:Lecture}).lecture?.id;
+      const createdLecture=(response as {lecture?:Lecture}).lecture;
+      const recordId=editing?.id??createdLecture?.id;
       if(level==="lectures"&&recordId){
         if(removeThumbnail)await deleteLectureThumbnail(recordId);
         if(thumbnailFile)await uploadLectureThumbnail(recordId,thumbnailFile);
       }
-      setModal(false);await refresh();notify(editing?"تم حفظ تعديلات المحاضرة":"تمت إضافة المحتوى","success");
+      setModal(false);await refresh();
+      if(level==="lectures"&&!editing&&createdLecture){
+        setUploadLecture({id:createdLecture.id,title:createdLecture.title,video_source_type:createdLecture.video_source_type,youtube_video_id:createdLecture.youtube_video_id,video_asset:createdLecture.video_asset});
+        notify("تم إنشاء المحاضرة. اختر الآن مصدر الفيديو واحفظه","success");
+      }else notify(editing?"تم حفظ تعديلات المحاضرة":"تمت إضافة المحتوى","success");
     }catch(error){notify(error instanceof ApiError?error.message:"تعذر حفظ المحتوى","error");}
     finally{setSaving(false);}
   };
