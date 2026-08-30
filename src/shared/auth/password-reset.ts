@@ -6,8 +6,7 @@ export type PendingPasswordReset = {
   passwordResetId: number;
   expiresAt: string;
   resendAfterSeconds: number;
-  verificationMethod: "whatsapp_inbound";
-  whatsappUrl: string;
+  verificationMethod: "email_code";
   clientToken: string;
 };
 
@@ -15,8 +14,7 @@ type PasswordResetResponse = {
   password_reset_id: number;
   expires_at: string;
   resend_after_seconds: number;
-  verification_method: "whatsapp_inbound";
-  whatsapp_url: string;
+  verification_method: "email_code";
   client_token: string;
 };
 
@@ -33,19 +31,30 @@ export function clearPendingPasswordReset() {
   sessionStorage.removeItem(PENDING_PASSWORD_RESET_KEY);
 }
 
-export async function requestPasswordReset(phone: string) {
+export async function requestPasswordReset(email: string) {
   const response = await apiRequest<PasswordResetResponse>("/password_resets", {
     method: "POST",
-    body: JSON.stringify({ password_reset: { phone } }),
+    body: JSON.stringify({ password_reset: { email } }),
   });
   return {
     passwordResetId: response.password_reset_id,
     expiresAt: response.expires_at,
     resendAfterSeconds: response.resend_after_seconds,
     verificationMethod: response.verification_method,
-    whatsappUrl: response.whatsapp_url,
     clientToken: response.client_token,
   } satisfies PendingPasswordReset;
+}
+
+export function verifyPasswordReset(reset: PendingPasswordReset, code: string) {
+  return apiRequest<{ status: "verified"; expires_at: string }>(
+    `/password_resets/${reset.passwordResetId}/verify`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        password_reset: { client_token: reset.clientToken, code },
+      }),
+    },
+  );
 }
 
 export function loadPasswordResetStatus(reset: PendingPasswordReset) {

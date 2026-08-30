@@ -11,6 +11,7 @@ const resetMocks = vi.hoisted(() => ({
   loadStatus: vi.fn(),
   request: vi.fn(),
   store: vi.fn(),
+  verify: vi.fn(),
 }));
 
 vi.mock("../../shared/auth/password-reset", () => ({
@@ -20,6 +21,7 @@ vi.mock("../../shared/auth/password-reset", () => ({
   loadPendingPasswordReset: resetMocks.loadPending,
   requestPasswordReset: resetMocks.request,
   storePendingPasswordReset: resetMocks.store,
+  verifyPasswordReset: resetMocks.verify,
 }));
 
 import { ForgotPage, LoginPage } from "./pages";
@@ -28,8 +30,7 @@ const pendingReset = {
   passwordResetId: 12,
   expiresAt: "2026-08-11T15:00:00Z",
   resendAfterSeconds: 60,
-  verificationMethod: "whatsapp_inbound" as const,
-  whatsappUrl: "https://wa.me/201069229786?text=RESET%20ABCDEF1234567890",
+  verificationMethod: "email_code" as const,
   clientToken: "client-token",
 };
 
@@ -38,6 +39,7 @@ beforeEach(() => {
   resetMocks.loadStatus.mockResolvedValue({ status: "pending", expires_at: pendingReset.expiresAt });
   resetMocks.request.mockResolvedValue(pendingReset);
   resetMocks.complete.mockResolvedValue(undefined);
+  resetMocks.verify.mockResolvedValue({ status: "verified", expires_at: pendingReset.expiresAt });
 });
 
 afterEach(() => {
@@ -46,15 +48,18 @@ afterEach(() => {
 });
 
 describe("password recovery page", () => {
-  it("starts WhatsApp verification using the account phone", async () => {
+  it("requests and verifies a password reset code using the account email", async () => {
     render(<ForgotPage nav={vi.fn()}/>);
 
-    fireEvent.change(screen.getByLabelText("رقم الهاتف"), { target: { value: "01000000001" } });
-    fireEvent.click(screen.getByRole("button", { name: "متابعة عبر واتساب" }));
+    fireEvent.change(screen.getByLabelText("البريد الإلكتروني"), { target: { value: "student@example.com" } });
+    fireEvent.click(screen.getByRole("button", { name: "إرسال كود التحقق" }));
 
-    await waitFor(() => expect(resetMocks.request).toHaveBeenCalledWith("01000000001"));
+    await waitFor(() => expect(resetMocks.request).toHaveBeenCalledWith("student@example.com"));
     expect(resetMocks.store).toHaveBeenCalledWith(pendingReset);
-    expect(await screen.findByRole("link", { name: "فتح واتساب وإرسال الرسالة" })).toHaveAttribute("href", pendingReset.whatsappUrl);
+    fireEvent.change(await screen.findByLabelText("كود التحقق"), { target: { value: "123456" } });
+    fireEvent.click(screen.getByRole("button", { name: "تأكيد الكود" }));
+    await waitFor(() => expect(resetMocks.verify).toHaveBeenCalledWith(pendingReset, "123456"));
+    expect(await screen.findByText("تم التحقق من البريد الإلكتروني")).toBeInTheDocument();
   });
 
   it("sets a new password after the phone is verified", async () => {
@@ -62,7 +67,7 @@ describe("password recovery page", () => {
     resetMocks.loadStatus.mockResolvedValue({ status: "verified", expires_at: pendingReset.expiresAt });
     render(<ForgotPage nav={vi.fn()}/>);
 
-    expect(await screen.findByText("تم التحقق من الرقم")).toBeInTheDocument();
+    expect(await screen.findByText("تم التحقق من البريد الإلكتروني")).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("كلمة المرور الجديدة"), { target: { value: "NewPassword123!" } });
     fireEvent.change(screen.getByLabelText("تأكيد كلمة المرور"), { target: { value: "NewPassword123!" } });
     fireEvent.click(screen.getByRole("button", { name: "حفظ كلمة المرور الجديدة" }));

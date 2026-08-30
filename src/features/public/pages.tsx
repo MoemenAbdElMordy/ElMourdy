@@ -27,6 +27,7 @@ import {
   loadPendingPasswordReset,
   requestPasswordReset,
   storePendingPasswordReset,
+  verifyPasswordReset,
 } from "../../shared/auth/password-reset";
 import { loadFreeLectures, loadGrades, type FreeLecture, type PublicGrade } from "../../shared/public/api";
 import { EGYPTIAN_GOVERNORATES } from "../../shared/public/registration-options";
@@ -556,7 +557,8 @@ export function OTPPage({ nav, params, setRole, setAuthUser }: any) {
 // FORGOT PASSWORD
 // ============================================================
 export function ForgotPage({ nav }: any) {
-  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
   const [reset, setReset] = useState(() => loadPendingPasswordReset());
   const [status, setStatus] = useState<"request" | "pending" | "verified" | "success">(
     reset ? "pending" : "request",
@@ -567,53 +569,39 @@ export function ForgotPage({ nav }: any) {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!reset || status !== "pending") return;
+    if (!reset) return;
+    void loadPasswordResetStatus(reset).then((response) => {
+      if (response.status === "verified") setStatus("verified");
+      if (response.status === "consumed") setStatus("success");
+      if (response.status === "expired" || response.status === "failed") restart();
+    }).catch(() => restart());
+  // Only restore the persisted reset once when the page opens.
+  }, []);
 
-    let active = true;
-    let timer: number | undefined;
-    const checkStatus = async () => {
-      try {
-        const response = await loadPasswordResetStatus(reset);
-        if (!active) return;
-        if (response.status === "verified") {
-          setStatus("verified");
-          return;
-        }
-        if (response.status === "expired" || response.status === "failed") {
-          clearPendingPasswordReset();
-          setReset(null);
-          setStatus("request");
-          setError("انتهت صلاحية رابط الاستعادة. ابدأ من جديد.");
-          return;
-        }
-        if (response.status === "consumed") {
-          clearPendingPasswordReset();
-          setStatus("success");
-          return;
-        }
-      } catch (requestError) {
-        if (active) setError(requestError instanceof ApiError ? requestError.message : "تعذر متابعة حالة التحقق.");
-      }
-      if (active) timer = window.setTimeout(checkStatus, 2000);
-    };
-
-    void checkStatus();
-    return () => {
-      active = false;
-      if (timer) window.clearTimeout(timer);
-    };
-  }, [reset, status]);
-
-  const submitPhone = async () => {
+  const submitEmail = async () => {
     setLoading(true);
     setError("");
     try {
-      const pendingReset = await requestPasswordReset(phone);
+      const pendingReset = await requestPasswordReset(email.trim());
       storePendingPasswordReset(pendingReset);
       setReset(pendingReset);
       setStatus("pending");
     } catch (requestError) {
       setError(requestError instanceof ApiError ? requestError.message : "تعذر بدء استعادة كلمة المرور.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const submitCode = async () => {
+    if (!reset || code.length !== 6) return;
+    setLoading(true);
+    setError("");
+    try {
+      await verifyPasswordReset(reset, code);
+      setStatus("verified");
+    } catch (requestError) {
+      setError(requestError instanceof ApiError ? requestError.message : "كود التحقق غير صحيح أو انتهت صلاحيته.");
     } finally {
       setLoading(false);
     }
@@ -656,31 +644,29 @@ export function ForgotPage({ nav }: any) {
       <div className="w-full max-w-sm">
         <div className="text-center mb-6">
           <h1 className="text-2xl font-black">استعادة كلمة المرور</h1>
-          <p className="text-muted-foreground text-sm mt-1">تحقق من رقم حسابك عن طريق واتساب ثم اختر كلمة مرور جديدة</p>
+          <p className="text-muted-foreground text-sm mt-1">سنرسل كود تحقق إلى بريدك الإلكتروني ثم تختار كلمة مرور جديدة</p>
         </div>
         <Card2>
           {error && <div role="alert" className="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</div>}
           {status === "request" && (
-            <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); void submitPhone(); }}>
-              <Input2 label="رقم الهاتف" type="tel" placeholder="01xxxxxxxxx" value={phone} onChange={(event) => setPhone(event.target.value)} dir="ltr"/>
-              <Btn type="submit" className="w-full" disabled={loading || phone.trim().length < 11}>
-                {loading ? <><RefreshCw size={15} className="animate-spin"/> جارٍ التجهيز…</> : "متابعة عبر واتساب"}
+            <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); void submitEmail(); }}>
+              <Input2 label="البريد الإلكتروني" type="email" placeholder="name@example.com" value={email} onChange={(event) => setEmail(event.target.value)} dir="ltr" autoComplete="email"/>
+              <Btn type="submit" className="w-full" disabled={loading || !email.includes("@")}>
+                {loading ? <><RefreshCw size={15} className="animate-spin"/> جارٍ الإرسال…</> : "إرسال كود التحقق"}
               </Btn>
             </form>
           )}
           {status === "pending" && reset && (
-            <div className="text-center py-2">
-              <MessageCircle size={44} className="text-primary mx-auto mb-3"/>
-              <p className="font-bold mb-2">أرسل رسالة التأكيد</p>
-              <p className="text-sm text-muted-foreground mb-4">افتح واتساب من نفس رقم الحساب، ثم أرسل الرسالة الجاهزة. الصفحة ستنتقل تلقائيًا للخطوة التالية.</p>
-              <a href={reset.whatsappUrl} target="_blank" rel="noreferrer" className="mb-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 py-3 font-bold text-white hover:opacity-90"><MessageCircle size={20}/> فتح واتساب وإرسال الرسالة</a>
-              <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground"><RefreshCw size={15} className="animate-spin"/> في انتظار رسالة واتساب…</div>
-              <button onClick={restart} className="mt-4 text-sm text-primary hover:underline">استخدام رقم آخر</button>
-            </div>
+            <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); void submitCode(); }}>
+              <div className="text-center"><Shield size={44} className="text-primary mx-auto mb-3"/><p className="font-bold">أدخل كود التحقق</p><p className="mt-1 text-sm text-muted-foreground">أرسلنا كودًا من 6 أرقام إلى بريدك الإلكتروني.</p></div>
+              <Input2 label="كود التحقق" inputMode="numeric" maxLength={6} value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))} dir="ltr" autoComplete="one-time-code"/>
+              <Btn type="submit" className="w-full" disabled={loading || code.length !== 6}>{loading ? "جارٍ التحقق…" : "تأكيد الكود"}</Btn>
+              <button type="button" onClick={restart} className="block w-full text-sm text-primary hover:underline">استخدام بريد إلكتروني آخر</button>
+            </form>
           )}
           {status === "verified" && (
             <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); void submitPassword(); }}>
-              <div className="text-center"><CheckCircle size={42} className="text-primary mx-auto mb-2"/><p className="font-bold">تم التحقق من الرقم</p></div>
+              <div className="text-center"><CheckCircle size={42} className="text-primary mx-auto mb-2"/><p className="font-bold">تم التحقق من البريد الإلكتروني</p></div>
               <Input2 label="كلمة المرور الجديدة" type="password" value={password} onChange={(event) => setPassword(event.target.value)} dir="ltr"/>
               <Input2 label="تأكيد كلمة المرور" type="password" value={passwordConfirmation} onChange={(event) => setPasswordConfirmation(event.target.value)} dir="ltr"/>
               <Btn type="submit" className="w-full" disabled={loading || password.length < 8 || password !== passwordConfirmation}>{loading ? <><RefreshCw size={15} className="animate-spin"/> جارٍ الحفظ…</> : "حفظ كلمة المرور الجديدة"}</Btn>
