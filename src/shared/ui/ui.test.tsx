@@ -49,6 +49,16 @@ describe("shared UI", () => {
     expect(error.message).toBe("وصل الحساب إلى الحد الأقصى وهو ثلاثة أجهزة نشطة");
   });
 
+  it("localizes password recovery email errors", () => {
+    const error = new ApiError(
+      "No active account uses this email address",
+      422,
+      "business_rule_violation",
+    );
+
+    expect(error.message).toBe("لا يوجد حساب نشط مسجل بهذا البريد الإلكتروني");
+  });
+
   it("navigates between paginated result pages", () => {
     const onPageChange = vi.fn();
     render(<PaginationControls pagination={{current_page:2,per_page:20,total_count:55,total_pages:3,next_page:3,previous_page:1}} onPageChange={onPageChange}/>);

@@ -25,6 +25,9 @@ function localizeApiError(message: string, status: number, code?: string) {
   if (normalized.includes("already been taken")) return "هذه البيانات مستخدمة في حساب آخر";
   if (normalized.includes("too many verification codes")) return "تم إرسال عدد كبير من أكواد التفعيل؛ انتظر ساعة ثم حاول مرة أخرى";
   if (normalized.includes("wait before requesting another code")) return "انتظر دقيقة قبل طلب كود تفعيل جديد";
+  if (normalized.includes("no active account uses this email address")) return "لا يوجد حساب نشط مسجل بهذا البريد الإلكتروني";
+  if (normalized.includes("verification email could not be delivered")) return "تعذر إرسال رسالة التحقق إلى البريد الإلكتروني؛ حاول مرة أخرى بعد قليل";
+  if (normalized.includes("verification code is invalid")) return "كود التحقق غير صحيح";
   if (normalized.includes("password") && normalized.includes("incorrect")) return "كلمة المرور غير صحيحة";
   if (normalized.includes("expired")) return "انتهت صلاحية الطلب، حاول مرة أخرى";
   if (normalized.includes("not found")) return "العنصر المطلوب غير موجود";
