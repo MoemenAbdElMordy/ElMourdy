@@ -149,8 +149,6 @@ export function ConnectedExamManagePage({ assessmentType = "exam" }: { assessmen
     const selectedGradeIds = isHomework ? form.grade_ids : form.grade_id ? [form.grade_id] : [];
     if (!form.academic_year_id || selectedGradeIds.length === 0)
       return notify("اختر السنة الدراسية والصف", "error");
-    if (isHomework && selectedGradeIds.length > 1 && form.lesson_id)
-      return notify("عند نشر الواجب لأكثر من صف اجعل الدرس المرتبط غير محدد", "error");
     setBusy(true);
     try {
       const payload: Record<string, unknown> = {
@@ -245,7 +243,13 @@ export function ConnectedExamManagePage({ assessmentType = "exam" }: { assessmen
                       const next = checked
                         ? form.grade_ids.filter((id) => id !== value)
                         : [...form.grade_ids, value];
-                      setForm({ ...form, grade_ids: next, grade_id: next[0] ?? "", lesson_id: next.length === 1 ? form.lesson_id : "" });
+                      const nextPrimaryGradeId = next[0] ?? "";
+                      setForm({
+                        ...form,
+                        grade_ids: next,
+                        grade_id: nextPrimaryGradeId,
+                        lesson_id: form.grade_id === nextPrimaryGradeId ? form.lesson_id : "",
+                      });
                     };
                     return (
                       <button
@@ -275,7 +279,6 @@ export function ConnectedExamManagePage({ assessmentType = "exam" }: { assessmen
               label="الدرس المرتبط (اختياري)"
               value={form.lesson_id}
               onChange={(e) => setForm({ ...form, lesson_id: e.target.value })}
-              disabled={isHomework && form.grade_ids.length > 1}
               options={[
                 { value: "", label: "غير مرتبط بدرس محدد" },
                 ...(context?.lessons ?? []).map((l) => ({
