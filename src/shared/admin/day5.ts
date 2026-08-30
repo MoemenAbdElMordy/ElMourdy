@@ -8,8 +8,10 @@ export type StudentRecord = {
   id:number; name:string; phone:string; email?:string; status:"active"|"suspended"|"archived";
   governorate?:string; school?:string; center_name?:string; grade?:string; grade_id?:number; grade_level?:number; academic_year?:string; academic_year_id?:number;
   created_at:string; last_active_at?:string; birth_date?:string; parent_phone?:string; devices_count?:number;
+  account_verified?:boolean; verified_at?:string|null; active_sessions_count?:number; total_sessions_count?:number; last_login_at?:string|null;
   devices?:Array<{id:number;name?:string;browser?:string;os?:string;status:string;last_seen_at?:string}>;
-  attempts?:Array<{id:number;exam_title:string;status:string;percent?:number|null;result_status?:string|null;submitted_at?:string|null}>;
+  attempts?:Array<{id:number;exam_id:number;exam_title:string;assessment_type:"exam"|"homework";attempt_number:number;status:string;score_points?:number|null;max_points?:number|null;percent?:number|null;result_status?:string|null;started_at:string;submitted_at?:string|null}>;
+  assessments?:Array<{id:number;title:string;assessment_type:"exam"|"homework";status:"not_started"|"in_progress"|"submitted";scope:string;questions_count:number;max_attempts:number;attempts_count:number;submitted_attempts_count:number;best_percent?:number|null;latest_percent?:number|null;latest_result_status?:string|null;first_started_at?:string|null;last_activity_at?:string|null}>;
   progress?:{completed_lectures:number;watched_lectures:number;highest_score?:number|null};
   video_progress?:Array<{lecture_id:number;title:string;lesson:string;chapter:string;branch:string;duration_seconds:number;watched_seconds:number;last_position_seconds:number;progress_percent:number;watched:boolean;completed:boolean;last_watched_at?:string|null}>;
 };

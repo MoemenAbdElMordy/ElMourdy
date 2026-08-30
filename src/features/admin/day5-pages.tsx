@@ -220,6 +220,9 @@ export function Day5StudentDetailPage({ nav, params, authUser }: any) {
     (videoFilter === "completed" && video.completed)
   );
   const formatDuration = (seconds:number) => `${Math.floor(seconds / 60)} دقيقة`;
+  const formatDateTime = (value?:string|null) => value ? new Date(value).toLocaleString("ar-EG") : "—";
+  const assessmentStatus = {not_started:"لم يبدأ",in_progress:"قيد الحل",submitted:"تم التسليم"} as const;
+  const resultStatus = {passed:"ناجح",risk:"يحتاج متابعة",failed:"راسب"} as const;
   const rows: Array<[string, string | undefined]> = [
     ["الصف", student.grade],
     ["السنة الدراسية", student.academic_year],
@@ -229,6 +232,13 @@ export function Day5StudentDetailPage({ nav, params, authUser }: any) {
     ["هاتف الطالب", student.phone],
     ["هاتف ولي الأمر", student.parent_phone],
     ["البريد", student.email],
+    ["حالة تفعيل الحساب", student.account_verified ? "مفعّل" : "غير مفعّل"],
+    ["تاريخ التفعيل", formatDateTime(student.verified_at)],
+    ["تاريخ إنشاء الحساب", formatDateTime(student.created_at)],
+    ["آخر تسجيل دخول", formatDateTime(student.last_login_at)],
+    ["آخر نشاط", formatDateTime(student.last_active_at)],
+    ["الجلسات النشطة", String(student.active_sessions_count ?? 0)],
+    ["إجمالي الجلسات", String(student.total_sessions_count ?? 0)],
     ["عدد الأجهزة النشطة", String(student.devices_count ?? 0)],
   ];
   const openEnrollment = () => {
@@ -274,7 +284,7 @@ export function Day5StudentDetailPage({ nav, params, authUser }: any) {
   };
   return (
     <div className="min-h-screen bg-background py-6 px-4">
-      <div className="max-w-3xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         <button onClick={() => nav("students-list")} className="flex items-center gap-1 text-sm text-muted-foreground mb-4">
           <ChevronRight size={15} /> العودة للقائمة
         </button>
@@ -311,6 +321,17 @@ export function Day5StudentDetailPage({ nav, params, authUser }: any) {
           <StatCard label="محاضرات تمت مشاهدتها" value={student.progress?.watched_lectures ?? 0} icon={CalendarDays} />
           <StatCard label="أعلى نتيجة" value={student.progress?.highest_score == null ? "—" : `${Math.round(student.progress.highest_score)}%`} icon={Shield} />
         </div>
+        {(["homework", "exam"] as const).map((kind) => {
+          const items = (student.assessments ?? []).filter((assessment) => assessment.assessment_type === kind);
+          return <Card2 className="mt-4" key={kind}>
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div><h2 className="font-black">{kind === "homework" ? "تقرير الواجبات" : "تقرير الاختبارات"}</h2><p className="mt-1 text-xs text-muted-foreground">يشمل كل ما هو مخصص لصف الطالب، سواء بدأه أم لم يبدأه.</p></div><Badge2 variant="primary">{items.length} {kind === "homework" ? "واجب" : "اختبار"}</Badge2></div>
+            <div className="space-y-3">{items.map((assessment) => <div key={assessment.id} className="rounded-xl border border-border p-3">
+              <div className="flex flex-wrap items-start justify-between gap-2"><div><strong>{assessment.title}</strong><p className="mt-1 text-xs text-muted-foreground">{assessment.scope} • {assessment.questions_count} سؤال</p></div><Badge2 variant={assessment.status === "submitted" ? "success" : assessment.status === "in_progress" ? "warning" : "default"}>{assessmentStatus[assessment.status]}</Badge2></div>
+              <div className="mt-3 grid gap-2 text-sm sm:grid-cols-3"><span>المحاولات: <b>{assessment.attempts_count} من {assessment.max_attempts}</b></span><span>أفضل نتيجة: <b>{assessment.best_percent == null ? "—" : `${Math.round(assessment.best_percent)}%`}</b></span><span>آخر نتيجة: <b>{assessment.latest_percent == null ? "—" : `${Math.round(assessment.latest_percent)}%`}</b></span></div>
+              <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground"><span>أول بدء: {formatDateTime(assessment.first_started_at)}</span><span>آخر نشاط: {formatDateTime(assessment.last_activity_at)}</span>{assessment.latest_result_status && <span>الحالة: {resultStatus[assessment.latest_result_status as keyof typeof resultStatus] ?? assessment.latest_result_status}</span>}</div>
+            </div>)}{!items.length && <p className="py-4 text-center text-sm text-muted-foreground">لا توجد عناصر منشورة مخصصة لصف الطالب.</p>}</div>
+          </Card2>;
+        })}
         <Card2 className="mt-4">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div><h2 className="font-black">تقدم مشاهدة المحاضرات</h2><p className="mt-1 text-xs text-muted-foreground">كل فيديو متاح للصف الحالي وحالة مشاهدة الطالب الفعلية.</p></div>
@@ -331,8 +352,8 @@ export function Day5StudentDetailPage({ nav, params, authUser }: any) {
           {!student.devices?.length && <p className="text-sm text-muted-foreground">لا توجد أجهزة مسجلة.</p>}
         </Card2>
         <Card2 className="mt-4">
-          <h2 className="font-black mb-3">آخر محاولات الاختبارات</h2>
-          {student.attempts?.map((attempt) => <div key={attempt.id} className="flex justify-between gap-3 py-2 border-t border-border text-sm"><span>{attempt.exam_title}</span><span>{attempt.percent == null ? attempt.status : `${Math.round(attempt.percent)}% — ${attempt.result_status}`}</span></div>)}
+          <h2 className="font-black mb-3">سجل محاولات الواجبات والاختبارات</h2>
+          {student.attempts?.map((attempt) => <div key={attempt.id} className="grid gap-2 border-t border-border py-3 text-sm sm:grid-cols-[1fr_auto_auto]"><div><strong>{attempt.exam_title}</strong><p className="text-xs text-muted-foreground">{attempt.assessment_type === "homework" ? "واجب" : "اختبار"} • المحاولة رقم {attempt.attempt_number}</p></div><span>{attempt.percent == null ? assessmentStatus[attempt.status as keyof typeof assessmentStatus] ?? attempt.status : `${Math.round(attempt.percent)}% — ${resultStatus[attempt.result_status as keyof typeof resultStatus] ?? attempt.result_status}`}</span><span className="text-xs text-muted-foreground">{formatDateTime(attempt.submitted_at ?? attempt.started_at)}</span></div>)}
           {!student.attempts?.length && <p className="text-sm text-muted-foreground">لا توجد محاولات حتى الآن.</p>}
         </Card2>
         {canManageCodes && (
