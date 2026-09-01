@@ -59,7 +59,7 @@ export function Day5StudentsListPage({ nav }: any) {
             <Field label="بحث">
               <div className="relative">
                 <Search size={15} className="absolute right-3 top-3 text-muted-foreground" />
-                <input aria-label="بحث" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="الاسم أو رقم الهاتف" className="w-full pr-9 px-3 py-2.5 rounded-xl border border-border bg-background" />
+                <input aria-label="بحث" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="الاسم أو رقم الهاتف أو البريد الإلكتروني" className="w-full pr-9 px-3 py-2.5 rounded-xl border border-border bg-background" />
               </div>
             </Field>
             <Select2
