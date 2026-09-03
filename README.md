@@ -15,6 +15,8 @@ ElMourdy combines structured curriculum delivery, protected video lessons, asses
 - Teacher tools for managing the complete academic and operational workflow
 - Paginated administration screens for large operational datasets
 - Locally hosted Cairo fonts, responsive layouts, dark mode, and accessible navigation
+- Search-ready public landing pages for every secondary grade, grammar, rhetoric, and free lessons
+- Thumbnail-first free-lecture discovery with responsive cards, search, and grade filtering
 
 ## Platform Experiences
 
@@ -81,7 +83,7 @@ src/
 public/
 ├── fonts/        Self-hosted Cairo webfont files
 ├── robots.txt    Search crawler policy
-├── sitemap.xml   Public search index map
+├── sitemap.xml   Public search index map for the homepage, grades, branches, and free content
 └── *.html        Privacy, terms, and data-deletion documents
 ```
 
@@ -147,6 +149,21 @@ Original media files and storage credentials never pass through the frontend rep
 - Modals preserve focus and scroll position during controlled input updates
 - Layouts adapt across mobile, tablet, and desktop breakpoints
 - Shared pagination keeps large administrative lists responsive and consistent
+- Protected student and administration features are split into route-specific production chunks, keeping public discovery pages lighter
+
+## Search Visibility
+
+The public site is built around useful Arabic search intent rather than a legacy `meta keywords` list. Every indexable route has a unique title, description, canonical URL, visible heading hierarchy, internal links, and JSON-LD structured data.
+
+The production build prerenders crawlable HTML for:
+
+- the ElMourdy brand and teacher homepage;
+- free Arabic lectures;
+- Arabic learning for the full secondary stage;
+- first, second, and third secondary grades;
+- secondary-school grammar and rhetoric guides.
+
+`sitemap.xml` contains only canonical public pages. Login, registration, dashboards, account data, and protected learning routes are marked `noindex`. The Rails API is also excluded from search indexing while still exposing cacheable thumbnails for published free lectures.
 
 ## Security Model
 

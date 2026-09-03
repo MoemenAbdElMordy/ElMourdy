@@ -13,6 +13,12 @@
   "rewrites": [
     { "source": "/about", "destination": "/about/index.html" },
     { "source": "/free-content", "destination": "/free-content/index.html" },
+    { "source": "/arabic-secondary", "destination": "/arabic-secondary/index.html" },
+    { "source": "/arabic-first-secondary", "destination": "/arabic-first-secondary/index.html" },
+    { "source": "/arabic-second-secondary", "destination": "/arabic-second-secondary/index.html" },
+    { "source": "/arabic-third-secondary", "destination": "/arabic-third-secondary/index.html" },
+    { "source": "/nahw-secondary", "destination": "/nahw-secondary/index.html" },
+    { "source": "/balagha-secondary", "destination": "/balagha-secondary/index.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

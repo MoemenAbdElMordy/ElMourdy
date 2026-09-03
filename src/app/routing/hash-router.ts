@@ -3,6 +3,7 @@ import type { AppRoute, RouteParams } from "./types";
 const routes = new Set<AppRoute>([
   "not-found",
   "home", "login", "register", "parent-register", "otp", "forgot", "free-content", "about",
+  "arabic-secondary", "arabic-first-secondary", "arabic-second-secondary", "arabic-third-secondary", "nahw-secondary", "balagha-secondary",
   "student-dashboard", "subjects", "chapters", "lessons", "video", "exam", "homeworks",
   "exam-result", "error-review", "progress", "announcements", "activation", "student-settings",
   "parent-dashboard", "parent-results", "parent-errors", "admin-dashboard",

@@ -8,7 +8,7 @@ import {
   Activity, Star, UserCheck, UserX, Copy, Printer, RefreshCw, Check,
   AlertCircle, MessageCircle, Upload
 } from "lucide-react";
-import type { Role } from "../../app/routing/types";
+import type { AppRoute, Role } from "../../app/routing/types";
 import { Badge2, Btn, Card2, Field, Input2, Modal2, Pager, Select2, StatCard, cn, notify } from "../../shared/ui";
 import { ApiError } from "../../shared/api/client";
 import {
@@ -29,7 +29,7 @@ import {
   storePendingPasswordReset,
   verifyPasswordReset,
 } from "../../shared/auth/password-reset";
-import { loadFreeLectures, loadGrades, type FreeLecture, type PublicGrade } from "../../shared/public/api";
+import { freeLectureThumbnailUrl, loadFreeLectures, loadGrades, type FreeLecture, type PublicGrade } from "../../shared/public/api";
 import { EGYPTIAN_GOVERNORATES } from "../../shared/public/registration-options";
 
 const ARABIC_GRADE_NAMES: Record<number, string> = {
@@ -40,6 +40,31 @@ const ARABIC_GRADE_NAMES: Record<number, string> = {
 
 function arabicGradeName(grade: PublicGrade) {
   return ARABIC_GRADE_NAMES[grade.level] ?? `الصف الدراسي ${grade.level}`;
+}
+
+function freeLectureGradeName(lecture: FreeLecture) {
+  return ARABIC_GRADE_NAMES[lecture.grade.level] ?? lecture.grade.name;
+}
+
+const PUBLIC_LEARNING_LINKS: { route: AppRoute; label: string }[] = [
+  { route: "arabic-secondary", label: "اللغة العربية للثانوية" },
+  { route: "arabic-first-secondary", label: "الصف الأول الثانوي" },
+  { route: "arabic-second-secondary", label: "الصف الثاني الثانوي" },
+  { route: "arabic-third-secondary", label: "الصف الثالث الثانوي" },
+  { route: "nahw-secondary", label: "النحو للثانوية" },
+  { route: "balagha-secondary", label: "البلاغة للثانوية" },
+];
+
+function PublicLearningLinks({ nav }: { nav: any }) {
+  return (
+    <nav aria-label="دليل تعلم اللغة العربية" className="flex flex-wrap justify-center gap-x-5 gap-y-2">
+      {PUBLIC_LEARNING_LINKS.map((link) => (
+        <a key={link.route} href={`/${link.route}`} onClick={(event) => { event.preventDefault(); nav(link.route); }} className="transition-colors hover:text-primary hover:underline">
+          {link.label}
+        </a>
+      ))}
+    </nav>
+  );
 }
 // ============================================================
 export function HomePage({ nav }: any) {
@@ -64,7 +89,7 @@ export function HomePage({ nav }: any) {
         lectureCount: 0,
         durationSeconds: 0,
       };
-      branch.gradeNames.add(lecture.grade.name);
+      branch.gradeNames.add(freeLectureGradeName(lecture));
       branch.lectureCount += 1;
       branch.durationSeconds += lecture.duration_seconds ?? 0;
       grouped.set(lecture.branch.id, branch);
@@ -146,7 +171,7 @@ export function HomePage({ nav }: any) {
       <section className="py-14 px-4">
         <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-10 items-center">
           <div>
-            <img src="/images/mourdy-logo.png" alt="شعار منصة المرضي" className="mb-5 h-20 w-20 rounded-full object-cover shadow-md" width="80" height="80" loading="lazy" />
+            <img src="/images/mourdy-logo-160.webp" alt="شعار منصة المرضي" className="mb-5 h-20 w-20 rounded-full object-cover shadow-md" width="80" height="80" loading="lazy" />
             <h2 className="text-2xl font-black mb-3">الأستاذ محمود عبدالمرضي</h2>
             <p className="text-muted-foreground mb-4 leading-relaxed">
               أستاذ لغة عربية للمرحلة الثانوية، متخصص في تبسيط النحو والصرف والبلاغة وربط الشرح بالتطبيق العملي.
@@ -203,6 +228,28 @@ export function HomePage({ nav }: any) {
         </div>
       </section>
 
+      {/* Secondary school learning guide */}
+      <section className="border-y border-border bg-card px-4 py-14">
+        <div className="mx-auto max-w-5xl">
+          <div className="mx-auto mb-8 max-w-3xl text-center">
+            <h2 className="mb-3 text-2xl font-black sm:text-3xl">شرح اللغة العربية لكل صف في المرحلة الثانوية</h2>
+            <p className="leading-8 text-muted-foreground">
+              في منصة المرضي التعليمية هتلاقي المحتوى منظم حسب الصف والفرع، علشان توصل لشرح النحو والبلاغة والتدريبات المناسبة لمرحلتك بسهولة.
+            </p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-3">
+            {PUBLIC_LEARNING_LINKS.slice(1, 4).map((link, index) => (
+              <a key={link.route} href={`/${link.route}`} onClick={(event) => { event.preventDefault(); nav(link.route); }} className="group rounded-3xl border border-border bg-background p-6 shadow-sm transition hover:-translate-y-1 hover:border-primary/50 hover:shadow-lg">
+                <span className="mb-4 grid h-11 w-11 place-items-center rounded-2xl bg-primary/10 font-black text-primary">{index + 1}</span>
+                <h3 className="mb-2 text-lg font-black">شرح عربي {link.label}</h3>
+                <p className="text-sm leading-7 text-muted-foreground">محاضرات منظمة وتدريبات واختبارات تساعدك على الفهم وقياس تقدمك خطوة بخطوة.</p>
+                <span className="mt-4 inline-flex items-center gap-1 text-sm font-bold text-primary">اعرف تفاصيل الصف <ChevronLeft size={14}/></span>
+              </a>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* CTA */}
       <section className="py-14 px-4">
         <div className="max-w-xl mx-auto text-center">
@@ -216,7 +263,8 @@ export function HomePage({ nav }: any) {
       </section>
 
       <footer className="border-t border-border py-6 px-4 text-center text-xs text-muted-foreground">
-        <p>© {new Date().getFullYear()} منصة المرضي — الأستاذ محمود عبدالمرضي. جميع الحقوق محفوظة.</p>
+        <PublicLearningLinks nav={nav}/>
+        <p className="mt-4">© {new Date().getFullYear()} منصة المرضي — الأستاذ محمود عبدالمرضي. جميع الحقوق محفوظة.</p>
       </footer>
     </div>
   );
@@ -251,7 +299,7 @@ export function LoginPage({ nav, setRole, onLogin }: any) {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <img src="/images/mourdy-logo.png" alt="شعار منصة المرضي" className="mx-auto mb-3 h-16 w-16 rounded-full object-cover shadow-md" width="64" height="64" />
+          <img src="/images/mourdy-logo-160.webp" alt="شعار منصة المرضي" className="mx-auto mb-3 h-16 w-16 rounded-full object-cover shadow-md" width="64" height="64" />
           <h1 className="text-2xl font-black">تسجيل الدخول</h1>
           <p className="text-muted-foreground text-sm mt-1">منصة الأستاذ محمود عبدالمرضي</p>
         </div>
@@ -697,7 +745,7 @@ export function AboutPage({ nav }: any) {
     <div className="min-h-screen bg-background py-10 px-4">
       <div className="max-w-4xl mx-auto space-y-6">
         <section className="rounded-3xl bg-primary p-8 text-primary-foreground md:p-10">
-          <img src="/images/mourdy-logo.png" alt="شعار منصة المرضي" className="mb-5 h-16 w-16 rounded-full object-cover shadow-md" width="64" height="64" loading="lazy" />
+          <img src="/images/mourdy-logo-160.webp" alt="شعار منصة المرضي" className="mb-5 h-16 w-16 rounded-full object-cover shadow-md" width="64" height="64" loading="lazy" />
           <h1 className="mb-3 text-3xl font-black">عن منصة المرضي والأستاذ محمود عبدالمرضي</h1>
           <p className="max-w-2xl text-base leading-8 opacity-90">
             منصة تعليمية متخصصة في اللغة العربية للمرحلة الثانوية، تساعد الطالب على فهم المنهج من خلال المحاضرات المسجلة والاختبارات والمتابعة المستمرة.
@@ -744,6 +792,161 @@ export function AboutPage({ nav }: any) {
   );
 }
 
+type SecondaryLandingRoute =
+  | "arabic-secondary"
+  | "arabic-first-secondary"
+  | "arabic-second-secondary"
+  | "arabic-third-secondary"
+  | "nahw-secondary"
+  | "balagha-secondary";
+
+const SECONDARY_LANDING_CONTENT: Record<SecondaryLandingRoute, {
+  eyebrow: string;
+  title: string;
+  description: string;
+  sections: { title: string; body: string }[];
+  questions: { question: string; answer: string }[];
+}> = {
+  "arabic-secondary": {
+    eyebrow: "دليل المرحلة الثانوية",
+    title: "شرح اللغة العربية للمرحلة الثانوية",
+    description: "منصة المرضي التعليمية مع الأستاذ محمود عبدالمرضي بتنظم شرح العربي للثانوية حسب الصف والفرع، مع محاضرات وتدريبات وواجبات واختبارات ومتابعة للتقدم.",
+    sections: [
+      { title: "منهج منظم بدل التشتت", body: "المحتوى مترتب داخل سنوات وصفوف وفروع وأبواب ودروس، علشان الطالب يعرف يبدأ منين ويرجع لآخر جزء وصل له." },
+      { title: "فهم وتطبيق وقياس", body: "الشرح مرتبط بالتدريب والواجبات والاختبارات، فتقدر تعرف مستوى فهمك وتراجع الأجزاء اللي محتاجة تركيز." },
+      { title: "متابعة للطالب وولي الأمر", body: "تقدم مشاهدة المحاضرات والنتائج والمحاولات بيظهروا بصورة واضحة تساعد على متابعة الالتزام والتحسن." },
+    ],
+    questions: [
+      { question: "المنصة مناسبة لأنهي صفوف؟", answer: "منصة المرضي مخصصة لطلاب الصف الأول والثاني والثالث الثانوي." },
+      { question: "هل فيه محاضرات مجانية؟", answer: "أيوه، المحاضرات المنشورة كمحتوى مجاني بتظهر في صفحة المحتوى المجاني، وتسجيل الحساب بيحفظ تقدم المشاهدة." },
+    ],
+  },
+  "arabic-first-secondary": {
+    eyebrow: "الصف الأول الثانوي",
+    title: "شرح اللغة العربية للصف الأول الثانوي",
+    description: "ابدأ تأسيس العربي أولى ثانوي بخطة منظمة تساعدك تفهم القواعد وتطبق عليها، وتتابع محاضراتك وواجباتك واختباراتك من مكان واحد.",
+    sections: [
+      { title: "تأسيس قوي من البداية", body: "الصف الأول الثانوي محتاج فهم للمفاهيم الأساسية قبل حفظ الإجابات، لذلك ترتيب الدروس والتدرج في الشرح بيفرق في النتيجة." },
+      { title: "تدريب بعد كل جزء", body: "حل الأسئلة بعد الشرح بيثبت القاعدة ويوضح الأخطاء المتكررة قبل ما تتراكم مع أجزاء المنهج التالية." },
+      { title: "متابعة التقدم", body: "حساب الطالب بيحفظ آخر نقطة مشاهدة ويعرض الواجبات والاختبارات المخصصة لصفه خلال السنة الدراسية." },
+    ],
+    questions: [
+      { question: "إزاي أبدأ عربي أولى ثانوي على المنصة؟", answer: "أنشئ حساب طالب، اختار الصف الأول الثانوي والسنة الدراسية، وبعد التفعيل هتظهر المواد والمحاضرات المخصصة ليك." },
+      { question: "هل أقدر أجرب قبل الاشتراك؟", answer: "تقدر تشوف المحاضرات المجانية المنشورة من صفحة المحتوى المجاني." },
+    ],
+  },
+  "arabic-second-secondary": {
+    eyebrow: "الصف الثاني الثانوي",
+    title: "شرح اللغة العربية للصف الثاني الثانوي",
+    description: "راجع وافهم عربي تانية ثانوي من خلال محتوى مرتب حسب فروع المنهج، مع تدريبات وواجبات واختبارات تساعدك تثبت المعلومة وتقيس مستواك.",
+    sections: [
+      { title: "ربط الجديد بالأساسيات", body: "شرح تانية ثانوي يبني على اللي درسته قبل كده، مع مراجعة النقاط الأساسية وقت احتياجها أثناء الدرس." },
+      { title: "واجبات واختبارات مخصصة للصف", body: "كل واجب أو اختبار بيظهر للصفوف اللي حددها المدرس، وممكن يكون مرتبط بدرس معين أو تدريب عام مستقل." },
+      { title: "اعرف اللي خلصته واللي باقي", body: "تقدم الفيديوهات والنتائج بيساعدك تنظم وقتك وتشوف المحاضرات اللي بدأت فيها واللي لسه محتاجة مشاهدة." },
+    ],
+    questions: [
+      { question: "هل المحتوى متقسم حسب الفروع؟", answer: "أيوه، المحتوى الدراسي بيتنظم داخل الصف حسب فروع اللغة العربية ثم الأبواب والدروس والمحاضرات." },
+      { question: "هل الواجبات بتظهر لتانية ثانوي فقط؟", answer: "المدرس يقدر يخصص الواجب لصف واحد أو أكتر، والطالب بيشوف الواجبات المنشورة والمخصصة لصفه." },
+    ],
+  },
+  "arabic-third-secondary": {
+    eyebrow: "الصف الثالث الثانوي",
+    title: "شرح اللغة العربية للصف الثالث الثانوي",
+    description: "نظم مذاكرة عربي تالتة ثانوي بين المحاضرات والتدريب والواجبات والاختبارات، وتابع تقدمك الفعلي بدل الاعتماد على المشاهدة من غير قياس.",
+    sections: [
+      { title: "خطة واضحة للمذاكرة", body: "تقسيم المحتوى لأبواب ودروس يخليك تراجع الجزء المطلوب بسرعة وتكمل من آخر نقطة وصلت لها." },
+      { title: "تدريب قريب من طريقة الامتحان", body: "الاختبارات والواجبات بتقيس الفهم، مع إمكانية إظهار النتيجة أو التصحيح حسب إعدادات المدرس لكل تدريب." },
+      { title: "تقرير كامل عن مستواك", body: "نتائج المحاولات ونسبة التقدم في الفيديوهات والأجزاء غير المشاهدة بتظهر في تقارير تساعد على اتخاذ قرار المراجعة." },
+    ],
+    questions: [
+      { question: "هل المنصة تحفظ وقت المشاهدة؟", answer: "أيوه، بتسجل المشاهدة الفعلية وتحفظ آخر نقطة وصلت لها علشان تكمل منها بعدين." },
+      { question: "هل ولي الأمر يقدر يتابع؟", answer: "حساب ولي الأمر المرتبط بالطالب يقدر يتابع النتائج والمحاولات والتقدم المتاح داخل المنصة." },
+    ],
+  },
+  "nahw-secondary": {
+    eyebrow: "فرع النحو",
+    title: "شرح النحو للمرحلة الثانوية",
+    description: "تعلم نحو الثانوية بطريقة تعتمد على فهم القاعدة، رؤية أمثلة واضحة، ثم التطبيق بالأسئلة والتدريبات بدل الحفظ المؤقت.",
+    sections: [
+      { title: "افهم وظيفة الكلمة", body: "الفهم يبدأ من معنى الجملة وعلاقة الكلمات ببعضها، وبعدها تحديد الحكم والإعراب بيكون أسهل وأكثر ثباتًا." },
+      { title: "طبق على أمثلة متنوعة", body: "تنوع الأمثلة بيمنع حفظ شكل سؤال واحد، ويدربك على اكتشاف القاعدة حتى لو اتغير تركيب الجملة." },
+      { title: "راجع أخطاءك", body: "نتائج الواجبات والاختبارات بتوضح الأسئلة اللي أخطأت فيها، فتقدر ترجع للشرح المناسب وتعيد التدريب بوعي." },
+    ],
+    questions: [
+      { question: "إيه أفضل طريقة لمذاكرة النحو؟", answer: "افهم القاعدة في سياق جملة، حل أمثلة متدرجة، وسجل أخطاءك علشان تراجع سبب الخطأ مش الإجابة بس." },
+      { question: "هل شرح النحو متاح لكل صفوف الثانوية؟", answer: "تنظيم المنصة بيسمح بعرض فروع ودروس ومحاضرات النحو حسب كل صف والسنة الدراسية المخصصة له." },
+    ],
+  },
+  "balagha-secondary": {
+    eyebrow: "فرع البلاغة",
+    title: "شرح البلاغة للمرحلة الثانوية",
+    description: "افهم بلاغة الثانوية من خلال المعنى والسياق والصورة الفنية، مع تطبيقات وأسئلة تساعدك تفرق بين المصطلحات وتختار الإجابة بدقة.",
+    sections: [
+      { title: "المعنى قبل المصطلح", body: "فهم المعنى المقصود في النص بيسهل تحديد الصورة والجمال، وبيخلي المصطلح نتيجة للفهم مش معلومة منفصلة للحفظ." },
+      { title: "مقارنة بين الأفكار المتشابهة", body: "الأمثلة المقارنة بتوضح الفروق الدقيقة بين الأساليب والصور، وبتقلل الحيرة بين الاختيارات القريبة." },
+      { title: "تدريب ومراجعة مستمرة", body: "التدريب المنتظم مع مراجعة سبب الإجابة الصحيحة بيثبت طريقة التفكير المطلوبة في أسئلة البلاغة." },
+    ],
+    questions: [
+      { question: "هل البلاغة محتاجة حفظ؟", answer: "المصطلحات مهمة، لكن الأساس هو فهم المعنى والسياق والتطبيق على أمثلة متنوعة." },
+      { question: "فين ألاقي المحتوى المتاح؟", answer: "أنشئ حساب بالصف الصحيح لتظهر لك المواد المخصصة، وراجع صفحة المحتوى المجاني للمحاضرات المتاحة للجميع." },
+    ],
+  },
+};
+
+export function SecondaryArabicLandingPage({ nav, route }: { nav: any; route: SecondaryLandingRoute }) {
+  const page = SECONDARY_LANDING_CONTENT[route];
+  return (
+    <div className="min-h-screen bg-background">
+      <section className="border-b border-border bg-gradient-to-b from-primary/15 to-background px-4 py-14 text-center md:py-20">
+        <div className="mx-auto max-w-4xl">
+          <span className="mb-4 inline-flex rounded-full border border-primary/20 bg-card px-4 py-1.5 text-sm font-bold text-primary">{page.eyebrow}</span>
+          <h1 className="mb-5 text-3xl font-black leading-tight sm:text-4xl md:text-5xl">{page.title}</h1>
+          <p className="mx-auto max-w-3xl text-base leading-8 text-muted-foreground md:text-lg">{page.description}</p>
+          <div className="mt-7 flex flex-wrap justify-center gap-3">
+            <Btn size="lg" onClick={() => nav("register")}>إنشاء حساب طالب</Btn>
+            <Btn size="lg" variant="outline" onClick={() => nav("free-content")}>شاهد المحتوى المجاني</Btn>
+          </div>
+        </div>
+      </section>
+
+      <main className="mx-auto max-w-6xl px-4 py-12">
+        <div className="grid gap-5 md:grid-cols-3">
+          {page.sections.map((section, index) => (
+            <article key={section.title} className="rounded-3xl border border-border bg-card p-6 shadow-sm">
+              <span className="mb-4 grid h-10 w-10 place-items-center rounded-xl bg-primary/10 font-black text-primary">{index + 1}</span>
+              <h2 className="mb-3 text-xl font-black">{section.title}</h2>
+              <p className="text-sm leading-8 text-muted-foreground">{section.body}</p>
+            </article>
+          ))}
+        </div>
+
+        <section className="mx-auto mt-12 max-w-3xl">
+          <h2 className="mb-5 text-center text-2xl font-black">أسئلة شائعة</h2>
+          <div className="space-y-3">
+            {page.questions.map((item) => (
+              <details key={item.question} className="group rounded-2xl border border-border bg-card p-5">
+                <summary className="cursor-pointer list-none font-black">{item.question}</summary>
+                <p className="mt-3 border-t border-border pt-3 text-sm leading-7 text-muted-foreground">{item.answer}</p>
+              </details>
+            ))}
+          </div>
+        </section>
+
+        <section className="mt-12 rounded-3xl bg-primary p-7 text-center text-primary-foreground md:p-10">
+          <h2 className="mb-3 text-2xl font-black">ابدأ مع منصة المرضي التعليمية</h2>
+          <p className="mx-auto mb-6 max-w-2xl leading-8 opacity-90">اختار صفك وشوف المحتوى المنظم مع الأستاذ محمود عبدالمرضي، وابدأ بالمحاضرات المجانية المتاحة.</p>
+          <Btn className="!bg-white !text-primary" onClick={() => nav("free-content")}>تصفح المحاضرات المجانية</Btn>
+        </section>
+      </main>
+
+      <footer className="border-t border-border px-4 py-7 text-center text-xs text-muted-foreground">
+        <PublicLearningLinks nav={nav}/>
+        <p className="mt-4">منصة المرضي التعليمية — شرح اللغة العربية للمرحلة الثانوية مع الأستاذ محمود عبدالمرضي.</p>
+      </footer>
+    </div>
+  );
+}
+
 // ============================================================
 // FREE CONTENT
 // ============================================================
@@ -760,6 +963,8 @@ export function FreeContentPage({ nav, role }: any) {
   const [lectures, setLectures] = useState<FreeLecture[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [query, setQuery] = useState("");
+  const [gradeFilter, setGradeFilter] = useState("all");
 
   useEffect(() => {
     loadFreeLectures()
@@ -768,25 +973,57 @@ export function FreeContentPage({ nav, role }: any) {
       .finally(() => setLoading(false));
   }, []);
 
+  const grades = useMemo(() => Array.from(new Map(lectures.map((lecture) => [lecture.grade.id, lecture.grade])).values()), [lectures]);
+  const visibleLectures = useMemo(() => lectures.filter((lecture) => {
+    const matchesGrade = gradeFilter === "all" || String(lecture.grade.id) === gradeFilter;
+    const normalizedQuery = query.trim().toLocaleLowerCase("ar");
+    const matchesQuery = !normalizedQuery || [lecture.title, lecture.description, lecture.branch.title, lecture.grade.name]
+      .filter(Boolean)
+      .some((value) => String(value).toLocaleLowerCase("ar").includes(normalizedQuery));
+    return matchesGrade && matchesQuery;
+  }), [gradeFilter, lectures, query]);
+
   const groups = useMemo(() => {
     const grouped = new Map<number, { title: string; grade: string; lectures: FreeLecture[] }>();
-    lectures.forEach((lecture) => {
+    visibleLectures.forEach((lecture) => {
       const current = grouped.get(lecture.branch.id) ?? {
         title: lecture.branch.title,
-        grade: lecture.grade.name,
+        grade: freeLectureGradeName(lecture),
         lectures: [],
       };
       current.lectures.push(lecture);
       grouped.set(lecture.branch.id, current);
     });
     return Array.from(grouped.entries());
-  }, [lectures]);
+  }, [visibleLectures]);
 
   return (
-    <div className="min-h-screen bg-background py-6 px-4">
-      <div className="max-w-3xl mx-auto">
-        <h1 className="text-2xl font-black mb-2">محاضرات لغة عربية مجانية للمرحلة الثانوية</h1>
-        <p className="text-muted-foreground mb-6">محتوى مجاني في النحو والصرف والبلاغة مع الأستاذ محمود عبدالمرضي</p>
+    <div className="min-h-screen bg-background">
+      <section className="border-b border-border bg-gradient-to-b from-primary/15 to-background px-4 py-10 md:py-14">
+        <div className="mx-auto max-w-7xl text-center">
+          <Badge2 variant="primary">ابدأ التعلم مجانًا</Badge2>
+          <h1 className="mt-4 text-3xl font-black md:text-4xl">محاضرات لغة عربية مجانية للمرحلة الثانوية</h1>
+          <p className="mx-auto mt-3 max-w-2xl leading-8 text-muted-foreground">شرح مجاني في النحو والصرف والبلاغة مع الأستاذ محمود عبدالمرضي، مرتب حسب الصف والفرع علشان توصل للمحاضرة المناسبة بسرعة.</p>
+        </div>
+      </section>
+
+      <main className="mx-auto max-w-7xl px-4 py-8">
+        {!loading && !error && lectures.length > 0 && (
+          <section aria-label="البحث في المحاضرات المجانية" className="mb-9 grid gap-3 rounded-3xl border border-border bg-card p-4 shadow-sm md:grid-cols-[1fr_260px]">
+            <label className="relative block">
+              <span className="sr-only">ابحث باسم المحاضرة أو الفرع</span>
+              <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={18}/>
+              <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="ابحث باسم المحاضرة أو الفرع" className="h-12 w-full rounded-2xl border border-border bg-background pr-12 pl-4 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"/>
+            </label>
+            <label>
+              <span className="sr-only">اختر الصف الدراسي</span>
+              <select value={gradeFilter} onChange={(event) => setGradeFilter(event.target.value)} className="h-12 w-full rounded-2xl border border-border bg-background px-4 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20">
+                <option value="all">كل الصفوف الثانوية</option>
+                {grades.map((grade) => <option key={grade.id} value={grade.id}>{grade.name}</option>)}
+              </select>
+            </label>
+          </section>
+        )}
 
         {loading && <Card2 className="text-center text-muted-foreground">جارٍ تحميل المحاضرات…</Card2>}
         {!loading && error && <Card2 className="text-center text-red-600">{error}</Card2>}
@@ -798,38 +1035,56 @@ export function FreeContentPage({ nav, role }: any) {
           </Card2>
         )}
 
+        {!loading && !error && lectures.length > 0 && groups.length === 0 && (
+          <Card2 className="text-center">
+            <Search className="mx-auto mb-3 text-muted-foreground" />
+            <h2 className="font-black">مفيش محاضرات مطابقة للبحث</h2>
+            <button type="button" className="mt-2 text-sm font-bold text-primary hover:underline" onClick={() => { setQuery(""); setGradeFilter("all"); }}>عرض كل المحاضرات</button>
+          </Card2>
+        )}
+
         {groups.map(([branchId, group]) => (
-            <div key={branchId} className="mb-6">
-              <div className="flex items-center gap-2 mb-3">
-                <BookOpen className="text-primary" />
+            <section key={branchId} className="mb-10" aria-labelledby={`free-branch-${branchId}`}>
+              <div className="mb-4 flex flex-wrap items-center gap-3">
+                <span className="grid h-11 w-11 place-items-center rounded-2xl bg-primary/10 text-primary"><BookOpen size={21}/></span>
                 <div className="flex-1">
-                  <div className="font-bold text-lg">{group.title}</div>
-                  <div className="text-xs text-muted-foreground">{group.grade}</div>
+                  <h2 id={`free-branch-${branchId}`} className="text-xl font-black">{group.title}</h2>
+                  <div className="mt-0.5 text-sm text-muted-foreground">{group.grade}</div>
                 </div>
                 <Badge2 variant="primary">{group.lectures.length} محاضرات مجانية</Badge2>
               </div>
-              <div className="space-y-2">
+              <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                 {group.lectures.map((lecture) => (
-                  <Card2 key={lecture.id} className="cursor-pointer hover:border-primary/50 transition-colors" onClick={()=>role==="student"?nav("video",{lessonId:lecture.id}):nav("login")}>
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                        <Play size={17} className="text-primary"/>
-                      </div>
-                      <div className="flex-1">
-                        <div className="font-semibold text-sm">{lecture.title}</div>
-                        <div className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5">
-                          <Clock size={11}/>{formatLectureDuration(lecture.duration_seconds)}
-                          <Badge2 variant="info">مجاني</Badge2>
+                  <a key={lecture.id} href={role === "student" ? `/video/${lecture.id}` : "/login"} onClick={(event) => { event.preventDefault(); if (role === "student") nav("video", { lessonId: lecture.id }); else nav("login"); }} className="group overflow-hidden rounded-3xl border border-border bg-card shadow-sm transition hover:-translate-y-1 hover:border-primary/50 hover:shadow-xl focus-visible:outline-2 focus-visible:outline-primary">
+                    <div className="relative aspect-video overflow-hidden bg-gradient-to-br from-[#123d2e] via-[#245b43] to-primary">
+                      {lecture.has_thumbnail ? (
+                        <img src={freeLectureThumbnailUrl(lecture.id)} alt={`صورة محاضرة ${lecture.title}`} className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]" loading="lazy" decoding="async" />
+                      ) : (
+                        <div className="absolute inset-0 grid place-items-center">
+                          <BookOpen size={46} className="text-white/80"/>
                         </div>
-                      </div>
-                      <ChevronLeft size={15} className="text-muted-foreground"/>
+                      )}
+                      <span className="absolute right-3 top-3 rounded-full bg-emerald-600 px-3 py-1 text-xs font-black text-white shadow">مجاني</span>
+                      <span className="absolute inset-0 grid place-items-center bg-black/5 transition group-hover:bg-black/15">
+                        <span className="grid h-14 w-14 place-items-center rounded-full bg-white/95 text-primary shadow-xl transition group-hover:scale-110"><Play size={22} fill="currentColor"/></span>
+                      </span>
+                      <span className="absolute bottom-3 left-3 inline-flex items-center gap-1 rounded-lg bg-black/70 px-2 py-1 text-xs font-bold text-white"><Clock size={12}/>{formatLectureDuration(lecture.duration_seconds)}</span>
                     </div>
-                  </Card2>
+                    <div className="p-5">
+                      <div className="mb-2 flex items-center gap-2 text-xs font-bold text-primary"><BookOpen size={13}/>{lecture.branch.title}</div>
+                      <h3 className="line-clamp-2 min-h-14 text-lg font-black leading-7">{lecture.title}</h3>
+                      {lecture.description && <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">{lecture.description}</p>}
+                      <div className="mt-4 flex items-center justify-between border-t border-border pt-4 text-sm">
+                        <span className="text-muted-foreground">{freeLectureGradeName(lecture)}</span>
+                        <span className="inline-flex items-center gap-1 font-black text-primary">ابدأ المشاهدة <ChevronLeft size={14}/></span>
+                      </div>
+                    </div>
+                  </a>
                 ))}
               </div>
-            </div>
+            </section>
         ))}
-        <div className="mt-6 text-center">
+        <div className="mt-8 text-center">
           <p className="text-muted-foreground mb-4">المحاضرات مجانية ولا تحتاج كودًا، لكن يلزم تسجيل حساب طالب للمشاهدة وحفظ التقدم.</p>
           <Btn onClick={()=>nav(role==="student"?"student-dashboard":"register")}>{role==="student"?"العودة للوحة الطالب":"التسجيل الآن"}</Btn>
         </div>
@@ -839,7 +1094,11 @@ export function FreeContentPage({ nav, role }: any) {
             المحاضرات المجانية مرتبة حسب الصف والفرع. أنشئ حساب طالب لتكمل المشاهدة من آخر نقطة وصلت إليها وتتابع المحتوى الجديد عند نشره.
           </p>
         </section>
-      </div>
+      </main>
+      <footer className="border-t border-border px-4 py-7 text-center text-xs text-muted-foreground">
+        <PublicLearningLinks nav={nav}/>
+        <p className="mt-4">محاضرات مجانية في اللغة العربية للمرحلة الثانوية على منصة المرضي التعليمية.</p>
+      </footer>
     </div>
   );
 }

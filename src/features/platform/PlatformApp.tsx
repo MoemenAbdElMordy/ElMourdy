@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { useState, useEffect, useCallback, type Dispatch, type SetStateAction } from "react";
+import { lazy, useState, useEffect, useCallback, type Dispatch, type SetStateAction } from "react";
 import {
   Moon, Sun, Menu, X, ChevronRight, ChevronDown, ChevronLeft,
   Play, Lock, CheckCircle, XCircle, Clock, Award, BookOpen,
@@ -12,24 +12,38 @@ import {
 import { parseLocation, routeToPath } from "../../app/routing/hash-router";
 import { canAccess, ROLE_DEFAULT } from "../../app/routing/policy";
 import type { AppRoute, Navigate, Role, RouteParams } from "../../app/routing/types";
-import { AboutPage, HomePage, LoginPage, RegisterPage, ParentRegisterPage, OTPPage, ForgotPage, FreeContentPage } from "../public/pages";
-import { AccountVerificationGate } from "../public/account-verification-gate";
-import { StudentProfileCompletionGate } from "../student/profile-completion-gate";
-import { StudentSettingsPage } from "../student/settings-page";
-import { ConnectedVideoPage } from "../student/connected-video-page";
-import { ParentDashboard } from "../parent/pages";
-import { Day5AcademicYearsPage, Day5AssistantsPage, Day5StudentDetailPage, Day5StudentsListPage } from "../admin/day5-pages";
-import { CurriculumManagePage } from "../admin/curriculum-page";
-import { StudentCurriculumPage } from "../student/curriculum-pages";
-import { ConnectedActivationCodesPage } from "../admin/activation-codes-page";
-import { ConnectedActivationPage } from "../student/activation-page";
-import { ConnectedAnnouncementsPage, ConnectedAttemptResultPage, ConnectedExamManagePage, ConnectedHomeworksPage, ConnectedResultsPage, ConnectedStudentExamPage, ConnectedSupportRequestsPage } from "../learning/connected-pages";
-import { ConnectedAuditLogPage, ConnectedManagementDashboard, ConnectedStudentDashboard } from "../dashboard/connected-dashboards";
-import { ParentDetailPage, ParentsListPage, StudentPreviewPage } from "../admin/teacher-control-pages";
-import { ManagementReportsPage } from "../admin/management-reports-page";
+import { AboutPage, HomePage, LoginPage, RegisterPage, ParentRegisterPage, OTPPage, ForgotPage, FreeContentPage, SecondaryArabicLandingPage } from "../public/pages";
 import { Badge2, Btn, Card2, Field, Input2, Modal2, Pager, Select2, StatCard, ToastContainer, cn, notify } from "../../shared/ui";
 import { login, logout, restoreSession, type AuthUser } from "../../shared/auth/session";
 import { loadAnnouncements, type Announcement } from "../../shared/learning/api";
+
+const AccountVerificationGate = lazy(() => import("../public/account-verification-gate").then((module) => ({ default: module.AccountVerificationGate })));
+const StudentProfileCompletionGate = lazy(() => import("../student/profile-completion-gate").then((module) => ({ default: module.StudentProfileCompletionGate })));
+const StudentSettingsPage = lazy(() => import("../student/settings-page").then((module) => ({ default: module.StudentSettingsPage })));
+const ConnectedVideoPage = lazy(() => import("../student/connected-video-page").then((module) => ({ default: module.ConnectedVideoPage })));
+const ParentDashboard = lazy(() => import("../parent/pages").then((module) => ({ default: module.ParentDashboard })));
+const Day5AcademicYearsPage = lazy(() => import("../admin/day5-pages").then((module) => ({ default: module.Day5AcademicYearsPage })));
+const Day5AssistantsPage = lazy(() => import("../admin/day5-pages").then((module) => ({ default: module.Day5AssistantsPage })));
+const Day5StudentDetailPage = lazy(() => import("../admin/day5-pages").then((module) => ({ default: module.Day5StudentDetailPage })));
+const Day5StudentsListPage = lazy(() => import("../admin/day5-pages").then((module) => ({ default: module.Day5StudentsListPage })));
+const CurriculumManagePage = lazy(() => import("../admin/curriculum-page").then((module) => ({ default: module.CurriculumManagePage })));
+const StudentCurriculumPage = lazy(() => import("../student/curriculum-pages").then((module) => ({ default: module.StudentCurriculumPage })));
+const ConnectedActivationCodesPage = lazy(() => import("../admin/activation-codes-page").then((module) => ({ default: module.ConnectedActivationCodesPage })));
+const ConnectedActivationPage = lazy(() => import("../student/activation-page").then((module) => ({ default: module.ConnectedActivationPage })));
+const ConnectedAnnouncementsPage = lazy(() => import("../learning/connected-pages").then((module) => ({ default: module.ConnectedAnnouncementsPage })));
+const ConnectedAttemptResultPage = lazy(() => import("../learning/connected-pages").then((module) => ({ default: module.ConnectedAttemptResultPage })));
+const ConnectedExamManagePage = lazy(() => import("../learning/connected-pages").then((module) => ({ default: module.ConnectedExamManagePage })));
+const ConnectedHomeworksPage = lazy(() => import("../learning/connected-pages").then((module) => ({ default: module.ConnectedHomeworksPage })));
+const ConnectedResultsPage = lazy(() => import("../learning/connected-pages").then((module) => ({ default: module.ConnectedResultsPage })));
+const ConnectedStudentExamPage = lazy(() => import("../learning/connected-pages").then((module) => ({ default: module.ConnectedStudentExamPage })));
+const ConnectedSupportRequestsPage = lazy(() => import("../learning/connected-pages").then((module) => ({ default: module.ConnectedSupportRequestsPage })));
+const ConnectedAuditLogPage = lazy(() => import("../dashboard/connected-dashboards").then((module) => ({ default: module.ConnectedAuditLogPage })));
+const ConnectedManagementDashboard = lazy(() => import("../dashboard/connected-dashboards").then((module) => ({ default: module.ConnectedManagementDashboard })));
+const ConnectedStudentDashboard = lazy(() => import("../dashboard/connected-dashboards").then((module) => ({ default: module.ConnectedStudentDashboard })));
+const ParentDetailPage = lazy(() => import("../admin/teacher-control-pages").then((module) => ({ default: module.ParentDetailPage })));
+const ParentsListPage = lazy(() => import("../admin/teacher-control-pages").then((module) => ({ default: module.ParentsListPage })));
+const StudentPreviewPage = lazy(() => import("../admin/teacher-control-pages").then((module) => ({ default: module.StudentPreviewPage })));
+const ManagementReportsPage = lazy(() => import("../admin/management-reports-page").then((module) => ({ default: module.ManagementReportsPage })));
 
 // ============================================================
 // ACCESS DENIED
@@ -93,7 +107,7 @@ function TopBar({ role, nav, dark, setDark, setRole, onLogout, authUser }: Shell
   }, [role]);
 
   const links: Record<Role,NavItem[]> = {
-    guest:    [{ l:"الرئيسية",view:"home"},{ l:"المحتوى المجاني",view:"free-content"},{ l:"من نحن",view:"about"}],
+    guest:    [{ l:"الرئيسية",view:"home"},{ l:"المحتوى المجاني",view:"free-content"},{ l:"المرحلة الثانوية",view:"arabic-secondary"},{ l:"من نحن",view:"about"}],
     student:  [{ l:"لوحتي",view:"student-dashboard"},{ l:"موادي",view:"subjects"},{ l:"واجباتي",view:"homeworks"},{ l:"تقدمي",view:"progress"},{ l:"الإعلانات",view:"announcements"},{ l:"التفعيل",view:"activation"},{ l:"الإعدادات",view:"student-settings"}],
     parent:   [{ l:"لوحة الأهل",view:"parent-dashboard"},{ l:"النتائج والمحاولات",view:"parent-results"}],
     teacher:  [{ l:"لوحة القيادة",view:"admin-dashboard"},{ l:"الطلاب",view:"students-list"},{ l:"أولياء الأمور",view:"parents-list"},{ l:"التقارير",view:"management-reports"},{ l:"المحتوى",view:"content-subjects"},{ l:"السنوات",view:"academic-years"},{ l:"الاختبارات",view:"exam-manage"},{ l:"الواجبات",view:"homework-manage"},{ l:"الأكواد",view:"activation-codes"},{ l:"طلبات الدعم",view:"support-requests"},{ l:"الإعلانات",view:"announcements-admin"},{ l:"المساعدون",view:"assistants"},{ l:"نشاط المساعدين",view:"audit-log"}],
@@ -126,7 +140,7 @@ function TopBar({ role, nav, dark, setDark, setRole, onLogout, authUser }: Shell
     <header className="sticky top-0 z-40 bg-card/95 backdrop-blur border-b border-border shadow-sm">
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-3">
         <a href={routeToPath(homeView, {})} onClick={(event) => { event.preventDefault(); nav(homeView); }} className="flex items-center gap-3 shrink-0">
-          <img src="/images/mourdy-logo.png" alt="شعار منصة المرضي" className="h-10 w-10 rounded-full object-cover shadow-sm" width="40" height="40" />
+          <img src="/images/mourdy-logo-160.webp" alt="شعار منصة المرضي" className="h-10 w-10 rounded-full object-cover shadow-sm" width="40" height="40" />
           <div className="hidden sm:block leading-tight">
             <div className="font-black text-sm text-foreground">منصة المرضي</div>
             <div className="text-[10px] text-muted-foreground">خادم لغة أهل الجنة</div>
@@ -263,6 +277,36 @@ export default function App() {
         title: "محاضرات لغة عربية مجانية للثانوية | منصة المرضي",
         description: "شاهد محاضرات مجانية في اللغة العربية لطلاب المرحلة الثانوية مع الأستاذ محمود عبدالمرضي، وسجّل مجانًا لحفظ تقدم المشاهدة.",
         imageAlt: "محاضرات اللغة العربية المجانية على منصة المرضي",
+      },
+      "arabic-secondary": {
+        title: "شرح اللغة العربية للمرحلة الثانوية | منصة المرضي",
+        description: "شرح عربي للصف الأول والثاني والثالث الثانوي مع الأستاذ محمود عبدالمرضي: محاضرات منظمة، واجبات، اختبارات، ومتابعة مستمرة للتقدم.",
+        imageAlt: "شرح اللغة العربية للمرحلة الثانوية على منصة المرضي",
+      },
+      "arabic-first-secondary": {
+        title: "شرح اللغة العربية للصف الأول الثانوي | منصة المرضي",
+        description: "شرح عربي أولى ثانوي بطريقة منظمة مع محاضرات وتدريبات وواجبات واختبارات تساعد الطالب على الفهم ومتابعة تقدمه.",
+        imageAlt: "شرح اللغة العربية للصف الأول الثانوي",
+      },
+      "arabic-second-secondary": {
+        title: "شرح اللغة العربية للصف الثاني الثانوي | منصة المرضي",
+        description: "شرح عربي تانية ثانوي مع الأستاذ محمود عبدالمرضي، ومحتوى مرتب حسب الفروع مع تدريبات وواجبات واختبارات.",
+        imageAlt: "شرح اللغة العربية للصف الثاني الثانوي",
+      },
+      "arabic-third-secondary": {
+        title: "شرح اللغة العربية للصف الثالث الثانوي | منصة المرضي",
+        description: "شرح عربي تالتة ثانوي ومحاضرات وتدريبات واختبارات تساعد الطالب على تنظيم المذاكرة وقياس مستواه الفعلي.",
+        imageAlt: "شرح اللغة العربية للصف الثالث الثانوي",
+      },
+      "nahw-secondary": {
+        title: "شرح النحو للمرحلة الثانوية | منصة المرضي",
+        description: "شرح نحو الثانوية العامة بطريقة مبسطة تعتمد على فهم القاعدة والتطبيق على أمثلة وأسئلة متنوعة مع الأستاذ محمود عبدالمرضي.",
+        imageAlt: "شرح النحو للمرحلة الثانوية",
+      },
+      "balagha-secondary": {
+        title: "شرح البلاغة للمرحلة الثانوية | منصة المرضي",
+        description: "شرح بلاغة الثانوية من خلال المعنى والسياق والصور الفنية مع تطبيقات وأسئلة تساعد الطالب على الفهم والتمييز.",
+        imageAlt: "شرح البلاغة للمرحلة الثانوية",
       },
     };
     const metadata = publicMetadata[view];
@@ -409,6 +453,12 @@ export default function App() {
       case "forgot":           return <ForgotPage {...ctx}/>;
       case "free-content":     return <FreeContentPage {...ctx}/>;
       case "about":            return <AboutPage {...ctx}/>;
+      case "arabic-secondary": return <SecondaryArabicLandingPage {...ctx} route="arabic-secondary"/>;
+      case "arabic-first-secondary": return <SecondaryArabicLandingPage {...ctx} route="arabic-first-secondary"/>;
+      case "arabic-second-secondary": return <SecondaryArabicLandingPage {...ctx} route="arabic-second-secondary"/>;
+      case "arabic-third-secondary": return <SecondaryArabicLandingPage {...ctx} route="arabic-third-secondary"/>;
+      case "nahw-secondary": return <SecondaryArabicLandingPage {...ctx} route="nahw-secondary"/>;
+      case "balagha-secondary": return <SecondaryArabicLandingPage {...ctx} route="balagha-secondary"/>;
       case "student-dashboard":return <ConnectedStudentDashboard {...ctx}/>;
       case "subjects":         return <StudentCurriculumPage {...ctx}/>;
       case "chapters":         return <StudentCurriculumPage {...ctx}/>;

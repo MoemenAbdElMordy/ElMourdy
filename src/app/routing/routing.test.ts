@@ -34,6 +34,12 @@ describe("hash routing", () => {
     window.history.replaceState({}, "", "/#about");
     expect(parseLocation().route).toBe("about");
   });
+
+  it("keeps SEO landing pages on clean crawlable paths", () => {
+    window.history.replaceState({}, "", "/arabic-second-secondary");
+    expect(parseLocation()).toEqual({ route: "arabic-second-secondary", params: {} });
+    expect(routeToPath("nahw-secondary", {})).toBe("/nahw-secondary");
+  });
 });
 
 describe("role policy", () => {
