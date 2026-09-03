@@ -959,6 +959,12 @@ function formatLectureDuration(seconds?: number | null) {
   return remainingMinutes ? `${hours} ساعة و${remainingMinutes} دقيقة` : `${hours} ساعة`;
 }
 
+function formatFreeLectureCount(count: number) {
+  if (count === 1) return "محاضرة مجانية واحدة";
+  if (count === 2) return "محاضرتان مجانيتان";
+  return `${count} محاضرات مجانية`;
+}
+
 export function FreeContentPage({ nav, role }: any) {
   const [lectures, setLectures] = useState<FreeLecture[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1019,7 +1025,7 @@ export function FreeContentPage({ nav, role }: any) {
               <span className="sr-only">اختر الصف الدراسي</span>
               <select value={gradeFilter} onChange={(event) => setGradeFilter(event.target.value)} className="h-12 w-full rounded-2xl border border-border bg-background px-4 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20">
                 <option value="all">كل الصفوف الثانوية</option>
-                {grades.map((grade) => <option key={grade.id} value={grade.id}>{grade.name}</option>)}
+                {grades.map((grade) => <option key={grade.id} value={grade.id}>{ARABIC_GRADE_NAMES[grade.level] ?? grade.name}</option>)}
               </select>
             </label>
           </section>
@@ -1051,7 +1057,7 @@ export function FreeContentPage({ nav, role }: any) {
                   <h2 id={`free-branch-${branchId}`} className="text-xl font-black">{group.title}</h2>
                   <div className="mt-0.5 text-sm text-muted-foreground">{group.grade}</div>
                 </div>
-                <Badge2 variant="primary">{group.lectures.length} محاضرات مجانية</Badge2>
+                <Badge2 variant="primary">{formatFreeLectureCount(group.lectures.length)}</Badge2>
               </div>
               <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                 {group.lectures.map((lecture) => (
