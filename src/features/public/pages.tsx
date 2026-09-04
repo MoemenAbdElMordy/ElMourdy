@@ -335,10 +335,20 @@ export function LoginPage({ nav, setRole, onLogin }: any) {
 export function RegisterPage({ nav }: any) {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const submittingRef = useRef(false);
   const [errors, setErrors] = useState<any>({});
   const [grades, setGrades] = useState<PublicGrade[]>([]);
   const [form, setForm] = useState({ name:"",birthDate:"",phone:"",parentPhone:"",email:"",grade:"",governorate:"",school:"",centerName:"",password:"",confirm:"" });
-  const set = (k:string,v:string) => setForm(f=>({...f,[k]:v}));
+  const set = (k:string,v:string) => {
+    setForm(f=>({...f,[k]:v}));
+    setErrors((current: Record<string, string>) => {
+      if (!current[k] && !current.submit) return current;
+      const next = { ...current };
+      delete next[k];
+      delete next.submit;
+      return next;
+    });
+  };
 
   useEffect(() => {
     loadGrades()
@@ -365,9 +375,18 @@ export function RegisterPage({ nav }: any) {
   };
 
   const submit = async () => {
-    if (!validate()) return;
+    if (submittingRef.current) return;
+    if (!validate()) {
+      notify("راجع كلمة المرور والحقول الموضحة بالأحمر", "error");
+      window.requestAnimationFrame(() => {
+        document.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+      });
+      return;
+    }
 
+    submittingRef.current = true;
     setLoading(true);
+    setErrors({});
     try {
       const registration = await registerStudent({
         name: form.name,
@@ -383,10 +402,14 @@ export function RegisterPage({ nav }: any) {
         passwordConfirmation: form.confirm,
       });
       storePendingRegistration(registration);
+      notify("تم إنشاء الحساب وإرسال كود التفعيل إلى بريدك", "success");
       nav("otp", { phone: form.phone, verificationRole: "student" });
     } catch (error) {
-      setErrors({ submit: error instanceof ApiError ? error.message : "تعذر إنشاء الحساب. حاول مرة أخرى." });
+      const message = error instanceof ApiError ? error.message : "تعذر إنشاء الحساب. حاول مرة أخرى.";
+      setErrors({ submit: message });
+      notify(message, "error");
     } finally {
+      submittingRef.current = false;
       setLoading(false);
     }
   };
@@ -441,15 +464,23 @@ export function RegisterPage({ nav }: any) {
           {step===3 && (
             <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
               <h3 className="font-bold">كلمة المرور</h3>
-              <Input2 label="كلمة المرور" type="password" placeholder="8 أحرف على الأقل" value={form.password} onChange={(e:any)=>set("password",e.target.value)} error={errors.password}/>
-              <Input2 label="تأكيد كلمة المرور" type="password" placeholder="أعد كتابة كلمة المرور" value={form.confirm} onChange={(e:any)=>set("confirm",e.target.value)} error={errors.confirm}/>
+              <Input2 label="كلمة المرور" name="new-password" autoComplete="new-password" type="password" placeholder="8 أحرف على الأقل" value={form.password} onChange={(e:any)=>set("password",e.target.value)} error={errors.password}/>
+              <Input2 label="تأكيد كلمة المرور" name="confirm-password" autoComplete="new-password" type="password" placeholder="أعد كتابة كلمة المرور" value={form.confirm} onChange={(e:any)=>set("confirm",e.target.value)} error={errors.confirm}/>
+              {errors.submit && (
+                <div role="alert" aria-live="assertive" className="space-y-3 rounded-xl border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-600 dark:text-red-300">
+                  <p>{errors.submit}</p>
+                  {errors.submit.includes("تم إنشاء حساب") && (
+                    <Btn type="button" size="sm" className="w-full" onClick={() => nav("login")}>الذهاب لتسجيل الدخول</Btn>
+                  )}
+                </div>
+              )}
               <div className="flex gap-2">
                 <Btn variant="outline" className="flex-1" onClick={()=>setStep(2)}>السابق</Btn>
                 <Btn type="submit" className="flex-1" disabled={loading}>
                   {loading?<><RefreshCw size={15} className="animate-spin"/> جارٍ التسجيل…</>:"إنشاء الحساب"}
                 </Btn>
               </div>
-              {errors.submit && <div role="alert" className="p-3 rounded-xl bg-red-50 text-red-700 text-sm">{errors.submit}</div>}
+              {loading && <p role="status" className="text-center text-xs text-muted-foreground">انتظر لحظات، يتم إنشاء الحساب وإرسال كود التفعيل…</p>}
             </form>
           )}
         </Card2>

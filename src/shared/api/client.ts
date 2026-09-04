@@ -20,9 +20,12 @@ const errorMessagesByCode: Record<string, string> = {
 
 function localizeApiError(message: string, status: number, code?: string) {
   const normalized = message.toLowerCase();
+  if (normalized.includes("phone e164 has already been taken") || normalized.includes("email has already been taken")) {
+    return "تم إنشاء حساب بهذه البيانات بالفعل. سجّل الدخول لإكمال تفعيل الحساب";
+  }
   if (normalized.includes("three active devices")) return "وصل الحساب إلى الحد الأقصى وهو ثلاثة أجهزة نشطة";
   if (normalized.includes("phone number or password")) return "رقم الهاتف أو كلمة المرور غير صحيحة";
-  if (normalized.includes("already been taken")) return "هذه البيانات مستخدمة في حساب آخر";
+  if (normalized.includes("already been taken")) return "تم إنشاء حساب بهذه البيانات بالفعل. سجّل الدخول لإكمال تفعيل الحساب";
   if (normalized.includes("too many verification codes")) return "تم إرسال عدد كبير من أكواد التفعيل؛ انتظر ساعة ثم حاول مرة أخرى";
   if (normalized.includes("wait before requesting another code")) return "انتظر دقيقة قبل طلب كود تفعيل جديد";
   if (normalized.includes("no active account uses this email address")) return "لا يوجد حساب نشط مسجل بهذا البريد الإلكتروني";

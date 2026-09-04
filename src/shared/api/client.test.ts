@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from "vitest";
-import { clearSessionToken, getSessionToken, setSessionToken } from "./client";
+import { ApiError, clearSessionToken, getSessionToken, setSessionToken } from "./client";
 
 describe("session token storage", () => {
   beforeEach(() => {
@@ -30,5 +30,13 @@ describe("session token storage", () => {
     clearSessionToken();
 
     expect(getSessionToken()).toBeNull();
+  });
+});
+
+describe("API error messages", () => {
+  it("guides a student to login when a registration already exists", () => {
+    const error = new ApiError("Phone e164 has already been taken", 422, "unprocessable_entity");
+
+    expect(error.message).toBe("تم إنشاء حساب بهذه البيانات بالفعل. سجّل الدخول لإكمال تفعيل الحساب");
   });
 });
