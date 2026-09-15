@@ -70,6 +70,28 @@ export function CurriculumManagePage({ params }: any){
     setEditor(item?{title:item.title,description:lecture?.description??"",attachmentName:lecture?.attachment_name??"",attachmentUrl:lecture?.attachment_url??"",publishAt:item.publish_at?.slice(0,16)??"",isFree:lecture?.is_free??false,additionalLessonIds:lecture?.additional_lesson_ids??[]}:emptyEditor);
     setThumbnailFile(null);setRemoveThumbnail(false);setModal(true);
   };
+  const openDirectLectureEditor=async()=>{
+    if(!selection.branch)return;
+    setSaving(true);
+    try{
+      let chapter=selection.chapter;
+      if(!chapter){
+        chapter=selection.branch.chapters.find(item=>item.title==="محتوى عام");
+        if(!chapter){
+          const response=await createContent("chapters",{branch_id:selection.branch.id,title:"محتوى عام",status:"published"}) as {chapter:Chapter};
+          chapter={...response.chapter,lessons:[]};
+        }
+      }
+      let lesson=chapter.lessons.find(item=>item.title==="محاضرات المادة");
+      if(!lesson){
+        const response=await createContent("lessons",{chapter_id:chapter.id,title:"محاضرات المادة",status:"published",is_free:false}) as {lesson:Lesson};
+        lesson={...response.lesson,lectures:[]};
+      }
+      setSelection({branch:selection.branch,chapter,lesson});
+      setEditing(null);setEditor(emptyEditor);setThumbnailFile(null);setRemoveThumbnail(false);setModal(true);
+    }catch(error){notify(error instanceof ApiError?error.message:"تعذر تجهيز إضافة المحاضرة","error");}
+    finally{setSaving(false);}
+  };
   const save=async()=>{
     setSaving(true);
     try{
@@ -92,7 +114,8 @@ export function CurriculumManagePage({ params }: any){
   };
   const changeStatus=async(id:number,status:ContentStatus)=>{await updateContent(level,id,{status});await refresh();notify("تم تحديث حالة النشر","success");};
   const remove=async(id:number)=>{
-    if(!window.confirm(`سيتم حذف ${levelLabel[level]} نفسه، وليس ملف الفيديو فقط. هل تريد الاستمرار؟`))return;
+    const warning=level==="lectures"?"سيتم حذف المحاضرة من المنصة مع الاحتفاظ بملف الفيديو في المكتبة والتخزين السحابي. هل تريد الاستمرار؟":`سيتم حذف ${levelLabel[level]}. هل تريد الاستمرار؟`;
+    if(!window.confirm(warning))return;
     try{await deleteContent(level,id);await refresh();notify(`تم حذف ${levelLabel[level]}`,"success");}
     catch(error){notify(error instanceof ApiError&&error.status===409?`لا يمكن حذف ${levelLabel[level]} قبل إزالة المحتوى والسجلات المرتبطة به`:`تعذر حذف ${levelLabel[level]}`,"error");}
   };
@@ -108,7 +131,7 @@ export function CurriculumManagePage({ params }: any){
   const heading=selection.lesson?.title??selection.chapter?.title??selection.branch?.title??"إدارة المحتوى";
 
   return <div className="min-h-screen bg-background p-4 sm:p-6"><div className="mx-auto max-w-6xl">
-    <div className="mb-5 flex items-center justify-between gap-3"><div>{selection.branch&&<button onClick={back} className="mb-2 flex items-center gap-1 text-sm text-muted-foreground"><ChevronLeft size={14}/> رجوع</button>}<h1 className="text-2xl font-black">{heading}</h1><p className="mt-1 text-sm text-muted-foreground">إدارة {levelLabel[level]} وترتيبها وما يظهر منها للطالب</p></div><Btn onClick={()=>openEditor()}><Plus size={15}/> إضافة {levelLabel[level]}</Btn></div>
+    <div className="mb-5 flex items-center justify-between gap-3"><div>{selection.branch&&<button onClick={back} className="mb-2 flex items-center gap-1 text-sm text-muted-foreground"><ChevronLeft size={14}/> رجوع</button>}<h1 className="text-2xl font-black">{heading}</h1><p className="mt-1 text-sm text-muted-foreground">إدارة {levelLabel[level]} وترتيبها وما يظهر منها للطالب</p></div><div className="flex flex-wrap justify-end gap-2">{(level==="chapters"||level==="lessons")&&<Btn variant="outline" disabled={saving} onClick={openDirectLectureEditor}><Plus size={15}/> إضافة محاضرة مباشرة</Btn>}<Btn onClick={()=>openEditor()}><Plus size={15}/> إضافة {levelLabel[level]}</Btn></div></div>
     <Card2 className="mb-4"><Select2 label="السنة الدراسية" value={String(yearId)} onChange={(event:any)=>setYearId(Number(event.target.value))} options={years.map(year=>({value:String(year.id),label:year.name}))}/><div className="mt-4"><p className="mb-2 text-sm font-bold">اختر الصف ثم أدِر فروعه ومحتواه</p><div className="grid gap-3 sm:grid-cols-3">{grades.map(grade=><button key={grade.id} type="button" onClick={()=>setGradeId(grade.id)} className={`rounded-2xl border p-4 text-right transition ${gradeId===grade.id?"border-primary bg-primary text-primary-foreground shadow-md":"border-border bg-background hover:border-primary/60"}`}><BookOpen className="mb-3" size={22}/><strong>{gradeLabel(grade)}</strong><span className="mt-1 block text-xs opacity-80">النحو والبلاغة والأدب وباقي الفروع</span></button>)}</div></div></Card2>
     <VideoStoragePanel onChange={refresh}/>
     <div className="space-y-3">{items.map((item,index)=>{const lecture=level==="lectures"?item as Lecture:null;return <Card2 key={item.id}><div className="flex flex-wrap items-center gap-3">
