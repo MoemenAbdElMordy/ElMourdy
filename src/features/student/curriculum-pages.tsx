@@ -1,11 +1,19 @@
 import { useEffect, useState } from "react";
 import { BookOpen, ChevronLeft, Clock, Play } from "lucide-react";
 import { ApiError } from "../../shared/api/client";
-import { loadCurriculum, type Curriculum, type Lecture } from "../../shared/curriculum/api";
+import { loadCurriculum, type Curriculum, type CurriculumNode, type Lecture } from "../../shared/curriculum/api";
 import { useLectureThumbnailUrl } from "../../shared/media/lecture-thumbnail";
 import { Badge2, Card2 } from "../../shared/ui";
 
 type StudentLecture = Lecture & { lesson_title: string; has_access?: boolean };
+
+function findNode(nodes: CurriculumNode[], id: number): CurriculumNode | undefined {
+  for (const node of nodes) {
+    if (node.id === id) return node;
+    const found = findNode(node.children ?? [], id);
+    if (found) return found;
+  }
+}
 
 function LectureCard({ lecture, open }: { lecture: StudentLecture; open: () => void }) {
   const thumbnailUrl = useLectureThumbnailUrl(lecture.id, lecture.has_thumbnail);
@@ -49,27 +57,34 @@ export function StudentCurriculumPage({ nav, params }: any) {
   if (!tree) return <div className="p-8 text-center">جارٍ تحميل المنهج…</div>;
 
   const requestedChapterId = Number(params?.chapterId);
-  const branch = tree.branches.find((item) => item.id === Number(params?.subjectId)) ?? tree.branches.find((item) => item.chapters.some((chapter) => chapter.id === requestedChapterId));
-  const chapter = branch?.chapters.find((item) => item.id === requestedChapterId);
+  const nodeBranch = requestedChapterId ? tree.branches.find((item) => findNode(item.nodes ?? [], requestedChapterId)) : undefined;
+  const branch = tree.branches.find((item) => item.id === Number(params?.subjectId)) ?? nodeBranch ?? tree.branches.find((item) => item.chapters.some((chapter) => chapter.id === requestedChapterId));
+  const selectedNode = branch && requestedChapterId ? findNode(branch.nodes ?? [], requestedChapterId) : undefined;
+  const chapter = selectedNode ? undefined : branch?.chapters.find((item) => item.id === requestedChapterId);
   const lectures: StudentLecture[] = chapter?.lessons.flatMap((lesson) => lesson.lectures.map((lecture) => ({
     ...lecture,
     lesson_title: lesson.title,
     has_access: lecture.has_access ?? (lecture.is_free || lesson.has_access),
   }))) ?? [];
-  const items = chapter ? lectures : (branch?.chapters ?? tree.branches);
-  const title = chapter?.title ?? branch?.title ?? `منهج ${tree.grade?.name ?? "الطالب"}`;
-  const open = (item: any) => chapter ? item.has_access && ((item.video_source_type === "youtube" && item.youtube_video_id) || item.video_asset?.processing_status === "ready") ? nav("video", { lessonId: item.id }) : item.has_access ? undefined : nav("activation", { lectureId: item.id }) : branch ? nav("lessons", { subjectId: branch.id, chapterId: item.id }) : nav("chapters", { subjectId: item.id });
+  const usingNodes = Boolean(branch?.nodes?.length);
+  const nodeItems = selectedNode?.kind === "folder" ? selectedNode.children : branch?.nodes;
+  const items = usingNodes ? (nodeItems ?? []) : chapter ? lectures : (branch?.chapters ?? tree.branches);
+  const title = selectedNode?.title ?? chapter?.title ?? branch?.title ?? `منهج ${tree.grade?.name ?? "الطالب"}`;
+  const openLecture = (lecture: StudentLecture) => lecture.has_access && ((lecture.video_source_type === "youtube" && lecture.youtube_video_id) || lecture.video_asset?.processing_status === "ready") ? nav("video", { lessonId: lecture.id }) : lecture.has_access ? undefined : nav("activation", { lectureId: lecture.id });
+  const open = (item: any) => usingNodes
+    ? item.kind === "lecture" ? openLecture({ ...item.lecture, lesson_title: selectedNode?.title ?? branch!.title }) : nav("lessons", { subjectId: branch!.id, chapterId: item.id })
+    : chapter ? openLecture(item) : branch ? nav("lessons", { subjectId: branch.id, chapterId: item.id }) : nav("chapters", { subjectId: item.id });
 
   return (
     <div className="min-h-screen bg-background p-4 sm:p-6">
       <div className="mx-auto max-w-6xl">
         <div className="mb-5">
-          {(branch || chapter) && <button onClick={() => chapter ? nav("chapters", { subjectId: branch!.id }) : nav("subjects")} className="mb-2 flex items-center gap-1 text-sm text-muted-foreground"><ChevronLeft size={14} /> رجوع</button>}
+          {(branch || chapter) && <button onClick={() => selectedNode?.parent_id ? nav("lessons", { subjectId: branch!.id, chapterId: selectedNode.parent_id }) : (chapter || selectedNode) ? nav("chapters", { subjectId: branch!.id }) : nav("subjects")} className="mb-2 flex items-center gap-1 text-sm text-muted-foreground"><ChevronLeft size={14} /> رجوع</button>}
           <h1 className="text-2xl font-black">{title}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{tree.academic_year?.name}</p>
         </div>
-        <div className={chapter ? "grid gap-5 sm:grid-cols-2 lg:grid-cols-3" : "grid gap-4 sm:grid-cols-2"}>
-          {items.map((item: any) => chapter ? <LectureCard key={item.id} lecture={item} open={() => open(item)} /> : <Card2 key={item.id} className="cursor-pointer hover:border-primary" onClick={() => open(item)}><div className="flex gap-3"><BookOpen className="text-primary" /><div className="flex-1"><h2 className="font-bold">{item.title}</h2></div><ChevronLeft size={18} /></div></Card2>)}
+        <div className={(chapter || selectedNode || (usingNodes && branch)) ? "grid gap-5 sm:grid-cols-2 lg:grid-cols-3" : "grid gap-4 sm:grid-cols-2"}>
+          {items.map((item: any) => (usingNodes && item.kind === "lecture") || chapter ? <LectureCard key={item.id} lecture={usingNodes ? { ...item.lecture, lesson_title: selectedNode?.title ?? branch!.title } : item} open={() => open(item)} /> : <Card2 key={item.id} className="cursor-pointer hover:border-primary" onClick={() => open(item)}><div className="flex gap-3"><BookOpen className="text-primary" /><div className="flex-1"><h2 className="font-bold">{item.title}</h2></div><ChevronLeft size={18} /></div></Card2>)}
         </div>
         {items.length === 0 && <Card2><p className="py-8 text-center text-muted-foreground">لم يُنشر محتوى لهذا المستوى بعد</p></Card2>}
       </div>
