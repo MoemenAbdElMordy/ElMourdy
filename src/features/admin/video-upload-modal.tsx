@@ -17,6 +17,8 @@ import {
 import { Badge2, Btn, Modal2, notify } from "../../shared/ui";
 
 const statusLabels={uploaded:"في قائمة الانتظار",processing:"جارٍ إنشاء الجودات",ready:"جاهز للمشاهدة",failed:"فشلت المعالجة"};
+const expectedQualities=["360p","480p","720p"];
+const allQualitiesReady=(asset:VideoAsset)=>expectedQualities.every(quality=>asset.available_qualities?.includes(quality));
 const formatDuration=(seconds?:number)=>seconds?`${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,"0")}`:"غير محددة";
 const formatSize=(bytes?:number)=>bytes?`${(bytes/1024/1024).toFixed(1)} MB`:"—";
 
@@ -34,8 +36,8 @@ export function VideoUploadModal({lecture,existingAsset,onClose,onReady}:{lectur
   useEffect(()=>{if(!existingAsset)return;loadVideoAsset(existingAsset.id).then(response=>setAsset(response.video_asset)).catch(()=>undefined);},[existingAsset?.id]);
   useEffect(()=>{loadReusableVideoAssets().then(response=>setReusable(response.video_assets)).catch(()=>setReusable([]));},[]);
   useEffect(()=>{
-    if(!asset||!["uploaded","processing"].includes(asset.processing_status))return;
-    const timer=window.setInterval(async()=>{try{const response=await loadVideoAsset(asset.id);setAsset(response.video_asset);if(response.video_asset.processing_status==="ready"){window.clearInterval(timer);setBusy(false);onReady();notify("الفيديو جاهز للمشاهدة","success");}if(response.video_asset.processing_status==="failed"){window.clearInterval(timer);setBusy(false);}}catch{window.clearInterval(timer);setBusy(false);notify("تعذر متابعة حالة معالجة الفيديو","error");}},5000);
+    if(!asset||(!["uploaded","processing"].includes(asset.processing_status)&&!(asset.processing_status==="ready"&&!allQualitiesReady(asset))))return;
+    const timer=window.setInterval(async()=>{try{const response=await loadVideoAsset(asset.id);setAsset(response.video_asset);if(response.video_asset.processing_status==="ready"&&allQualitiesReady(response.video_asset)){window.clearInterval(timer);setBusy(false);onReady();notify("الفيديو جاهز بجميع الجودات","success");}if(response.video_asset.processing_status==="failed"){window.clearInterval(timer);setBusy(false);}}catch{window.clearInterval(timer);setBusy(false);notify("تعذر متابعة حالة معالجة الفيديو","error");}},5000);
     return()=>window.clearInterval(timer);
   },[asset?.id,asset?.processing_status,onReady]);
 
@@ -46,16 +48,17 @@ export function VideoUploadModal({lecture,existingAsset,onClose,onReady}:{lectur
   const deletionError=(error:unknown)=>error instanceof ApiError&&error.status===422?"لا يمكن حذف فيديو مستخدم في محاضرة أخرى":error instanceof ApiError?error.message:"تعذر حذف الفيديو";
   const remove=async()=>{if(!asset||!window.confirm("سيتم حذف الفيديو الحالي نهائيًا من التخزين السحابي بكل جوداته. لا يمكن التراجع. هل تريد الاستمرار؟"))return;setBusy(true);try{await deleteVideoAsset(asset.id);setAsset(null);setMode("upload");setFile(null);setProgress(0);onReady();notify("تم حذف الفيديو نهائيًا من التخزين السحابي","success");}catch(error){notify(deletionError(error),"error");}finally{setBusy(false);}};
   const status=asset?.processing_status;
+  const partiallyReady=Boolean(asset&&status==="ready"&&!allQualitiesReady(asset));
   const selectedReusable=reusable.find(item=>String(item.id)===selectedAssetId);
 
   return <Modal2 open onClose={onClose} title="إدارة فيديو المحاضرة" size="lg"><div className="space-y-4">
-    <div className="flex items-center justify-between gap-3 rounded-xl bg-muted p-3"><div><p className="text-xs text-muted-foreground">المحاضرة</p><strong>{lecture.title}</strong></div>{status&&<Badge2 variant={status==="ready"?"success":status==="failed"?"danger":"warning"}>{statusLabels[status]}</Badge2>}</div>
+    <div className="flex items-center justify-between gap-3 rounded-xl bg-muted p-3"><div><p className="text-xs text-muted-foreground">المحاضرة</p><strong>{lecture.title}</strong></div>{status&&<Badge2 variant={status==="ready"&&!partiallyReady?"success":status==="failed"?"danger":"warning"}>{partiallyReady?"بعض الجودات جاهزة — ننتظر الباقي":statusLabels[status]}</Badge2>}</div>
     {mode==="manage"&&lecture.video_source_type==="youtube"&&!asset&&<div className="rounded-xl border border-red-200 bg-red-50 p-4 text-center text-red-800"><Link className="mx-auto mb-2"/><strong>فيديو YouTube مرتبط بالمحاضرة</strong><p className="mt-1 text-xs" dir="ltr">{youtubeUrl}</p></div>}
     {mode==="manage"&&asset&&<>
       <div className="grid gap-3 sm:grid-cols-3"><div className="rounded-xl border border-border p-3"><p className="text-xs text-muted-foreground">المدة</p><strong>{formatDuration(asset.duration_seconds)}</strong></div><div className="rounded-xl border border-border p-3 sm:col-span-2"><p className="text-xs text-muted-foreground">الجودات المتاحة</p><div className="mt-2 flex flex-wrap gap-2">{asset.variants?.length?asset.variants.map(variant=><Badge2 key={variant.quality} variant={variant.status==="ready"?"success":"default"}>{variant.quality} • {formatSize(variant.size_bytes)}</Badge2>):asset.available_qualities?.map(quality=><Badge2 key={quality} variant="success">{quality}</Badge2>)??<span>لا توجد جودات بعد</span>}</div></div></div>
-      {status==="processing"||status==="uploaded"?<div className="rounded-xl bg-primary/10 p-4 text-center"><RefreshCw className="mx-auto mb-2 animate-spin text-primary"/><p>تجهيز الفيديو مستمر في الخلفية، ويمكنك إغلاق النافذة بأمان.</p></div>:null}
+      {status==="processing"||status==="uploaded"||partiallyReady?<div className="rounded-xl bg-primary/10 p-4 text-center"><RefreshCw className="mx-auto mb-2 animate-spin text-primary"/><p>تجهيز الجودات المتبقية مستمر في الخلفية، ويمكنك إغلاق النافذة بأمان.</p></div>:null}
       {status==="failed"&&<div className="rounded-xl bg-red-50 p-4 text-center text-red-700"><p>فشلت معالجة الفيديو. يمكنك إعادة المحاولة إذا كان الملف الأصلي ما زال متاحًا، أو رفع نسخة جديدة.</p><Btn className="mt-3" variant="outline" disabled={busy} onClick={retry}><RefreshCw size={15}/> إعادة المعالجة</Btn></div>}
-      {status==="ready"&&<div className="rounded-xl bg-green-50 p-4 text-center text-green-700"><CheckCircle className="mx-auto mb-2"/><p>الفيديو جاهز بالجودات الموضحة أعلاه.</p></div>}
+      {status==="ready"&&!partiallyReady&&<div className="rounded-xl bg-green-50 p-4 text-center text-green-700"><CheckCircle className="mx-auto mb-2"/><p>الفيديو جاهز بالجودات الموضحة أعلاه.</p></div>}
       <div className="grid gap-2 sm:grid-cols-2"><Btn variant="outline" disabled={busy} onClick={()=>{setMode("upload");setFile(null);setProgress(0);}}><Upload size={15}/> استبدال الفيديو</Btn><Btn variant="danger" disabled={busy} onClick={remove}><Trash2 size={15}/> حذف الفيديو</Btn></div>
     </>}
     <div className="grid grid-cols-3 gap-2">
