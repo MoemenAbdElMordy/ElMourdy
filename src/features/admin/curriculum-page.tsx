@@ -110,6 +110,10 @@ const descendantIds = (node: CurriculumNode): number[] => [
   node.id,
   ...node.children.flatMap(descendantIds),
 ];
+const childrenOf = (nodes: CurriculumNode[], parentId: number | null): CurriculumNode[] =>
+  parentId === null
+    ? nodes
+    : flattenFolders(nodes).find(({ node }) => node.id === parentId)?.node.children ?? [];
 
 const emptyEditor = {
   title: "",
@@ -190,7 +194,7 @@ function FolderTree({
               draggable
               role="button"
               tabIndex={0}
-              title="اسحب لنقل العنصر أو تغيير ترتيبه"
+              title="اسحب لترتيب العنصر، أو استخدم زر نقل وترتيب"
               aria-label={`اسحب ${node.title} لنقله`}
               className="cursor-grab rounded-lg p-1 text-muted-foreground active:cursor-grabbing"
               onDragStart={(event) => event.dataTransfer.setData("text/plain", String(node.id))}
@@ -254,10 +258,12 @@ function FolderTree({
                   </button>
                   <button
                     type="button"
-                    title="نقل المجلد"
+                    title="نقل المجلد أو تغيير ترتيبه"
+                    aria-label={`نقل وترتيب ${node.title}`}
                     onClick={() => onMove(node)}
+                    className="inline-flex items-center gap-1 rounded-lg border border-primary/40 px-2 py-1 text-sm font-bold text-primary hover:bg-primary/10"
                   >
-                    <Move size={16} />
+                    <Move size={16} /> نقل وترتيب
                   </button>
                   <button
                     type="button"
@@ -292,10 +298,12 @@ function FolderTree({
                   </button>
                   <button
                     type="button"
-                    title="نقل المحاضرة"
+                    title="نقل المحاضرة أو تغيير ترتيبها"
+                    aria-label={`نقل وترتيب ${node.title}`}
                     onClick={() => onMove(node)}
+                    className="inline-flex items-center gap-1 rounded-lg border border-primary/40 px-2 py-1 text-sm font-bold text-primary hover:bg-primary/10"
                   >
-                    <Move size={16} />
+                    <Move size={16} /> نقل وترتيب
                   </button>
                   <button
                     type="button"
@@ -378,6 +386,9 @@ export function CurriculumManagePage({ params }: any) {
     null,
   );
   const [movingNode, setMovingNode] = useState<CurriculumNode | null>(null);
+  const [moveParentId, setMoveParentId] = useState<number | null>(null);
+  const [moveBeforeId, setMoveBeforeId] = useState<number | null>(null);
+  const [moveSaving, setMoveSaving] = useState(false);
   const [lectureParentNodeId, setLectureParentNodeId] = useState<number | null>(
     null,
   );
@@ -699,18 +710,31 @@ export function CurriculumManagePage({ params }: any) {
       );
     }
   };
-  const moveNode = async (parentId: number | null) => {
+  const openMoveNode = (node: CurriculumNode) => {
+    setMovingNode(node);
+    setMoveParentId(node.parent_id ?? null);
+    setMoveBeforeId(null);
+  };
+  const moveNode = async () => {
     if (!selection.branch || !movingNode) return;
+    setMoveSaving(true);
     try {
-      await moveCurriculumNode(selection.branch.id, movingNode.id, parentId);
+      await moveCurriculumNode(
+        selection.branch.id,
+        movingNode.id,
+        moveParentId,
+        moveBeforeId ?? undefined,
+      );
       setMovingNode(null);
       await refresh();
-      notify("تم نقل العنصر مع الحفاظ على بياناته", "success");
+      notify("تم حفظ المكان والترتيب دون تغيير محتوى المحاضرة", "success");
     } catch (error) {
       notify(
         error instanceof ApiError ? error.message : "تعذر نقل العنصر",
         "error",
       );
+    } finally {
+      setMoveSaving(false);
     }
   };
   const dropNode = async (
@@ -856,7 +880,7 @@ export function CurriculumManagePage({ params }: any) {
             )}
             <h1 className="text-2xl font-black">{heading}</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              أنشئ مجلدًا أو محاضرة، واسحب العناصر لنقلها وترتيبها دون إعادة رفع الفيديو
+              أنشئ مجلدًا أو محاضرة، ثم استخدم «نقل وترتيب» لاختيار مكانها بسهولة. ويمكنك أيضًا السحب للترتيب السريع.
             </p>
           </div>
           <div className="flex flex-wrap justify-end gap-2">
@@ -914,6 +938,9 @@ export function CurriculumManagePage({ params }: any) {
         <VideoStoragePanel onChange={refresh} />
         {branchTreeMode ? (
           <div className="space-y-3">
+            <div className="rounded-2xl border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
+              <strong>تريد تغيير مكان عنصر؟</strong> اضغط «نقل وترتيب» بجانبه، اختر المجلد ثم موضعه، واضغط «حفظ المكان». الأسهم الصغيرة تغيّر ترتيبه داخل نفس المجلد فقط.
+            </div>
             {selection.branch?.nodes?.length ? (
               <FolderTree
                 nodes={selection.branch.nodes}
@@ -925,7 +952,7 @@ export function CurriculumManagePage({ params }: any) {
                 onDeleteLecture={deleteTreeLecture}
                 onAdd={(node) => openFolderEditor(node)}
                 onAddLecture={(node) => openDirectLectureEditor(node.id)}
-                onMove={setMovingNode}
+                onMove={openMoveNode}
                 onReorder={reorderNodes}
                 onDropNode={dropNode}
               />
@@ -1291,34 +1318,60 @@ export function CurriculumManagePage({ params }: any) {
         <Modal2
           open={Boolean(movingNode)}
           onClose={() => setMovingNode(null)}
-          title="نقل العنصر"
+          title="نقل وترتيب العنصر"
+          size="lg"
         >
-          <div className="max-h-96 space-y-2 overflow-y-auto">
-            <Btn
-              className="w-full justify-start"
-              variant="outline"
-              onClick={() => moveNode(null)}
-            >
-              نقل إلى جذر المادة
-            </Btn>
-            {flattenFolders(selection.branch?.nodes ?? [])
-              .filter(
-                ({ node }) =>
-                  !new Set(movingNode ? descendantIds(movingNode) : []).has(
-                    node.id,
-                  ),
-              )
-              .map(({ node, depth }) => (
-                <Btn
-                  key={node.id}
-                  className="w-full justify-start"
-                  variant="outline"
-                  style={{ paddingInlineStart: `${1 + depth * 1.25}rem` }}
-                  onClick={() => moveNode(node.id)}
+          <div className="space-y-4">
+            <p className="rounded-xl bg-muted p-3 text-sm">
+              ستنقل <strong>«{movingNode?.title}»</strong> داخل هذا الفرع فقط. الفيديو والبيانات لن يتغيرا.
+            </p>
+            <div>
+              <p className="mb-2 font-bold">١. اختر المكان الجديد</p>
+              <div className="max-h-56 space-y-2 overflow-y-auto rounded-xl border border-border p-2">
+                <button
+                  type="button"
+                  aria-pressed={moveParentId === null}
+                  onClick={() => { setMoveParentId(null); setMoveBeforeId(null); }}
+                  className={`flex w-full items-center gap-2 rounded-xl border p-3 text-right ${moveParentId === null ? "border-primary bg-primary/10 font-bold" : "border-border hover:border-primary"}`}
                 >
-                  {node.title}
-                </Btn>
-              ))}
+                  <FolderOpen size={18} /> خارج المجلدات، في صفحة الفرع مباشرة
+                </button>
+                {flattenFolders(selection.branch?.nodes ?? [])
+                  .filter(({ node }) => !new Set(movingNode ? descendantIds(movingNode) : []).has(node.id))
+                  .map(({ node, depth }) => (
+                    <button
+                      key={node.id}
+                      type="button"
+                      aria-pressed={moveParentId === node.id}
+                      onClick={() => { setMoveParentId(node.id); setMoveBeforeId(null); }}
+                      className={`flex w-full items-center gap-2 rounded-xl border p-3 text-right ${moveParentId === node.id ? "border-primary bg-primary/10 font-bold" : "border-border hover:border-primary"}`}
+                      style={{ paddingInlineStart: `${0.75 + depth * 1.25}rem` }}
+                    >
+                      <Folder size={18} /> داخل مجلد «{node.title}»
+                    </button>
+                  ))}
+              </div>
+            </div>
+            <div>
+              <label htmlFor="move-position" className="mb-2 block font-bold">٢. حدد ترتيبه في المكان الجديد</label>
+              <select
+                id="move-position"
+                value={moveBeforeId ?? "end"}
+                onChange={(event) => setMoveBeforeId(event.target.value === "end" ? null : Number(event.target.value))}
+                className="w-full rounded-xl border border-border bg-background px-3 py-3 text-foreground"
+              >
+                <option value="end">في آخر القائمة</option>
+                {childrenOf(selection.branch?.nodes ?? [], moveParentId)
+                  .filter((node) => node.id !== movingNode?.id)
+                  .map((node) => <option key={node.id} value={node.id}>قبل «{node.title}»</option>)}
+              </select>
+            </div>
+            <div className="flex flex-wrap gap-2 border-t border-border pt-4">
+              <Btn onClick={moveNode} disabled={moveSaving}>
+                {moveSaving ? "جارٍ الحفظ…" : "حفظ المكان والترتيب"}
+              </Btn>
+              <Btn variant="outline" onClick={() => setMovingNode(null)} disabled={moveSaving}>إلغاء</Btn>
+            </div>
           </div>
         </Modal2>
         {uploadLecture && (
