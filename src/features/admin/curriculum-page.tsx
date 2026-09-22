@@ -9,6 +9,7 @@ import {
   EyeOff,
   Folder,
   FolderOpen,
+  GripVertical,
   Image,
   Move,
   Plus,
@@ -79,7 +80,7 @@ const statusLabel: Record<ContentStatus, string> = {
   archived: "مؤرشف",
 };
 const levelLabel: Record<ResourceType, string> = {
-  branches: "مادة",
+  branches: "مجلد",
   chapters: "مجلد",
   lessons: "مجلد",
   lectures: "محاضرة",
@@ -146,6 +147,7 @@ function FolderTree({
   onAddLecture,
   onMove,
   onReorder,
+  onDropNode,
 }: {
   nodes: CurriculumNode[];
   depth?: number;
@@ -158,6 +160,7 @@ function FolderTree({
   onAdd: (node: CurriculumNode) => void;
   onAddLecture: (node: CurriculumNode) => void;
   onMove: (node: CurriculumNode) => void;
+  onDropNode: (sourceId: number, parentId: number | null, beforeId?: number) => void;
   onReorder: (
     nodes: CurriculumNode[],
     index: number,
@@ -171,7 +174,29 @@ function FolderTree({
           key={node.id}
           className={depth ? "mr-5 border-r border-border pr-3" : ""}
         >
+          <div
+            aria-label={`ضع العنصر قبل ${node.title}`}
+            className="my-1 h-2 rounded-full transition-colors hover:bg-primary/40"
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              const sourceId = Number(event.dataTransfer.getData("text/plain"));
+              if (sourceId) onDropNode(sourceId, node.parent_id ?? null, node.id);
+            }}
+          />
           <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-card p-3 shadow-sm">
+            <span
+              draggable
+              role="button"
+              tabIndex={0}
+              title="اسحب لنقل العنصر أو تغيير ترتيبه"
+              aria-label={`اسحب ${node.title} لنقله`}
+              className="cursor-grab rounded-lg p-1 text-muted-foreground active:cursor-grabbing"
+              onDragStart={(event) => event.dataTransfer.setData("text/plain", String(node.id))}
+            >
+              <GripVertical size={18} />
+            </span>
             <div className="flex flex-col">
               <button
                 type="button"
@@ -283,6 +308,20 @@ function FolderTree({
               )}
             </div>
           </div>
+          {node.kind === "folder" && (
+            <div
+              className="my-1 mr-4 rounded-lg border border-dashed border-border px-3 py-1 text-center text-xs text-muted-foreground transition-colors hover:border-primary hover:bg-primary/10"
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                const sourceId = Number(event.dataTransfer.getData("text/plain"));
+                if (sourceId) onDropNode(sourceId, node.id);
+              }}
+            >
+              اسحب محاضرة أو مجلدًا إلى هنا لوضعه داخل «{node.title}»
+            </div>
+          )}
           {node.kind === "folder" && node.children.length > 0 && (
             <div className="mt-2">
               <FolderTree
@@ -298,11 +337,23 @@ function FolderTree({
                 onAddLecture={onAddLecture}
                 onMove={onMove}
                 onReorder={onReorder}
+                onDropNode={onDropNode}
               />
             </div>
           )}
         </div>
       ))}
+      <div
+        className="h-3 rounded-full transition-colors hover:bg-primary/40"
+        aria-label="ضع العنصر في نهاية هذا المستوى"
+        onDragOver={(event) => event.preventDefault()}
+        onDrop={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          const sourceId = Number(event.dataTransfer.getData("text/plain"));
+          if (sourceId) onDropNode(sourceId, nodes[0]?.parent_id ?? null);
+        }}
+      />
     </div>
   );
 }
@@ -662,6 +713,23 @@ export function CurriculumManagePage({ params }: any) {
       );
     }
   };
+  const dropNode = async (
+    sourceId: number,
+    parentId: number | null,
+    beforeId?: number,
+  ) => {
+    if (!selection.branch || sourceId === beforeId) return;
+    try {
+      await moveCurriculumNode(selection.branch.id, sourceId, parentId, beforeId);
+      await refresh();
+      notify("تم نقل العنصر وترتيبه", "success");
+    } catch (error) {
+      notify(
+        error instanceof ApiError ? error.message : "تعذر نقل العنصر",
+        "error",
+      );
+    }
+  };
   const reorderNodes = async (
     nodes: CurriculumNode[],
     index: number,
@@ -788,8 +856,7 @@ export function CurriculumManagePage({ params }: any) {
             )}
             <h1 className="text-2xl font-black">{heading}</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              رتّب المحتوى داخل مجلدات مفتوحة، وانقل أي عنصر من غير تكرار
-              الفيديو
+              أنشئ مجلدًا أو محاضرة، واسحب العناصر لنقلها وترتيبها دون إعادة رفع الفيديو
             </p>
           </div>
           <div className="flex flex-wrap justify-end gap-2">
@@ -824,7 +891,7 @@ export function CurriculumManagePage({ params }: any) {
           />
           <div className="mt-4">
             <p className="mb-2 text-sm font-bold">
-              اختر الصف ثم أدِر فروعه ومحتواه
+              اختر الصف ثم أدِر مجلداته ومحاضراته
             </p>
             <div className="grid gap-3 sm:grid-cols-3">
               {grades.map((grade) => (
@@ -860,6 +927,7 @@ export function CurriculumManagePage({ params }: any) {
                 onAddLecture={(node) => openDirectLectureEditor(node.id)}
                 onMove={setMovingNode}
                 onReorder={reorderNodes}
+                onDropNode={dropNode}
               />
             ) : (
               <Card2>

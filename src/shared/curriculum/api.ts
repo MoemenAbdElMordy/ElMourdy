@@ -39,8 +39,8 @@ export const createCurriculumFolder=(branchId:number,parentId:number|null,title:
 export const renameCurriculumFolder=(branchId:number,nodeId:number,title:string)=>apiRequest<{node:CurriculumNode}>(`/curriculum_nodes/${nodeId}`,{
   method:"PATCH",body:JSON.stringify({branch_id:branchId,node:{title}})
 });
-export const moveCurriculumNode=(branchId:number,nodeId:number,parentId:number|null)=>apiRequest<{node:CurriculumNode}>(`/curriculum_nodes/${nodeId}/move`,{
-  method:"PATCH",body:JSON.stringify({branch_id:branchId,node:{parent_id:parentId}})
+export const moveCurriculumNode=(branchId:number,nodeId:number,parentId:number|null,beforeId?:number)=>apiRequest<{node:CurriculumNode}>(`/curriculum_nodes/${nodeId}/move`,{
+  method:"PATCH",body:JSON.stringify({branch_id:branchId,node:{parent_id:parentId,before_id:beforeId}})
 });
 export const reorderCurriculumNodes=(branchId:number,parentId:number|null,orderedIds:number[])=>apiRequest<void>("/curriculum_nodes/reorder",{
   method:"PATCH",body:JSON.stringify({branch_id:branchId,node:{parent_id:parentId},ordered_ids:orderedIds})
