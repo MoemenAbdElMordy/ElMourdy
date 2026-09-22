@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const videoMocks = vi.hoisted(() => ({
   loadReusable: vi.fn(),
+  loadAsset: vi.fn(),
   reuse: vi.fn(),
 }));
 
@@ -14,7 +15,7 @@ vi.mock("../../shared/videos/api", () => ({
   createVideoUpload: vi.fn(),
   deleteVideoAsset: vi.fn(),
   loadReusableVideoAssets: videoMocks.loadReusable,
-  loadVideoAsset: vi.fn(),
+  loadVideoAsset: videoMocks.loadAsset,
   retryVideoProcessing: vi.fn(),
   reuseVideoAsset: videoMocks.reuse,
   uploadVideoFile: vi.fn(),
@@ -34,6 +35,7 @@ const reusableAsset = {
 beforeEach(() => {
   videoMocks.loadReusable.mockResolvedValue({ video_assets: [reusableAsset] });
   videoMocks.reuse.mockResolvedValue({ video_asset: reusableAsset });
+  videoMocks.loadAsset.mockResolvedValue({ video_asset: reusableAsset });
 });
 
 afterEach(() => {
@@ -56,5 +58,31 @@ describe("reusing an uploaded video", () => {
     await waitFor(() => expect(videoMocks.reuse).toHaveBeenCalledWith(4, 6));
     expect(onReady).toHaveBeenCalledOnce();
     expect(onClose).toHaveBeenCalledOnce();
+  });
+});
+
+describe("checking video processing", () => {
+  it("recovers a newly attached video even when the curriculum view is stale", async () => {
+    const readyAsset = { ...reusableAsset, id: 8, lecture_id: 10, used_by_lectures_count: 1, available_qualities: ["360p", "480p", "720p"] };
+    videoMocks.loadReusable.mockResolvedValue({ video_assets: [readyAsset] });
+
+    render(<VideoUploadModal lecture={{ id: 10, title: "محاضرة جديدة" }} onReady={vi.fn()} onClose={vi.fn()}/>);
+
+    expect(await screen.findByText("الفيديو جاهز بالجودات الموضحة أعلاه.")).toBeInTheDocument();
+    expect(screen.getByText("720p")).toBeInTheDocument();
+  });
+
+  it("lets the teacher refresh a processing video immediately", async () => {
+    const processingAsset = { ...reusableAsset, id: 8, lecture_id: 10, used_by_lectures_count: 1, processing_status: "processing" as const, available_qualities: ["480p"] };
+    const readyAsset = { ...processingAsset, processing_status: "ready" as const, available_qualities: ["360p", "480p", "720p"] };
+    videoMocks.loadReusable.mockResolvedValue({ video_assets: [processingAsset] });
+    videoMocks.loadAsset.mockResolvedValue({ video_asset: readyAsset });
+    const onReady = vi.fn();
+
+    render(<VideoUploadModal lecture={{ id: 10, title: "محاضرة جديدة" }} onReady={onReady} onClose={vi.fn()}/>);
+    fireEvent.click(await screen.findByRole("button", { name: "تحديث الحالة الآن" }));
+
+    await waitFor(() => expect(screen.getByText("الفيديو جاهز بالجودات الموضحة أعلاه.")).toBeInTheDocument());
+    expect(onReady).toHaveBeenCalled();
   });
 });
