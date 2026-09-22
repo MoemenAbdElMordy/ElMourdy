@@ -14,3 +14,4 @@ compile_probe.c
 hello_probe.c
 
 .vercel
+.env*
