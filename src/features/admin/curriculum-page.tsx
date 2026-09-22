@@ -106,9 +106,9 @@ const flattenFolders = (
       ? [{ node, depth }, ...flattenFolders(node.children, depth + 1)]
       : [],
   );
-const descendantIds = (node: CurriculumNode): number[] => [
+export const descendantIds = (node: CurriculumNode): number[] => [
   node.id,
-  ...node.children.flatMap(descendantIds),
+  ...(node.children ?? []).flatMap(descendantIds),
 ];
 const childrenOf = (nodes: CurriculumNode[], parentId: number | null): CurriculumNode[] =>
   parentId === null
