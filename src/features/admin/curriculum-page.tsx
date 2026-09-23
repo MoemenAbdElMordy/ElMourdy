@@ -554,15 +554,9 @@ export function CurriculumManagePage({ params }: any) {
   };
   const editTreeLecture = (node: CurriculumNode) => {
     if (!selection.branch || !node.lecture) return;
-    const chapter = selection.branch.chapters[0];
-    const lesson = chapter?.lessons[0];
-    if (!lesson) {
-      notify("تعذر تحديد ارتباط المحاضرة القديم", "error");
-      return;
-    }
     const lecture = node.lecture;
     setDirectLecture(true);
-    setSelection({ branch: selection.branch, chapter, lesson });
+    setLectureParentNodeId(node.parent_id ?? null);
     setEditing(lecture);
     setEditor({
       title: lecture.title,
