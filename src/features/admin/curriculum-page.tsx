@@ -291,9 +291,11 @@ function FolderTree({
                   <button
                     type="button"
                     title="متابعة مشاهدة الطلاب"
+                    aria-label={`متابعة مشاهدة الطلاب في ${node.title}`}
+                    className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-sm text-primary hover:bg-primary/10"
                     onClick={() => onViewers(node)}
                   >
-                    <Eye size={16} />
+                    <Eye size={16} /> متابعة المشاهدة
                   </button>
                   <button
                     type="button"
@@ -830,6 +832,20 @@ export function CurriculumManagePage({ params, nav }: any) {
       );
     }
   };
+  const removeMainFolder = async () => {
+    if (!selection.branch) return;
+    if (!window.confirm("سيُحذف المجلد الرئيسي إذا كان فارغًا فقط. لن تُحذف محاضرات أو واجبات أو اختبارات أو سجلات الطلاب تلقائيًا. هل تريد الاستمرار؟")) return;
+    try {
+      await deleteContent("branches", selection.branch.id);
+      setSelection({});
+      await refresh();
+      notify("تم حذف المجلد الرئيسي الفارغ", "success");
+    } catch (error) {
+      notify(error instanceof ApiError && error.status === 409
+        ? "المجلد الرئيسي مرتبط بمحتوى أو واجبات أو اختبارات. أرشفه لإخفائه بأمان، أو انقل محتواه أولًا قبل الحذف."
+        : "تعذر حذف المجلد الرئيسي", "error");
+    }
+  };
   const removeLectureVideo = async (lecture: Lecture) => {
     if (!lecture.video_asset) return;
     if (
@@ -914,6 +930,9 @@ export function CurriculumManagePage({ params, nav }: any) {
           <div className="flex flex-wrap justify-end gap-2">
             {branchTreeMode ? (
               <>
+                <Btn variant="outline" onClick={removeMainFolder}>
+                  <Trash2 size={15} /> حذف المجلد الرئيسي
+                </Btn>
                 <Btn
                   disabled={saving}
                   onClick={() => openDirectLectureEditor(null)}

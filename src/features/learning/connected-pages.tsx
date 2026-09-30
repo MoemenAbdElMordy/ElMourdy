@@ -11,6 +11,7 @@ import {
   loadAttempt,
   loadAttempts,
   loadExam,
+  loadExamAttempts,
   loadExams,
   loadSupportRequests,
   importExamDocx,
@@ -141,6 +142,19 @@ export function ConnectedExamManagePage({ assessmentType = "exam" }: { assessmen
   const [grades, setGrades] = useState<Grade[]>([]);
   const [editing, setEditing] = useState<Exam | null>(null);
   const [busy, setBusy] = useState(false);
+  const [resultsExam, setResultsExam] = useState<Exam | null>(null);
+  const [results, setResults] = useState<ExamAttempt[]>([]);
+  const [resultsPage, setResultsPage] = useState(1);
+  const [resultsPagination, setResultsPagination] = useState<PaginationMeta>(emptyPagination);
+  const [resultsLoading, setResultsLoading] = useState(false);
+  useEffect(() => {
+    if (!resultsExam) return;
+    setResultsLoading(true);
+    loadExamAttempts(resultsExam.id, resultsPage)
+      .then(({ attempts, pagination }) => { setResults(attempts); setResultsPagination(pagination); })
+      .catch((error) => notify(errorMessage(error), "error"))
+      .finally(() => setResultsLoading(false));
+  }, [resultsExam, resultsPage]);
   const [importWarnings,setImportWarnings]=useState<string[]>([]);
   const blankQuestion = () => ({
     body: "",
@@ -536,6 +550,9 @@ export function ConnectedExamManagePage({ assessmentType = "exam" }: { assessmen
                   <Btn size="sm" variant="outline" onClick={() => edit(exam)}>
                     تعديل
                   </Btn>
+                  <Btn size="sm" variant="outline" onClick={() => { setResultsExam(exam); setResultsPage(1); }}>
+                    متابعة الطلاب
+                  </Btn>
                 </div>
               </div>
             </Card2>
@@ -543,6 +560,13 @@ export function ConnectedExamManagePage({ assessmentType = "exam" }: { assessmen
         </div>
         <PaginationControls pagination={pagination} onPageChange={setPage}/>
       </div>
+      {resultsExam && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setResultsExam(null); }}>
+        <div role="dialog" aria-modal="true" aria-label={`متابعة ${resultsExam.title}`} className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-border bg-background p-5 shadow-xl">
+          <div className="mb-4 flex items-start justify-between gap-3"><div><h2 className="text-lg font-black">متابعة {resultsExam.assessment_type === "homework" ? "الواجب" : "الاختبار"}: {resultsExam.title}</h2><p className="text-sm text-muted-foreground">الطلاب الذين بدأوا، عدد محاولاتهم، ونتيجة كل محاولة.</p></div><Btn variant="outline" size="sm" onClick={() => setResultsExam(null)}>إغلاق</Btn></div>
+          {resultsLoading ? <p>جارٍ تحميل النتائج...</p> : results.length === 0 ? <p className="rounded-xl border border-border p-4 text-sm">لا توجد محاولات حتى الآن.</p> : <div className="space-y-2">{results.map((attempt) => <div key={attempt.id} className="rounded-xl border border-border p-3 text-sm"><strong>{attempt.student_name}</strong><div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-muted-foreground"><span>المحاولة {attempt.attempt_number}</span><span>{attempt.status === "submitted" ? "تم التسليم" : attempt.status === "in_progress" ? "قيد الحل" : "انتهت"}</span><span>النتيجة: {attempt.percent == null ? "لم تُحدد بعد" : `${Math.round(Number(attempt.percent))}٪`}</span><span>{attempt.result_status ? statusLabel[attempt.result_status] : ""}</span></div></div>)}</div>}
+          <PaginationControls pagination={resultsPagination} onPageChange={setResultsPage}/>
+        </div>
+      </div>}
     </Page>
   );
 }
