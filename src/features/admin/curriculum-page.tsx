@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Archive,
   BookOpen,
@@ -404,6 +404,7 @@ export function CurriculumManagePage({ params, nav }: any) {
   const [selection, setSelection] = useState<Selection>({});
   const [modal, setModal] = useState(false);
   const [editor, setEditor] = useState(emptyEditor);
+  const publishAtInputRef = useRef<HTMLInputElement>(null);
   const [editing, setEditing] = useState<ContentItem | null>(null);
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [removeThumbnail, setRemoveThumbnail] = useState(false);
@@ -609,13 +610,14 @@ export function CurriculumManagePage({ params, nav }: any) {
     setSaving(true);
     try {
       const effectiveLevel: ResourceType = directLecture ? "lectures" : level;
+      const publishAtValue = publishAtInputRef.current?.value ?? editor.publishAt;
       const lectureFields =
         effectiveLevel === "lectures"
           ? {
               description: editor.description || null,
               attachment_name: editor.attachmentName || null,
               attachment_url: editor.attachmentUrl || null,
-              ...scheduledLectureFields(editor.publishAt, !editing || editing.status === "draft" || toLocalPublishInput(editing.publish_at) !== editor.publishAt),
+              ...scheduledLectureFields(publishAtValue, !editing || editing.status === "draft" || toLocalPublishInput(editing.publish_at) !== publishAtValue),
               is_free: editor.isFree,
               additional_lesson_ids: editor.additionalLessonIds,
             }
@@ -640,7 +642,7 @@ export function CurriculumManagePage({ params, nav }: any) {
             ...legacyParent,
             ...nodePlacement,
             ...payload,
-            status: editor.publishAt ? "published" : "draft",
+            status: publishAtValue ? "published" : "draft",
           });
       const createdLecture = (response as { lecture?: Lecture }).lecture;
       const recordId = editing?.id ?? createdLecture?.id;
@@ -1225,17 +1227,18 @@ export function CurriculumManagePage({ params, nav }: any) {
                   />
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <Input2
-                    label="موعد النشر (اختياري)"
-                    type="datetime-local"
-                    value={editor.publishAt}
-                    onChange={(event) =>
-                      setEditor((value) => ({
-                        ...value,
-                        publishAt: event.target.value,
-                      }))
-                    }
-                  />
+                  <Field label="موعد النشر (اختياري)" htmlFor="lecture-publish-at">
+                    <input
+                      id="lecture-publish-at"
+                      type="datetime-local"
+                      ref={publishAtInputRef}
+                      className="block min-h-11 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      value={editor.publishAt}
+                      onChange={(event) => setEditor((value) => ({ ...value, publishAt: event.target.value }))}
+                      onInput={(event) => setEditor((value) => ({ ...value, publishAt: event.currentTarget.value }))}
+                      onBlur={(event) => setEditor((value) => ({ ...value, publishAt: event.currentTarget.value }))}
+                    />
+                  </Field>
                   <p className="text-xs text-muted-foreground sm:col-span-2">
                     عند تحديد موعد، تُجدول المحاضرة تلقائيًا: لن تظهر للطلاب قبله، وستظهر بعده بتوقيت جهازك. تأكد أن المجلد الرئيسي منشور وأن الفيديو جاهز.
                   </p>
