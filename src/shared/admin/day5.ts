@@ -13,7 +13,7 @@ export type StudentRecord = {
   attempts?:Array<{id:number;exam_id:number;exam_title:string;assessment_type:"exam"|"homework";attempt_number:number;status:string;score_points?:number|null;max_points?:number|null;percent?:number|null;result_status?:string|null;started_at:string;submitted_at?:string|null}>;
   assessments?:Array<{id:number;title:string;assessment_type:"exam"|"homework";status:"not_started"|"in_progress"|"submitted";scope:string;questions_count:number;max_attempts:number;attempts_count:number;submitted_attempts_count:number;best_percent?:number|null;latest_percent?:number|null;latest_result_status?:string|null;first_started_at?:string|null;last_activity_at?:string|null}>;
   progress?:{completed_lectures:number;watched_lectures:number;highest_score?:number|null};
-  video_progress?:Array<{lecture_id:number;title:string;lesson:string;chapter:string;branch:string;duration_seconds:number;watched_seconds:number;last_position_seconds:number;progress_percent:number;watched:boolean;completed:boolean;last_watched_at?:string|null}>;
+  video_progress?:Array<{lecture_id:number;title:string;lesson:string;chapter:string;branch:string;duration_seconds:number;watched_seconds:number;last_position_seconds:number;progress_percent:number;watch_status?:"watched"|"partial"|"not_watched";watched:boolean;completed:boolean;last_watched_at?:string|null}>;
 };
 export type AssistantRecord = {
   id:number; name:string; phone:string; email?:string; title?:string;

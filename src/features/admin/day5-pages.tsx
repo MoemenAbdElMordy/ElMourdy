@@ -117,8 +117,8 @@ export function Day5StudentsListPage({ nav }: any) {
                       <Badge2 variant={student.status === "active" ? "success" : "danger"}>{student.status === "active" ? "نشط" : "موقوف"}</Badge2>
                     </td>
                     <td className="p-3">
-                      <button aria-label={`عرض ${student.name}`} onClick={() => nav("student-detail", { studentId: student.id })}>
-                        <Eye size={16} />
+                      <button className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-primary hover:bg-primary/10" aria-label={`متابعة ${student.name}`} onClick={() => nav("student-detail", { studentId: student.id })}>
+                        <Eye size={16} /> متابعة الطالب
                       </button>
                     </td>
                   </tr>
@@ -213,13 +213,14 @@ export function Day5StudentDetailPage({ nav, params, authUser }: any) {
     await refresh();
     notify("تم إلغاء صلاحية الوصول", "success");
   };
+  const watchStatus = (percent:number) => percent >= 75 ? "watched" : percent >= 20 ? "partial" : "not_watched";
   const visibleVideos = (student.video_progress ?? []).filter((video) =>
     videoFilter === "all" ||
-    (videoFilter === "watched" && video.watched) ||
-    (videoFilter === "unwatched" && !video.watched) ||
-    (videoFilter === "completed" && video.completed)
+    (videoFilter === "watched" && watchStatus(video.progress_percent) === "watched") ||
+    (videoFilter === "unwatched" && watchStatus(video.progress_percent) === "not_watched") ||
+    (videoFilter === "completed" && watchStatus(video.progress_percent) === "partial")
   );
-  const formatDuration = (seconds:number) => `${Math.floor(seconds / 60)} دقيقة`;
+  const formatDuration = (seconds:number) => `${Math.floor(seconds / 60)} دقيقة و${seconds % 60} ثانية`;
   const formatDateTime = (value?:string|null) => value ? new Date(value).toLocaleString("ar-EG") : "—";
   const assessmentStatus = {not_started:"لم يبدأ",in_progress:"قيد الحل",submitted:"تم التسليم"} as const;
   const resultStatus = {passed:"ناجح",risk:"يحتاج متابعة",failed:"راسب"} as const;
@@ -335,13 +336,13 @@ export function Day5StudentDetailPage({ nav, params, authUser }: any) {
         <Card2 className="mt-4">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div><h2 className="font-black">تقدم مشاهدة المحاضرات</h2><p className="mt-1 text-xs text-muted-foreground">كل فيديو متاح للصف الحالي وحالة مشاهدة الطالب الفعلية.</p></div>
-            <div className="flex flex-wrap gap-2">{([['all','الكل'],['watched','شاهدها'],['unwatched','لم يشاهدها'],['completed','مكتملة']] as const).map(([value,label])=><Btn key={value} size="sm" variant={videoFilter===value?"primary":"outline"} onClick={()=>setVideoFilter(value)}>{label}</Btn>)}</div>
+            <div className="flex flex-wrap gap-2">{([['all','الكل'],['watched','شاهدها ٧٥٪ فأكثر'],['completed','مشاهدة جزئية ٢٠–٧٤٪'],['unwatched','لم يشاهدها أقل من ٢٠٪']] as const).map(([value,label])=><Btn key={value} size="sm" variant={videoFilter===value?"primary":"outline"} onClick={()=>setVideoFilter(value)}>{label}</Btn>)}</div>
           </div>
           <div className="space-y-3">
             {visibleVideos.map(video=><div key={video.lecture_id} className="rounded-xl border border-border p-3">
-              <div className="flex flex-wrap items-start justify-between gap-2"><div><strong>{video.title}</strong><p className="mt-1 text-xs text-muted-foreground">{video.branch} — {video.chapter} — {video.lesson}</p></div><Badge2 variant={video.completed?"success":video.watched?"primary":"default"}>{video.completed?"مكتملة":video.watched?"بدأ المشاهدة":"لم يشاهدها"}</Badge2></div>
+              <div className="flex flex-wrap items-start justify-between gap-2"><div><strong>{video.title}</strong><p className="mt-1 text-xs text-muted-foreground">{video.branch} — {video.chapter} — {video.lesson}</p></div><Badge2 variant={watchStatus(video.progress_percent)==="watched"?"success":watchStatus(video.progress_percent)==="partial"?"warning":"default"}>{watchStatus(video.progress_percent)==="watched"?"شاهدها":watchStatus(video.progress_percent)==="partial"?"مشاهدة جزئية":"لم يشاهدها"}</Badge2></div>
               <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-all" style={{width:`${video.progress_percent}%`}} /></div>
-              <div className="mt-2 flex flex-wrap justify-between gap-2 text-xs text-muted-foreground"><span>{video.progress_percent}% مشاهدة فعلية</span><span>{formatDuration(video.watched_seconds)} من {formatDuration(video.duration_seconds)}</span><span>{video.last_watched_at?`آخر مشاهدة: ${new Date(video.last_watched_at).toLocaleDateString("ar-EG")}`:"لم يبدأ بعد"}</span></div>
+              <div className="mt-2 flex flex-wrap justify-between gap-2 text-xs text-muted-foreground"><span>{video.progress_percent}% مشاهدة فعلية</span><span>{formatDuration(video.watched_seconds)} من {formatDuration(video.duration_seconds)}</span><span>توقف عند: {formatDuration(video.last_position_seconds)}</span><span>{video.last_watched_at?`آخر مشاهدة: ${new Date(video.last_watched_at).toLocaleDateString("ar-EG")}`:"لم يبدأ بعد"}</span></div>
             </div>)}
             {!visibleVideos.length&&<p className="py-5 text-center text-sm text-muted-foreground">لا توجد محاضرات في هذا التصنيف.</p>}
           </div>

@@ -96,8 +96,12 @@ export const attachYouTubeVideo = (lectureId:number,url:string) =>
   apiRequest(`/lectures/${lectureId}/video_upload/youtube`,{method:"POST",body:JSON.stringify({url})});
 export const reuseVideoAsset = (lectureId:number,videoAssetId:number) =>
   apiRequest<{video_asset:VideoAsset}>(`/lectures/${lectureId}/video_upload/reuse`,{method:"POST",body:JSON.stringify({video_asset_id:videoAssetId})});
-export const loadReusableVideoAssets = () =>
-  apiRequest<{video_assets:VideoAsset[]}>("/video_assets?per_page=100");
+export const loadReusableVideoAssets = (filters:{query?:string;page?:number}={}) => {
+  const params = new URLSearchParams({per_page:"100"});
+  if(filters.query)params.set("query",filters.query);
+  if(filters.page)params.set("page",String(filters.page));
+  return apiRequest<{video_assets:VideoAsset[];pagination:{current_page:number;total_pages:number;total_count:number}}>(`/video_assets?${params}`);
+};
 export const loadVideoAsset = (id: number) =>
   apiRequest<{ video_asset: VideoAsset }>(`/video_assets/${id}`);
 export const retryVideoProcessing = (id: number) =>

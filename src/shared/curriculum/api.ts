@@ -9,6 +9,7 @@ export type Chapter = { id:number; title:string; position:number; status:Content
 export type CurriculumNode = { id:number; branch_id:number; parent_id?:number|null; kind:"folder"|"lecture"; title:string; position:number; lecture_id?:number; legacy_chapter_id?:number; legacy_lesson_id?:number; lecture?:Lecture; children:CurriculumNode[] };
 export type Branch = { id:number; title:string; position:number; status:ContentStatus; publish_at?:string; chapters:Chapter[]; nodes?:CurriculumNode[] };
 export type Curriculum = { academic_year:{id:number;name:string}|null; grade:{id:number;name:string;level:number}|null; branches:Branch[] };
+export type LectureViewer = {student_id:number;name:string;watched_seconds:number;duration_seconds:number;last_position_seconds:number;progress_percent:number;status:"watched"|"partial"|"not_watched";last_watched_at?:string|null};
 export type ResourceType = "branches"|"chapters"|"lessons"|"lectures";
 const singularName:Record<ResourceType,string>={branches:"branch",chapters:"chapter",lessons:"lesson",lectures:"lecture"};
 
@@ -30,6 +31,7 @@ export function updateContent(type:ResourceType,id:number,input:Record<string,un
 }
 
 export const deleteContent=(type:ResourceType,id:number)=>apiRequest<void>(`/${type}/${id}`,{method:"DELETE"});
+export const loadLectureViewers=(id:number,page=1)=>apiRequest<{viewers:LectureViewer[];pagination:{current_page:number;total_pages:number;total_count:number}}>(`/lectures/${id}/viewers?page=${page}`);
 export const reorderContent=(type:ResourceType,parent:Record<string,number>,orderedIds:number[])=>apiRequest<void>(`/${type}/reorder`,{method:"PATCH",body:JSON.stringify({...parent,ordered_ids:orderedIds})});
 
 const requestKey=()=>globalThis.crypto?.randomUUID?.()??`${Date.now()}-${Math.random().toString(36).slice(2)}`;

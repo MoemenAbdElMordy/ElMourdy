@@ -6,6 +6,7 @@ import {
   ChevronLeft,
   ChevronUp,
   Edit2,
+  Eye,
   EyeOff,
   Folder,
   FolderOpen,
@@ -30,6 +31,7 @@ import {
   deleteCurriculumFolder,
   loadCurriculum,
   loadCurriculumLocations,
+  loadLectureViewers,
   moveCurriculumNode,
   renameCurriculumFolder,
   reorderContent,
@@ -42,6 +44,7 @@ import {
   type CurriculumLocation,
   type CurriculumNode,
   type Lecture,
+  type LectureViewer,
   type Lesson,
   type ResourceType,
   type VideoAssetSummary,
@@ -73,6 +76,7 @@ const gradeLabel = (grade: Grade) =>
     : grade.level === 2
       ? "الصف الثاني الثانوي"
       : "الصف الثالث الثانوي";
+const formatWatchTime = (seconds: number) => `${Math.floor(seconds / 60)} دقيقة و${seconds % 60} ثانية`;
 const statusLabel: Record<ContentStatus, string> = {
   draft: "مسودة",
   published: "منشور",
@@ -145,6 +149,7 @@ function FolderTree({
   onEditLecture,
   onVideo,
   onPublish,
+  onViewers,
   onDelete,
   onDeleteLecture,
   onAdd,
@@ -159,6 +164,7 @@ function FolderTree({
   onEditLecture: (node: CurriculumNode) => void;
   onVideo: (node: CurriculumNode) => void;
   onPublish: (node: CurriculumNode) => void;
+  onViewers: (node: CurriculumNode) => void;
   onDelete: (node: CurriculumNode) => void;
   onDeleteLecture: (node: CurriculumNode) => void;
   onAdd: (node: CurriculumNode) => void;
@@ -267,7 +273,7 @@ function FolderTree({
                   </button>
                   <button
                     type="button"
-                    title="حذف المجلد الفارغ"
+                    title="حذف المجلد مع إبقاء محتواه"
                     onClick={() => onDelete(node)}
                   >
                     <Trash2 size={16} className="text-red-500" />
@@ -281,6 +287,13 @@ function FolderTree({
                     onClick={() => onEditLecture(node)}
                   >
                     <Edit2 size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    title="متابعة مشاهدة الطلاب"
+                    onClick={() => onViewers(node)}
+                  >
+                    <Eye size={16} />
                   </button>
                   <button
                     type="button"
@@ -339,6 +352,7 @@ function FolderTree({
                 onEditLecture={onEditLecture}
                 onVideo={onVideo}
                 onPublish={onPublish}
+                onViewers={onViewers}
                 onDelete={onDelete}
                 onDeleteLecture={onDeleteLecture}
                 onAdd={onAdd}
@@ -365,7 +379,7 @@ function FolderTree({
     </div>
   );
 }
-export function CurriculumManagePage({ params }: any) {
+export function CurriculumManagePage({ params, nav }: any) {
   const [years, setYears] = useState<AcademicYear[]>([]);
   const [grades, setGrades] = useState<Grade[]>([]);
   const [yearId, setYearId] = useState(0);
@@ -400,6 +414,11 @@ export function CurriculumManagePage({ params }: any) {
     youtube_video_id?: string | null;
     video_asset?: VideoAssetSummary | null;
   } | null>(null);
+  const [viewerLecture, setViewerLecture] = useState<CurriculumNode | null>(null);
+  const [viewers, setViewers] = useState<LectureViewer[]>([]);
+  const [viewersPage, setViewersPage] = useState(1);
+  const [viewersTotalPages, setViewersTotalPages] = useState(1);
+  const [viewersLoading, setViewersLoading] = useState(false);
   const level: ResourceType = selection.lesson
     ? "lectures"
     : selection.chapter
@@ -645,20 +664,35 @@ export function CurriculumManagePage({ params }: any) {
   const deleteFolder = async (node: CurriculumNode) => {
     if (
       !selection.branch ||
-      !window.confirm("سيتم حذف المجلد الفارغ فقط. هل تريد الاستمرار؟")
+      !window.confirm("سيُحذف المجلد فقط، وستُنقل كل المجلدات والمحاضرات الموجودة بداخله إلى المستوى الأعلى دون حذفها. هل تريد الاستمرار؟")
     )
       return;
     try {
       await deleteCurriculumFolder(selection.branch.id, node.id);
       await refresh();
-      notify("تم حذف المجلد الفارغ", "success");
+      notify("تم حذف المجلد ونقل محتواه إلى المستوى الأعلى", "success");
     } catch (error) {
       notify(
         error instanceof ApiError
           ? error.message
-          : "لا يمكن حذف مجلد يحتوي عناصر",
+          : "تعذر حذف المجلد",
         "error",
       );
+    }
+  };
+  const openLectureViewers = async (node: CurriculumNode, page = 1) => {
+    if (!node.lecture_id) return;
+    setViewerLecture(node);
+    setViewersLoading(true);
+    try {
+      const response = await loadLectureViewers(node.lecture_id, page);
+      setViewers(response.viewers);
+      setViewersPage(page);
+      setViewersTotalPages(response.pagination.total_pages || 1);
+    } catch (error) {
+      notify(error instanceof ApiError ? error.message : "تعذر تحميل متابعة المحاضرة", "error");
+    } finally {
+      setViewersLoading(false);
     }
   };
   const deleteTreeLecture = async (node: CurriculumNode) => {
@@ -942,6 +976,7 @@ export function CurriculumManagePage({ params }: any) {
                 onEditLecture={editTreeLecture}
                 onVideo={manageTreeLectureVideo}
                 onPublish={publishTreeLecture}
+                onViewers={openLectureViewers}
                 onDelete={deleteFolder}
                 onDeleteLecture={deleteTreeLecture}
                 onAdd={(node) => openFolderEditor(node)}
@@ -1367,6 +1402,22 @@ export function CurriculumManagePage({ params }: any) {
               <Btn variant="outline" onClick={() => setMovingNode(null)} disabled={moveSaving}>إلغاء</Btn>
             </div>
           </div>
+        </Modal2>
+        <Modal2 open={viewerLecture !== null} onClose={() => setViewerLecture(null)} title={`متابعة مشاهدة: ${viewerLecture?.title ?? ""}`} size="lg">
+          <p className="mb-4 text-sm text-muted-foreground">المشاهدة محسوبة من وقت التشغيل الفعلي، وآخر موضع هو مكان توقف الطالب الأخير.</p>
+          {viewersLoading ? <p>جارٍ تحميل المشاهدات…</p> : viewers.length ? (
+            <div className="space-y-2">
+              {viewers.map((viewer) => (
+                <div key={viewer.student_id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border p-3">
+                  <div><strong>{viewer.name}</strong><p className="text-xs text-muted-foreground">آخر مشاهدة: {viewer.last_watched_at ? new Date(viewer.last_watched_at).toLocaleString("ar-EG") : "—"}</p></div>
+                  <div className="text-sm">شاهد {formatWatchTime(viewer.watched_seconds)} · توقف عند {formatWatchTime(viewer.last_position_seconds)} · {viewer.progress_percent}%</div>
+                  <Badge2 variant={viewer.status === "watched" ? "success" : viewer.status === "partial" ? "warning" : "default"}>{viewer.status === "watched" ? "شاهدها" : viewer.status === "partial" ? "مشاهدة جزئية" : "لم يشاهدها"}</Badge2>
+                  <Btn size="sm" variant="outline" onClick={() => nav?.("student-detail", { studentId: viewer.student_id })}>متابعة الطالب</Btn>
+                </div>
+              ))}
+              {viewersTotalPages > 1 && <div className="flex items-center justify-center gap-3 pt-3"><Btn size="sm" variant="outline" disabled={viewersPage <= 1} onClick={() => viewerLecture && void openLectureViewers(viewerLecture, viewersPage - 1)}>السابق</Btn><span>{viewersPage} من {viewersTotalPages}</span><Btn size="sm" variant="outline" disabled={viewersPage >= viewersTotalPages} onClick={() => viewerLecture && void openLectureViewers(viewerLecture, viewersPage + 1)}>التالي</Btn></div>}
+            </div>
+          ) : <p className="py-6 text-center text-sm text-muted-foreground">لم يبدأ أي طالب مشاهدة هذه المحاضرة بعد.</p>}
         </Modal2>
         {uploadLecture && (
           <VideoUploadModal
