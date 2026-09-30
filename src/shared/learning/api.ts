@@ -19,6 +19,7 @@ export type ExamAttempt = {
   max_points?:number|string|null; percent?:number|string|null; result_status?:"passed"|"risk"|"failed"|null;
   duration_minutes?:number; questions?:ExamQuestion[];
 };
+export type ExamStudentProgress = {student_id:number;name:string;status:"not_started"|"in_progress"|"submitted";attempts_count:number;submitted_attempts_count:number;best_percent:number|null;latest_percent:number|null;last_activity_at:string|null};
 export type Announcement = { id:number; title:string; body:string; status:"draft"|"published"|"archived"; publish_at?:string|null; created_at:string; grade_ids:number[]; user_ids:number[] };
 export type SupportRequest = { id:number; request_type:"device_removal"|"extra_exam_attempt"|"parent_phone_change"; status:"pending"|"approved"|"rejected"|"cancelled"; reason?:string; payload:Record<string,unknown>; student_profile_id?:number|null; requester:{id:number;name:string;role:string}; created_at:string; actions:Array<{action:string;note?:string|null;reviewer_user_id:number;reviewer_name:string;created_at:string}> };
 
@@ -30,6 +31,7 @@ export const submitExam = (attemptId:number, answers:{question_id:number;choice_
 export const answerExamQuestion = (attemptId:number, questionId:number, choiceId:number) => apiRequest<{answer:{question_id:number;selected_choice_id:number;is_correct?:boolean;correct_choice_id?:number;explanation?:string|null}}>(`/exam_attempts/${attemptId}/answer`, {method:"POST",body:JSON.stringify({question_id:questionId,choice_id:choiceId})});
 export const loadAttempts = (studentProfileId?:number,page=1) => {const params=new URLSearchParams();if(studentProfileId)params.set("student_profile_id",String(studentProfileId));addPagination(params,page);return apiRequest<{attempts:ExamAttempt[];pagination:PaginationMeta}>(`/exam_attempts?${params}`);};
 export const loadExamAttempts = (examId:number,page=1) => {const params=new URLSearchParams({exam_id:String(examId)});addPagination(params,page);return apiRequest<{attempts:ExamAttempt[];pagination:PaginationMeta}>(`/exam_attempts?${params}`);};
+export const loadExamProgress = (examId:number,page=1) => apiRequest<{students:ExamStudentProgress[];pagination:PaginationMeta}>(`/exams/${examId}/progress?page=${page}`);
 export const loadAttempt = (id:number) => apiRequest<{attempt:ExamAttempt}>(`/exam_attempts/${id}`);
 export const loadAnnouncements = (page=1) => apiRequest<{announcements:Announcement[];pagination:PaginationMeta}>(`/announcements?page=${page}`);
 export const saveAnnouncement = (input:Record<string,unknown>, id?:number) => apiRequest<{announcement:Announcement}>(id?`/announcements/${id}`:"/announcements", {method:id?"PATCH":"POST",body:JSON.stringify({announcement:input})});
