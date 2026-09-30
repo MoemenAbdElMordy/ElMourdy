@@ -405,6 +405,7 @@ export function CurriculumManagePage({ params, nav }: any) {
   const [modal, setModal] = useState(false);
   const [editor, setEditor] = useState(emptyEditor);
   const publishAtInputRef = useRef<HTMLInputElement>(null);
+  const updatePublishAt = (value: string) => setEditor((current) => ({ ...current, publishAt: value }));
   const [editing, setEditing] = useState<ContentItem | null>(null);
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [removeThumbnail, setRemoveThumbnail] = useState(false);
@@ -1234,9 +1235,9 @@ export function CurriculumManagePage({ params, nav }: any) {
                       ref={publishAtInputRef}
                       className="block min-h-11 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
                       value={editor.publishAt}
-                      onChange={(event) => setEditor((value) => ({ ...value, publishAt: event.target.value }))}
-                      onInput={(event) => setEditor((value) => ({ ...value, publishAt: event.currentTarget.value }))}
-                      onBlur={(event) => setEditor((value) => ({ ...value, publishAt: event.currentTarget.value }))}
+                      onChange={(event) => updatePublishAt(event.target.value)}
+                      onInput={(event) => updatePublishAt(event.currentTarget.value)}
+                      onBlur={(event) => updatePublishAt(event.currentTarget.value)}
                     />
                   </Field>
                   <p className="text-xs text-muted-foreground sm:col-span-2">
