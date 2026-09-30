@@ -77,6 +77,17 @@ const gradeLabel = (grade: Grade) =>
       ? "الصف الثاني الثانوي"
       : "الصف الثالث الثانوي";
 const formatWatchTime = (seconds: number) => `${Math.floor(seconds / 60)} دقيقة و${seconds % 60} ثانية`;
+export const toLocalPublishInput = (value?: string | null) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+};
+export const scheduledLectureFields = (localValue: string, activate = true) => localValue
+  ? { publish_at: new Date(localValue).toISOString(), ...(activate ? { status: "published" as const } : {}) }
+  : { publish_at: null };
+const isScheduled = (lecture: Lecture) => lecture.status === "published" && !!lecture.publish_at && new Date(lecture.publish_at).getTime() > Date.now();
+const scheduledDateLabel = (value: string) => new Intl.DateTimeFormat("ar-EG", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
 const statusLabel: Record<ContentStatus, string> = {
   draft: "مسودة",
   published: "منشور",
@@ -235,7 +246,9 @@ function FolderTree({
               <p className="text-xs text-muted-foreground">
                 {node.kind === "folder"
                   ? `${node.children.length} عنصر داخل المجلد`
-                  : "محاضرة"}
+                  : node.lecture && isScheduled(node.lecture)
+                    ? `مجدولة للنشر ${scheduledDateLabel(node.lecture.publish_at!)}`
+                    : `محاضرة — ${node.lecture ? statusLabel[node.lecture.status] : ""}`}
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -508,7 +521,7 @@ export function CurriculumManagePage({ params, nav }: any) {
             description: lecture?.description ?? "",
             attachmentName: lecture?.attachment_name ?? "",
             attachmentUrl: lecture?.attachment_url ?? "",
-            publishAt: item.publish_at?.slice(0, 16) ?? "",
+            publishAt: toLocalPublishInput(item.publish_at),
             isFree: lecture?.is_free ?? false,
             additionalLessonIds: lecture?.additional_lesson_ids ?? [],
           }
@@ -584,7 +597,7 @@ export function CurriculumManagePage({ params, nav }: any) {
       description: lecture.description ?? "",
       attachmentName: lecture.attachment_name ?? "",
       attachmentUrl: lecture.attachment_url ?? "",
-      publishAt: lecture.publish_at?.slice(0, 16) ?? "",
+      publishAt: toLocalPublishInput(lecture.publish_at),
       isFree: lecture.is_free ?? false,
       additionalLessonIds: lecture.additional_lesson_ids ?? [],
     });
@@ -602,7 +615,7 @@ export function CurriculumManagePage({ params, nav }: any) {
               description: editor.description || null,
               attachment_name: editor.attachmentName || null,
               attachment_url: editor.attachmentUrl || null,
-              publish_at: editor.publishAt || null,
+              ...scheduledLectureFields(editor.publishAt, !editing || editing.status === "draft" || toLocalPublishInput(editing.publish_at) !== editor.publishAt),
               is_free: editor.isFree,
               additional_lesson_ids: editor.additionalLessonIds,
             }
@@ -627,7 +640,7 @@ export function CurriculumManagePage({ params, nav }: any) {
             ...legacyParent,
             ...nodePlacement,
             ...payload,
-            status: "draft",
+            status: editor.publishAt ? "published" : "draft",
           });
       const createdLecture = (response as { lecture?: Lecture }).lecture;
       const recordId = editing?.id ?? createdLecture?.id;
@@ -1223,6 +1236,9 @@ export function CurriculumManagePage({ params, nav }: any) {
                       }))
                     }
                   />
+                  <p className="text-xs text-muted-foreground sm:col-span-2">
+                    عند تحديد موعد، تُجدول المحاضرة تلقائيًا: لن تظهر للطلاب قبله، وستظهر بعده بتوقيت جهازك. تأكد أن المجلد الرئيسي منشور وأن الفيديو جاهز.
+                  </p>
                   <label className="flex items-center gap-2 self-end rounded-xl border border-border p-3 text-sm">
                     <input
                       type="checkbox"
