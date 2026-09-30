@@ -1349,7 +1349,11 @@ export function CurriculumManagePage({ params, nav }: any) {
                 ? "جارٍ الحفظ…"
                 : editing
                   ? "حفظ التعديلات"
-                  : "حفظ كمسودة"}
+                  : editor.publishAt
+                    ? new Date(editor.publishAt).getTime() > Date.now()
+                      ? "جدولة المحاضرة"
+                      : "نشر المحاضرة الآن"
+                    : "حفظ كمسودة"}
             </Btn>
           </div>
         </Modal2>
