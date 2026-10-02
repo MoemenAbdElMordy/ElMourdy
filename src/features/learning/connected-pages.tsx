@@ -1,8 +1,13 @@
-import { useEffect, useRef, useState } from "react";
+import { SupportInbox, ResultsJournal } from './followup-views';
+import { useEffect, useId, useRef, useState } from "react";
+import { AssessmentIntro, AssessmentSheet, ResultHero } from "./assessment-layout";
+import { WorkspaceHeading } from "../dashboard/workspace-views";
+import { arabicNumber as n } from "../../shared/arabic";
 import { CheckCircle, Eye, Plus, Send, Trash2, Upload, XCircle } from "lucide-react";
 import type { Navigate, Role, RouteParams } from "../../app/routing/types";
 import { loadCurriculum } from "../../shared/curriculum/api";
-import { loadAcademicYears, loadGrades, loadStudents, type AcademicYear, type Grade, type StudentRecord } from "../../shared/admin/day5";
+import { loadGrades, loadStudents, type Grade, type StudentRecord } from "../../shared/admin/day5";
+import { loadAcademicChoices, type AcademicYearChoice } from "../../shared/admin/academic-choices";
 import {
   createSupportRequest,
   answerExamQuestion,
@@ -82,6 +87,7 @@ function RichTextInput({
   rows?: number;
 }) {
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const inputId = useId();
   const underlineSelection = () => {
     const input = inputRef.current;
     if (!input) return;
@@ -102,21 +108,22 @@ function RichTextInput({
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between gap-2">
-        <label className="text-sm font-bold">{label}</label>
+        <label htmlFor={inputId} className="text-sm font-bold">{n(label)}</label>
         <button
           type="button"
           onClick={underlineSelection}
           className="rounded-lg border border-border bg-background px-2.5 py-1 text-xs font-black underline transition hover:border-primary hover:text-primary"
           title="حدد كلمة أو جملة واضغط لوضع خط تحتها"
         >
-          U
+          تسطير
         </button>
       </div>
       <textarea
+        id={inputId}
         ref={inputRef}
         required={required}
         value={value}
-        placeholder={placeholder}
+        placeholder={placeholder ? n(placeholder) : undefined}
         rows={rows}
         onChange={(event) => onChange(event.target.value)}
         className="block w-full min-w-0 max-w-full resize-y rounded-xl border border-border bg-background p-2.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
@@ -140,7 +147,7 @@ export function ConnectedExamManagePage({ assessmentType = "exam" }: { assessmen
     gradeId: number;
     lessons: { id: number; title: string }[];
   } | null>(null);
-  const [years, setYears] = useState<AcademicYear[]>([]);
+  const [years, setYears] = useState<AcademicYearChoice[]>([]);
   const [grades, setGrades] = useState<Grade[]>([]);
   const [editing, setEditing] = useState<Exam | null>(null);
   const [busy, setBusy] = useState(false);
@@ -197,7 +204,7 @@ export function ConnectedExamManagePage({ assessmentType = "exam" }: { assessmen
       .catch((e) => notify(errorMessage(e), "error"));
   useEffect(() => { refresh(); }, [page, assessmentType]);
   useEffect(() => {
-    loadAcademicYears().then(({academic_years, grades: availableGrades}) => {
+    loadAcademicChoices().then(({academic_years, grades: availableGrades}) => {
       setYears(academic_years);
       setGrades(availableGrades);
       const year = academic_years.find(item => item.status === "active") ?? academic_years[0];
@@ -303,17 +310,18 @@ export function ConnectedExamManagePage({ assessmentType = "exam" }: { assessmen
       title={isHomework ? "إدارة الواجبات" : "إدارة الاختبارات"}
       subtitle={isHomework ? "إنشاء واجبات اختيارية وتحديد طريقة عرض التصحيح والإجابات" : "إنشاء الاختبارات وربطها بالدروس ومتابعة محاولات الطلاب"}
     >
-      <div className="grid lg:grid-cols-[1fr_1.2fr] gap-5">
-        <Card2>
+      <div className="assessment-studio">
+        <Card2 className="assessment-editor">
           <h2 className="font-bold mb-4">
             {editing ? `تعديل ${isHomework ? "الواجب" : "الاختبار"}` : `${isHomework ? "واجب" : "اختبار"} جديد`}
           </h2>
-          {!editing?.attempts_count&&<div className="mb-4 rounded-2xl border border-dashed border-primary/40 bg-primary/5 p-4"><label className="flex cursor-pointer items-center justify-center gap-2 font-bold text-primary"><Upload size={17}/> استيراد الأسئلة من ملف Word أو PDF<input type="file" accept=".docx,.pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf" className="hidden" disabled={busy} onChange={event=>{void importDocument(event.target.files?.[0]);event.target.value="";}}/></label><p className="mt-2 text-center text-xs text-muted-foreground">سيتم استخراج الأسئلة والاختيارات إلى مسودة، ولن يُحفظ شيء قبل مراجعتك وتحديد الإجابات الصحيحة. ملفات PDF المصورة تحتاج إلى نص قابل للتحديد.</p>{importWarnings.length>0&&<div className="mt-3 rounded-xl bg-yellow-50 p-3 text-xs text-yellow-900">راجع الأسئلة المستوردة بعناية؛ بعض أجزاء الملف احتاجت إلى استنتاج تلقائي.</div>}</div>}
+          {!editing?.attempts_count&&<div className="mb-4 rounded-2xl border border-dashed border-primary/40 bg-primary/5 p-4"><label className="flex cursor-pointer items-center justify-center gap-2 font-bold text-primary"><Upload size={17}/> استيراد الأسئلة من ملف وورد أو بي دي إف<input type="file" accept=".docx,.pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf" className="hidden" disabled={busy} onChange={event=>{void importDocument(event.target.files?.[0]);event.target.value="";}}/></label><p className="mt-2 text-center text-xs text-muted-foreground">سيتم استخراج الأسئلة والاختيارات إلى مسودة، ولن يُحفظ شيء قبل مراجعتك وتحديد الإجابات الصحيحة. ملفات بي دي إف المصورة تحتاج إلى نص قابل للتحديد.</p>{importWarnings.length>0&&<div className="mt-3 rounded-xl bg-yellow-50 p-3 text-xs text-yellow-900">راجع الأسئلة المستوردة بعناية؛ بعض أجزاء الملف احتاجت إلى استنتاج تلقائي.</div>}</div>}
           <div className="mb-4 rounded-2xl border border-border bg-background/50 p-3 text-xs text-muted-foreground">
-            لتسطير كلمة: حددها داخل السؤال أو الاختيار ثم اضغط زر <span className="font-black underline">U</span>.
+            لتسطير كلمة: حددها داخل السؤال أو الاختيار ثم اضغط زر <span className="font-black underline">تسطير</span>.
             وسيتم عرضها للطالب بخط تحتها.
           </div>
           <form className="space-y-3" onSubmit={submit}>
+            <fieldset className="editor-section"><legend><span>١</span> العنوان والجمهور</legend>
             <Input2
               label={isHomework ? "عنوان الواجب" : "عنوان الاختبار"}
               required
@@ -397,6 +405,7 @@ export function ConnectedExamManagePage({ assessmentType = "exam" }: { assessmen
                 })),
               ]}
             />
+            </fieldset><fieldset className="editor-section"><legend><span>٢</span> قواعد الحل والتصحيح</legend>
             <div className="grid grid-cols-3 gap-2">
               <Input2
                 label="المدة بالدقائق"
@@ -450,6 +459,7 @@ export function ConnectedExamManagePage({ assessmentType = "exam" }: { assessmen
                 <p className="text-xs text-muted-foreground">عند تفعيل التصحيح الفوري تُحفظ أول إجابة للسؤال ولا يمكن تجربة الاختيارات حتى الوصول للإجابة الصحيحة.</p>
               </div>
             )}
+            </fieldset><fieldset className="editor-section"><legend><span>٣</span> الأسئلة والإجابات</legend>
             {editing?.attempts_count ? (
               <div className="rounded-xl bg-yellow-50 p-3 text-xs text-yellow-800">
                 بدأت محاولات الطلاب بالفعل، لذلك يمكن تعديل إعدادات الاختبار فقط
@@ -466,7 +476,7 @@ export function ConnectedExamManagePage({ assessmentType = "exam" }: { assessmen
                   setForm({ ...form, questions });
                 };
                 return (
-                  <div key={index} className="border-t pt-3 space-y-2">
+                  <div key={index} className="editor-question space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="font-bold text-sm">
                         السؤال {index + 1}
@@ -519,7 +529,7 @@ export function ConnectedExamManagePage({ assessmentType = "exam" }: { assessmen
                 <Plus size={15} /> إضافة سؤال
               </Btn>
             )}
-            <div className="flex gap-2">
+            </fieldset><div className="editor-savebar flex gap-2">
               <Btn type="submit" disabled={busy}>
                 {busy
                   ? "جاري الحفظ..."
@@ -542,7 +552,9 @@ export function ConnectedExamManagePage({ assessmentType = "exam" }: { assessmen
             </div>
           </form>
         </Card2>
-        <div className="space-y-3">
+        <div className="assessment-library space-y-3">
+          <div className="assessment-library-heading"><span className="workspace-eyebrow">مكتبتك التعليمية</span><h2>{isHomework ? "الواجبات المحفوظة" : "الاختبارات المحفوظة"}</h2><p>اختر عنصرًا لمراجعة تفاصيله أو تعديل إعداداته.</p></div>
+          {!exams.length && <p className="p-5 text-sm text-muted-foreground">لا توجد عناصر لعرضها هنا بعد.</p>}
           {exams.map((exam) => (
             <Card2 key={exam.id}>
               <div className="flex justify-between gap-3">
@@ -578,10 +590,10 @@ export function ConnectedExamManagePage({ assessmentType = "exam" }: { assessmen
         <div role="dialog" aria-modal="true" aria-label={`متابعة ${resultsExam.title}`} className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-border bg-background p-5 shadow-xl">
           <div className="mb-4 flex items-start justify-between gap-3"><div><h2 className="text-lg font-black">متابعة {resultsExam.assessment_type === "homework" ? "الواجب" : "الاختبار"}: {resultsExam.title}</h2><p className="text-sm text-muted-foreground">كل الطلاب المستهدفين، بما فيهم من لم يبدأ، ثم تفاصيل المحاولات والدرجات.</p></div><Btn variant="outline" size="sm" onClick={() => setResultsExam(null)}>إغلاق</Btn></div>
           <h3 className="mb-2 font-black">حالة الطلاب</h3>
-          {progressLoading ? <p>جارٍ تحميل الطلاب...</p> : progress.length === 0 ? <p className="rounded-xl border border-border p-4 text-sm">لا يوجد طلاب في الصفوف المستهدفة.</p> : <div className="space-y-2">{progress.map((student) => <div key={student.student_id} className="rounded-xl border border-border p-3 text-sm"><strong>{student.name}</strong><div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-muted-foreground"><span>{student.status === "not_started" ? "لم يبدأ" : student.status === "submitted" ? "سلّم" : "قيد الحل"}</span><span>المحاولات: {student.attempts_count}</span><span>أفضل نتيجة: {student.best_percent == null ? "—" : `${Math.round(student.best_percent)}٪`}</span><span>آخر نتيجة: {student.latest_percent == null ? "—" : `${Math.round(student.latest_percent)}٪`}</span></div></div>)}</div>}
+          {progressLoading ? <p>جارٍ تحميل الطلاب...</p> : progress.length === 0 ? <p className="rounded-xl border border-border p-4 text-sm">لا يوجد طلاب في الصفوف المستهدفة.</p> : <div className="space-y-2">{progress.map((student) => <div key={student.student_id} className="rounded-xl border border-border p-3 text-sm"><strong>{student.name}</strong><div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-muted-foreground"><span>{student.status === "not_started" ? "لم يبدأ" : student.status === "submitted" ? "سلّم" : "قيد الحل"}</span><span>المحاولات: {n(student.attempts_count)}</span><span>أفضل نتيجة: {student.best_percent == null ? "—" : `${n(Math.round(student.best_percent))}٪`}</span><span>آخر نتيجة: {student.latest_percent == null ? "—" : `${n(Math.round(student.latest_percent))}٪`}</span></div></div>)}</div>}
           <PaginationControls pagination={progressPagination} onPageChange={setProgressPage}/>
           <h3 className="mb-2 mt-5 border-t border-border pt-4 font-black">تفاصيل المحاولات</h3>
-          {resultsLoading ? <p>جارٍ تحميل النتائج...</p> : results.length === 0 ? <p className="rounded-xl border border-border p-4 text-sm">لا توجد محاولات حتى الآن.</p> : <div className="space-y-2">{results.map((attempt) => <div key={attempt.id} className="rounded-xl border border-border p-3 text-sm"><strong>{attempt.student_name}</strong><div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-muted-foreground"><span>المحاولة {attempt.attempt_number}</span><span>{attempt.status === "submitted" ? "تم التسليم" : attempt.status === "in_progress" ? "قيد الحل" : "انتهت"}</span><span>النتيجة: {attempt.percent == null ? "لم تُحدد بعد" : `${Math.round(Number(attempt.percent))}٪`}</span><span>{attempt.result_status ? statusLabel[attempt.result_status] : ""}</span></div></div>)}</div>}
+          {resultsLoading ? <p>جارٍ تحميل النتائج...</p> : results.length === 0 ? <p className="rounded-xl border border-border p-4 text-sm">لا توجد محاولات حتى الآن.</p> : <div className="space-y-2">{results.map((attempt) => <div key={attempt.id} className="rounded-xl border border-border p-3 text-sm"><strong>{attempt.student_name}</strong><div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-muted-foreground"><span>المحاولة {n(attempt.attempt_number)}</span><span>{attempt.status === "submitted" ? "تم التسليم" : attempt.status === "in_progress" ? "قيد الحل" : "انتهت"}</span><span>النتيجة: {attempt.percent == null ? "لم تُحدد بعد" : `${n(Math.round(Number(attempt.percent)))}٪`}</span><span>{attempt.result_status ? statusLabel[attempt.result_status] : ""}</span></div></div>)}</div>}
           <PaginationControls pagination={resultsPagination} onPageChange={setResultsPage}/>
         </div>
       </div>}
@@ -595,10 +607,11 @@ export function ConnectedHomeworksPage({ nav }: { nav: Navigate }) {
   const [pagination,setPagination]=useState<PaginationMeta>(emptyPagination);
   useEffect(()=>{loadExams({assessmentType:"homework",page}).then(response=>{setItems(response.exams);setPagination(response.pagination);}).catch(error=>notify(errorMessage(error),"error"));},[page]);
   return <Page title="واجباتي" subtitle="الواجبات المنشورة المرتبطة بصفك الدراسي">
-    <div className="grid gap-4 md:grid-cols-2">{items.map(item=><Card2 key={item.id} className="flex flex-col justify-between gap-4">
-      <div><h2 className="font-bold">{item.title}</h2><p className="mt-2 text-sm text-muted-foreground">{item.questions_count} سؤال • {item.duration_minutes} دقيقة • {item.max_attempts} محاولة</p></div>
-      <Btn onClick={()=>nav("exam",{examId:item.id})}>فتح الواجب</Btn>
-    </Card2>)}</div>
+    <div className="homework-grid">{items.map((item,index)=><article key={item.id} className="homework-sheet">
+      <span className="sheet-number">{n(index+1)}</span><span className="workspace-eyebrow">ورقة تدريب · واجب منزلي</span><h2>{item.title}</h2>
+      <dl><div><dt>الأسئلة</dt><dd>{n(item.questions_count??0)}</dd></div><div><dt>المدة بالدقائق</dt><dd>{n(item.duration_minutes)}</dd></div><div><dt>المحاولات المسموحة</dt><dd>{n(item.max_attempts)}</dd></div></dl>
+      <button onClick={()=>nav("exam",{examId:item.id})}>افتح الواجب وابدأ التدريب <Eye size={18}/></button>
+    </article>)}</div>
     {items.length===0&&<Card2><p className="py-8 text-center text-muted-foreground">لا توجد واجبات منشورة حاليًا.</p></Card2>}
     <PaginationControls pagination={pagination} onPageChange={setPage}/>
   </Page>;
@@ -675,16 +688,7 @@ export function ConnectedStudentExamPage({
   if (!attempt)
     return (
       <Page title={exam.title}>
-        <Card2 className="max-w-xl mx-auto">
-          <div className="grid grid-cols-3 gap-3 text-center mb-5">
-            <Metric label="المدة" value={`${exam.duration_minutes} دقيقة`} />
-            <Metric label="المحاولات" value={String(exam.max_attempts)} />
-            <Metric label="النجاح" value={`${exam.pass_percent}%`} />
-          </div>
-          <Btn className="w-full" onClick={begin} disabled={busy}>
-            {busy ? "جاري البدء..." : `ابدأ ${exam.assessment_type === "homework" ? "الواجب" : "الاختبار"}`}
-          </Btn>
-        </Card2>
+        <AssessmentIntro title={exam.title} homework={exam.assessment_type==="homework"} duration={exam.duration_minutes} attempts={exam.max_attempts} pass={exam.pass_percent} busy={busy} onBegin={begin}/>
       </Page>
     );
   return (
@@ -692,18 +696,18 @@ export function ConnectedStudentExamPage({
       title={attempt.exam_title}
       subtitle={`المحاولة رقم ${attempt.attempt_number}`}
     >
-      <div className="max-w-3xl mx-auto space-y-4">
+      <AssessmentSheet questions={attempt.questions??[]} answered={answers}>
         {attempt.questions?.map((q, index) => (
-          <Card2 key={q.id}>
+          <Card2 key={q.id} id={`question-${q.id}`} className="question-paper">
             <h3 className="font-bold mb-3">
-              {index + 1}. <RichText value={q.body} />
+              <span className="question-index">{n(index + 1)}</span> <RichText value={q.body} />
             </h3>
             <div className="space-y-2">
               {q.choices.map((choice) => (
                 <label
                   key={choice.id}
                   className={cn(
-                    "flex gap-2 p-3 rounded-xl border cursor-pointer",
+                    "answer-option flex gap-2 p-3 rounded-xl border cursor-pointer",
                     answers[q.id] === choice.id &&
                       "border-primary bg-primary/5",
                   )}
@@ -728,7 +732,7 @@ export function ConnectedStudentExamPage({
         <Btn onClick={finish} disabled={busy}>
           <Send size={15} /> {busy ? "جاري التسليم..." : `تسليم ${exam.assessment_type === "homework" ? "الواجب" : "الاختبار"}`}
         </Btn>
-      </div>
+      </AssessmentSheet>
     </Page>
   );
 }
@@ -765,31 +769,13 @@ export function ConnectedAttemptResultPage({
   return (
     <Page title={isHomework ? "نتيجة الواجب" : "نتيجة الاختبار"} subtitle={attempt.exam_title}>
       <div className="max-w-3xl mx-auto space-y-4">
-        <Card2 className="text-center">
-          <div className="text-5xl font-black text-primary mb-2">
-            {attempt.percent}%
-          </div>
-          <Badge2
-            variant={
-              attempt.result_status === "passed"
-                ? "success"
-                : attempt.result_status === "risk"
-                  ? "warning"
-                  : "danger"
-            }
-          >
-            {statusLabel[attempt.result_status ?? ""]}
-          </Badge2>
-          <p className="text-sm text-muted-foreground mt-3">
-            {attempt.score_points} من {attempt.max_points} • المحاولة{" "}
-            {attempt.attempt_number}
-          </p>
+        <ResultHero percent={attempt.percent} points={attempt.score_points} max={attempt.max_points} attempt={attempt.attempt_number} label={statusLabel[attempt.result_status??""]}>
           {role === "student" && !isHomework && attempt.result_status !== "passed" && (
             <Btn className="mt-4" variant="outline" onClick={requestExtra}>
               طلب محاولة إضافية
             </Btn>
           )}
-        </Card2>
+        </ResultHero>
         {attempt.questions?.some(q=>q.is_correct !== undefined) ? attempt.questions.map((q, index) => (
           <Card2
             key={q.id}
@@ -849,56 +835,19 @@ export function ConnectedResultsPage({
   return (
     <Page title={role === "parent" ? "نتائج الأبناء" : "تقدمي ونتائجي"}>
       <div className="grid grid-cols-3 gap-3 mb-5">
-        <Metric label="المحاولات" value={String(submitted.length)} />
+        <Metric label="المحاولات في هذه الصفحة" value={String(submitted.length)} />
         <Metric
-          label="الناجح"
+          label="الناجح في هذه الصفحة"
           value={String(
             submitted.filter((a) => a.result_status === "passed").length,
           )}
         />
         <Metric
-          label="المتوسط"
+          label="متوسط الصفحة"
           value={`${submitted.length ? Math.round(submitted.reduce((sum, a) => sum + Number(a.percent), 0) / submitted.length) : 0}%`}
         />
       </div>
-      <Card2>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b">
-                <th className="text-right py-3">الطالب</th>
-                <th className="text-right">الاختبار</th>
-                <th>المحاولة</th>
-                <th>النتيجة</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {submitted.map((a) => (
-                <tr key={a.id} className="border-b">
-                  <td className="py-3">{a.student_name}</td>
-                  <td>{a.exam_title}</td>
-                  <td className="text-center">{a.attempt_number}</td>
-                  <td className="text-center">{a.percent}%</td>
-                  <td>
-                    <button
-                      className="text-primary flex gap-1"
-                      onClick={() =>
-                        nav(
-                          role === "parent" ? "parent-errors" : "exam-result",
-                          { attemptId: a.id },
-                        )
-                      }
-                    >
-                      <Eye size={14} /> مراجعة
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card2>
+      <ResultsJournal attempts={submitted} onOpen={attemptId=>nav(role==="parent"?"parent-errors":"exam-result",{attemptId})}/>
       <PaginationControls pagination={pagination} onPageChange={setPage}/>
     </Page>
   );
@@ -955,8 +904,10 @@ export function ConnectedAnnouncementsPage({
   };
   return (
     <Page title="الإعلانات">
+      <div className="announcement-workspace" data-manage={manage}>
       {manage && (
-        <Card2 className="mb-5">
+        <Card2 className="announcement-composer mb-5">
+          <h2>{editingId ? "تعديل الإعلان" : "رسالة جديدة"}</h2>
           <form onSubmit={submit} className="grid md:grid-cols-2 gap-3">
             <Input2
               label="عنوان الإعلان"
@@ -1007,9 +958,10 @@ export function ConnectedAnnouncementsPage({
           </form>
         </Card2>
       )}
-      <div className="space-y-3">
+      <div className="announcement-board">
+        {!items.length && <p className="followup-empty">لا توجد إعلانات في هذه الصفحة.</p>}
         {items.map((a) => (
-          <Card2 key={a.id}>
+          <Card2 key={a.id} className="announcement-post">
             <div className="flex justify-between gap-3">
               <div>
                 <h3 className="font-bold">{a.title}</h3>
@@ -1053,6 +1005,7 @@ export function ConnectedAnnouncementsPage({
           </Card2>
         ))}
       </div>
+      </div>
       <PaginationControls pagination={pagination} onPageChange={setPage}/>
     </Page>
   );
@@ -1083,53 +1036,7 @@ export function ConnectedSupportRequestsPage() {
       title="طلبات الدعم"
       subtitle="طلبات الأجهزة والمحاولات الإضافية وتغيير رقم ولي الأمر"
     >
-      <div className="space-y-3">
-        {items.map((r) => (
-          <Card2 key={r.id}>
-            <div className="flex justify-between gap-4 flex-wrap">
-              <div>
-                <div className="font-bold">{r.requester.name}</div>
-                <div className="text-sm mt-1">
-                  {r.request_type === "extra_exam_attempt"
-                    ? "محاولة اختبار إضافية"
-                    : r.request_type === "device_removal"
-                      ? "إزالة جهاز"
-                      : "تغيير رقم ولي الأمر"}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">{r.reason}</p>
-                {r.actions.at(-1) && <p className="text-xs text-muted-foreground mt-2">راجعه {r.actions.at(-1)?.reviewer_name} في {new Date(r.actions.at(-1)!.created_at).toLocaleString("ar-EG")}</p>}
-              </div>
-              <div className="flex gap-2 items-center">
-                <Badge2
-                  variant={
-                    r.status === "approved"
-                      ? "success"
-                      : r.status === "rejected"
-                        ? "danger"
-                        : "warning"
-                  }
-                >
-                  {statusLabel[r.status]}
-                </Badge2>
-                {r.status === "pending" && (
-                  <>
-                    <Btn size="sm" onClick={() => review(r.id, "approve")}>
-                      قبول
-                    </Btn>
-                    <Btn
-                      size="sm"
-                      variant="outline"
-                      onClick={() => review(r.id, "reject")}
-                    >
-                      رفض
-                    </Btn>
-                  </>
-                )}
-              </div>
-            </div>
-          </Card2>
-        ))}
-      </div>
+      <SupportInbox items={items} onReview={review}/>
       <PaginationControls pagination={pagination} onPageChange={setPage}/>
     </Page>
   );
@@ -1145,13 +1052,9 @@ function Page({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-background py-6 px-4">
+    <div className="workspace detail-workspace">
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-2xl font-black">{title}</h1>
-        {subtitle && (
-          <p className="text-sm text-muted-foreground mt-1 mb-6">{subtitle}</p>
-        )}
-        {!subtitle && <div className="mb-6" />}
+        <WorkspaceHeading eyebrow="مساحة التعلّم والمتابعة" title={title} description={subtitle??"كل التفاصيل اللي تحتاجها، في مكان واحد."}/>
         {children}
       </div>
     </div>

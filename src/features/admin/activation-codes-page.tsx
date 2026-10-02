@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { WorkspaceHeading } from '../dashboard/workspace-views';
+import { arabicNumber as n } from '../../shared/arabic';
 import { Download, Key, Plus, Trash2, XCircle } from "lucide-react";
 import { ApiError } from "../../shared/api/client";
 import {
@@ -71,20 +73,21 @@ export function ConnectedActivationCodesPage() {
     }
   };
   return (
-    <div className="min-h-screen bg-background p-4 sm:p-6">
+    <div className="workspace code-workspace">
       <div className="max-w-6xl mx-auto">
-        <div className="flex justify-between items-center mb-5">
-          <h1 className="text-2xl font-black">أكواد التفعيل</h1>
+        <WorkspaceHeading eyebrow="إدارة الوصول للمحتوى" title="كل دفعة، تحت السيطرة." description="أنشئ الأكواد وتابع استخدامها، واعرف المحاضرة والطالب المرتبطين بكل كود.">
           <Btn onClick={() => setModal(true)}>
             <Plus size={15} /> دفعة جديدة
           </Btn>
-        </div>
+        </WorkspaceHeading>
+        <section className="code-library-header"><div><h2>كود واحد. محاضرة يختارها الطالب.</h2><p>الأكواد الجديدة غير مرتبطة بمحاضرة بعينها. افتح أي دفعة لمراجعة حالة كل كود، أو صدّرها من مكان واحد.</p></div><Key/></section>
         <div className="space-y-4">
-          {batches.map((batch) => (
-            <Card2 key={batch.id}>
-              <div className="flex justify-between gap-3 mb-3">
+          {batches.map((batch,index) => (
+            <details className="code-batch" key={batch.id} open={index===0}>
+              <summary><span>{n(index+1)}</span><div><h2>{batch.name}</h2><p>{batch.generic?'صالحة لأي محاضرة مدفوعة':batch.lesson}</p></div><strong>عرض الأكواد</strong></summary>
+              <div className="batch-body"><div className="batch-toolbar">
                 <div>
-                  <h2 className="font-black">{batch.name}</h2>
+                  <strong>تفاصيل الدفعة</strong>
                   <p className="text-xs text-muted-foreground">
                     {batch.generic ? "صالحة لأي محاضرة مدفوعة" : batch.lesson} — تنتهي {batch.expires_on}
                   </p>
@@ -150,9 +153,11 @@ export function ConnectedActivationCodesPage() {
                   </tbody>
                 </table>
               </div>
-            </Card2>
+              </div>
+            </details>
           ))}
         </div>
+        {batches.length===0&&<Card2><p className="workspace-muted">لا توجد دفعات أكواد بعد. ابدأ بإنشاء أول دفعة.</p></Card2>}
         <PaginationControls pagination={pagination} onPageChange={setPage} />
         <Modal2
           open={modal}

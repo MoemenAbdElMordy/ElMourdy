@@ -19,6 +19,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import { arabicContent } from './arabic-content';
+import { ApiError } from '../api/client';
 type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "outline";
 type ButtonSize = "sm" | "md" | "lg" | "icon";
 type BadgeVariant =
@@ -126,7 +128,7 @@ export function Btn({
       disabled={disabled}
       {...p}
     >
-      {children}
+      {arabicContent(children)}
     </button>
   );
 }
@@ -153,13 +155,13 @@ export function Field({
           htmlFor={htmlFor}
           className="text-sm font-semibold text-foreground"
         >
-          {label}
+          {arabicContent(label)}
         </label>
       )}
-      {children}
+      {arabicContent(children)}
       {error && (
         <p id={errorId} role="alert" className="text-xs text-red-500">
-          {error}
+          {arabicContent(error)}
         </p>
       )}
     </div>
@@ -224,7 +226,7 @@ export function Select2({
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>
-            {o.label}
+            {arabicContent(o.label)}
           </option>
         ))}
       </select>
@@ -245,7 +247,7 @@ export function Card2({
       )}
       {...rest}
     >
-      {children}
+      {arabicContent(children)}
     </div>
   );
 }
@@ -277,7 +279,7 @@ export function Badge2({
         className,
       )}
     >
-      {children}
+      {arabicContent(children)}
     </span>
   );
 }
@@ -301,8 +303,12 @@ export function Modal2({
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
   const titleId = useId();
+  const [submitError, setSubmitError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
   useEffect(() => {
     if (!open) return;
+    setSubmitError("");
     const previouslyFocused =
       document.activeElement instanceof HTMLElement
         ? document.activeElement
@@ -351,7 +357,7 @@ export function Modal2({
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <h3 id={titleId} className="text-lg font-bold">
-            {title}
+            {arabicContent(title)}
           </h3>
           <button
             type="button"
@@ -374,15 +380,27 @@ export function Modal2({
                 )
               ) {
                 event.preventDefault();
-                event.currentTarget.requestSubmit();
+                const submitButton = event.currentTarget.querySelector<HTMLButtonElement>('button[type="submit"]');
+                if (!submittingRef.current && !submitButton?.disabled) event.currentTarget.requestSubmit();
               }
             }}
-            onSubmit={(event) => {
+            onSubmit={async (event) => {
               event.preventDefault();
-              void onSubmit();
+              if (submittingRef.current) return;
+              const submitButton = event.currentTarget.querySelector<HTMLButtonElement>('button[type="submit"]');
+              if (submitButton?.disabled) return;
+              submittingRef.current = true;
+              setSubmitting(true);
+              setSubmitError("");
+              try { await onSubmit(); }
+              catch (error) { setSubmitError(error instanceof ApiError ? error.message : "تعذر حفظ البيانات. حاول مرة أخرى."); }
+              finally { submittingRef.current = false; setSubmitting(false); }
             }}
+            aria-busy={submitting}
           >
-            {children}
+            {submitError && <p role="alert" className="mb-4 rounded-xl border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-700 dark:text-red-300">{submitError}</p>}
+            <fieldset disabled={submitting} className="min-w-0">{arabicContent(children)}</fieldset>
+            {submitting && <p role="status" className="mt-3 text-sm text-muted-foreground">جارٍ حفظ البيانات…</p>}
           </form>
         ) : (
           <div
@@ -406,7 +424,7 @@ export function Modal2({
               actionButtons[0].click();
             }}
           >
-            {children}
+            {arabicContent(children)}
           </div>
         )}
       </div>
@@ -430,7 +448,7 @@ export function StatCard({
   return (
     <Card2
       className={cn(
-        "flex items-center gap-3",
+        "atelier-stat flex items-center gap-3",
         primary && "bg-primary text-primary-foreground border-transparent",
       )}
     >

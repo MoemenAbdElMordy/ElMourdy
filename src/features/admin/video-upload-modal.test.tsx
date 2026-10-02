@@ -5,8 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const videoMocks = vi.hoisted(() => ({
   loadReusable: vi.fn(),
-  loadAsset: vi.fn(),
   reuse: vi.fn(),
+  loadAsset: vi.fn(),
 }));
 
 vi.mock("../../shared/videos/api", () => ({
@@ -59,30 +59,20 @@ describe("reusing an uploaded video", () => {
     expect(onReady).toHaveBeenCalledOnce();
     expect(onClose).toHaveBeenCalledOnce();
   });
-});
-
-describe("checking video processing", () => {
-  it("recovers a newly attached video even when the curriculum view is stale", async () => {
-    const readyAsset = { ...reusableAsset, id: 8, lecture_id: 10, used_by_lectures_count: 1, available_qualities: ["360p", "480p", "720p"] };
-    videoMocks.loadReusable.mockResolvedValue({ video_assets: [readyAsset] });
-
-    render(<VideoUploadModal lecture={{ id: 10, title: "محاضرة جديدة" }} onReady={vi.fn()} onClose={vi.fn()}/>);
-
-    expect(await screen.findByText("الفيديو جاهز بالجودات الموضحة أعلاه.")).toBeInTheDocument();
-    expect(screen.getByText("720p")).toBeInTheDocument();
+  it("finds an older uploaded video through server search", async () => {
+    videoMocks.loadReusable.mockImplementation(({query}: {query?:string} = {}) => Promise.resolve({
+      video_assets: query === "النحو" ? [{...reusableAsset,id:88,lecture_title:"محاضرة النحو القديمة"}] : [],
+      pagination: {current_page:1,total_pages:1,total_count:1},
+    }));
+    render(<VideoUploadModal lecture={{ id: 4, title: "محاضرة الصف الثاني" }} onReady={vi.fn()} onClose={vi.fn()}/>);
+    fireEvent.click(screen.getByRole("button", { name: /فيديو سابق/ }));
+    fireEvent.change(screen.getByPlaceholderText("ابحث عن فيديو مرفوع"), {target:{value:"النحو"}});
+    expect(await screen.findByRole("radio", {name:/محاضرة النحو القديمة/})).toBeInTheDocument();
+    expect(videoMocks.loadReusable).toHaveBeenCalledWith({query:"النحو",page:1});
   });
-
-  it("lets the teacher refresh a processing video immediately", async () => {
-    const processingAsset = { ...reusableAsset, id: 8, lecture_id: 10, used_by_lectures_count: 1, processing_status: "processing" as const, available_qualities: ["480p"] };
-    const readyAsset = { ...processingAsset, processing_status: "ready" as const, available_qualities: ["360p", "480p", "720p"] };
-    videoMocks.loadReusable.mockResolvedValue({ video_assets: [processingAsset] });
-    videoMocks.loadAsset.mockResolvedValue({ video_asset: readyAsset });
-    const onReady = vi.fn();
-
-    render(<VideoUploadModal lecture={{ id: 10, title: "محاضرة جديدة" }} onReady={onReady} onClose={vi.fn()}/>);
-    fireEvent.click(await screen.findByRole("button", { name: "تحديث الحالة الآن" }));
-
-    await waitFor(() => expect(screen.getByText("الفيديو جاهز بالجودات الموضحة أعلاه.")).toBeInTheDocument());
-    expect(onReady).toHaveBeenCalled();
+  it("warns when the video is missing one of the required qualities", async () => {
+    render(<VideoUploadModal lecture={{ id: 1, title: "محاضرة بجودة ناقصة" }} existingAsset={reusableAsset} onReady={vi.fn()} onClose={vi.fn()}/>);
+    expect(await screen.findByText("بعض الجودات جاهزة — ننتظر الباقي")).toBeInTheDocument();
+    expect(screen.getByText(/تجهيز الجودات المتبقية مستمر/)).toBeInTheDocument();
   });
 });

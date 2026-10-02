@@ -90,6 +90,42 @@ describe("shared UI", () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
+  it("submits with Enter only once while a save is pending", async () => {
+    let finish!: () => void;
+    const save = vi.fn(() => new Promise<void>((resolve) => { finish = resolve; }));
+    render(<Modal2 open title="حفظ" onClose={() => undefined} onSubmit={save}>
+      <Input2 label="العنوان" /><Btn type="submit">حفظ</Btn>
+    </Modal2>);
+    fireEvent.keyDown(screen.getByLabelText("العنوان"), { key: "Enter" });
+    fireEvent.submit(screen.getByLabelText("العنوان").closest("form")!);
+    expect(save).toHaveBeenCalledOnce();
+    expect(screen.getByRole("button", { name: "حفظ" })).toBeDisabled();
+    expect(screen.getByRole("status")).toHaveTextContent("جارٍ حفظ البيانات");
+    await act(async () => { finish(); });
+    expect(screen.getByRole("button", { name: "حفظ" })).toBeEnabled();
+  });
+
+  it("shows an Arabic error when a save rejects and allows retry", async () => {
+    const save = vi.fn().mockRejectedValueOnce(new Error("Network failure")).mockResolvedValue(undefined);
+    render(<Modal2 open title="حفظ" onClose={() => undefined} onSubmit={save}>
+      <Input2 label="العنوان" /><Btn type="submit">حفظ</Btn>
+    </Modal2>);
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "حفظ" })); });
+    expect(screen.getByRole("alert")).toHaveTextContent("تعذر حفظ البيانات");
+    await act(async () => { fireEvent.keyDown(screen.getByLabelText("العنوان"), { key: "Enter" }); });
+    expect(save).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("does not bypass a disabled submit action with Enter", () => {
+    const save = vi.fn();
+    render(<Modal2 open title="حفظ" onClose={() => undefined} onSubmit={save}>
+      <Input2 label="العنوان" /><Btn type="submit" disabled>حفظ</Btn>
+    </Modal2>);
+    fireEvent.keyDown(screen.getByLabelText("العنوان"), { key: "Enter" });
+    expect(save).not.toHaveBeenCalled();
+  });
+
   it("keeps focus and scroll position while editing a controlled modal field", async () => {
     function ControlledModal() {
       const [value, setValue] = useState("");

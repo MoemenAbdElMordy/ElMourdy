@@ -9,6 +9,8 @@ const mocks = vi.hoisted(() => ({
   loadCurriculum: vi.fn(),
   loadCurriculumLocations: vi.fn(),
   updateContent: vi.fn(),
+  deleteContent: vi.fn(),
+  createCurriculumFolder: vi.fn(),
 }));
 
 vi.mock("../../shared/admin/day5", () => ({
@@ -19,6 +21,8 @@ vi.mock("../../shared/curriculum/api", () => ({
   loadCurriculum: mocks.loadCurriculum,
   loadCurriculumLocations: mocks.loadCurriculumLocations,
   updateContent: mocks.updateContent,
+  deleteContent: mocks.deleteContent,
+  createCurriculumFolder: mocks.createCurriculumFolder,
 }));
 vi.mock("./video-storage-panel", () => ({ VideoStoragePanel: () => null }));
 
@@ -41,6 +45,8 @@ beforeEach(() => {
     }],
   } });
   mocks.updateContent.mockResolvedValue({ lecture: { id: 33, title: "المحاضرة المنشورة", is_free: true } });
+  mocks.deleteContent.mockResolvedValue(undefined);
+  mocks.createCurriculumFolder.mockResolvedValue({ node: { id: 34, kind: "folder", title: "مجلد تجريبي", children: [] } });
 });
 
 afterEach(() => {
@@ -61,5 +67,47 @@ describe("تعديل محاضرة منشورة داخل المجلدات", () =>
     await waitFor(() => expect(mocks.updateContent).toHaveBeenCalledWith(
       "lectures", 33, expect.objectContaining({ title: "المحاضرة المنشورة", is_free: true }),
     ));
+  });
+  it("ينشئ مجلدًا واحدًا فقط داخل المادة المختارة", async () => {
+    render(<CurriculumManagePage params={{}} />);
+    fireEvent.click(await screen.findByRole("button", { name: /النحو.*منشور/ }));
+    fireEvent.click(screen.getByRole("button", { name: "إضافة مجلد" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "اسم المجلد" }), { target: { value: "مجلد تجريبي" } });
+    fireEvent.click(screen.getByRole("button", { name: "إنشاء المجلد" }));
+    await waitFor(() => expect(mocks.createCurriculumFolder).toHaveBeenCalledTimes(1));
+    expect(mocks.createCurriculumFolder).toHaveBeenCalledWith(9, null, "مجلد تجريبي");
+  });
+  it("يحفظ موعد نشر المحاضرة المنشورة من نافذة التعديل", async () => {
+    render(<CurriculumManagePage params={{}} />);
+    fireEvent.click(await screen.findByRole("button", { name: /النحو.*منشور/ }));
+    fireEvent.click(screen.getByRole("button", { name: "تعديل المحاضرة" }));
+    fireEvent.change(screen.getByLabelText("موعد النشر (اختياري)"), { target: { value: "2099-10-01T10:30" } });
+    fireEvent.click(screen.getByRole("button", { name: "حفظ التعديلات" }));
+    await waitFor(() => expect(mocks.updateContent).toHaveBeenCalledWith(
+      "lectures", 33, expect.objectContaining({ publish_at: new Date("2099-10-01T10:30").toISOString(), status: "published" }),
+    ));
+  });
+  it("يحذف المحاضرة المحددة فقط بعد تأكيد المستخدم", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    try {
+      render(<CurriculumManagePage params={{}} />);
+      fireEvent.click(await screen.findByRole("button", { name: /النحو.*منشور/ }));
+      fireEvent.click(screen.getByRole("button", { name: /^حذف$/ }));
+      await waitFor(() => expect(mocks.deleteContent).toHaveBeenCalledWith("lectures", 33));
+      expect(confirm).toHaveBeenCalledTimes(1);
+    } finally {
+      confirm.mockRestore();
+    }
+  });
+  it("لا يحذف المحاضرة عند إلغاء التأكيد", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    try {
+      render(<CurriculumManagePage params={{}} />);
+      fireEvent.click(await screen.findByRole("button", { name: /النحو.*منشور/ }));
+      fireEvent.click(screen.getByRole("button", { name: /^حذف$/ }));
+      expect(mocks.deleteContent).not.toHaveBeenCalled();
+    } finally {
+      confirm.mockRestore();
+    }
   });
 });

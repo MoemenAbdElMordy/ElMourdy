@@ -5,6 +5,11 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
+  server: {
+    proxy: {
+      '/api': { target: 'https://api.mourdy.com', changeOrigin: true },
+    },
+  },
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
@@ -12,6 +17,6 @@ export default defineConfig({
     },
   },
   build: {
-    sourcemap: true,
+    sourcemap: false,
   },
 });

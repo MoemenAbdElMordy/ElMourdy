@@ -76,6 +76,11 @@ const gradeLabel = (grade: Grade) =>
     : grade.level === 2
       ? "الصف الثاني الثانوي"
       : "الصف الثالث الثانوي";
+const locationLabel = (name: string) => name === "Internal content storage"
+  ? "محتوى داخلي محفوظ"
+  : name === "Internal lecture storage"
+    ? "محاضرات داخلية محفوظة"
+    : name;
 const formatWatchTime = (seconds: number) => `${Math.floor(seconds / 60)} دقيقة و${seconds % 60} ثانية`;
 export const toLocalPublishInput = (value?: string | null) => {
   if (!value) return "";
@@ -257,23 +262,26 @@ function FolderTree({
                   <button
                     type="button"
                     title="إضافة مجلد بالداخل"
+                    className="curriculum-action"
                     onClick={() => onAdd(node)}
                   >
-                    <Folder size={16} />
+                    <Folder size={16} /> مجلد داخلي
                   </button>
                   <button
                     type="button"
                     title="إضافة محاضرة بالداخل"
+                    className="curriculum-action"
                     onClick={() => onAddLecture(node)}
                   >
-                    <Plus size={16} />
+                    <Plus size={16} /> محاضرة
                   </button>
                   <button
                     type="button"
                     title="تعديل الاسم"
+                    className="curriculum-action"
                     onClick={() => onEdit(node)}
                   >
-                    <Edit2 size={16} />
+                    <Edit2 size={16} /> تعديل الاسم
                   </button>
                   <button
                     type="button"
@@ -287,9 +295,10 @@ function FolderTree({
                   <button
                     type="button"
                     title="حذف المجلد مع إبقاء محتواه"
+                    className="curriculum-action"
                     onClick={() => onDelete(node)}
                   >
-                    <Trash2 size={16} className="text-red-500" />
+                    <Trash2 size={16} className="text-red-500" /> حذف
                   </button>
                 </>
               ) : (
@@ -297,9 +306,10 @@ function FolderTree({
                   <button
                     type="button"
                     title="تعديل المحاضرة"
+                    className="curriculum-action"
                     onClick={() => onEditLecture(node)}
                   >
-                    <Edit2 size={16} />
+                    <Edit2 size={16} /> تعديل المحاضرة
                   </button>
                   <button
                     type="button"
@@ -313,16 +323,18 @@ function FolderTree({
                   <button
                     type="button"
                     title="إدارة فيديو المحاضرة"
+                    className="curriculum-action"
                     onClick={() => onVideo(node)}
                   >
-                    <Upload size={16} />
+                    <Upload size={16} /> الفيديو
                   </button>
                   <button
                     type="button"
                     title="نشر المحاضرة"
+                    className="curriculum-action"
                     onClick={() => onPublish(node)}
                   >
-                    <BookOpen size={16} />
+                    <BookOpen size={16} /> نشر
                   </button>
                   <button
                     type="button"
@@ -336,9 +348,10 @@ function FolderTree({
                   <button
                     type="button"
                     title="حذف المحاضرة"
+                    className="curriculum-action"
                     onClick={() => onDeleteLecture(node)}
                   >
-                    <Trash2 size={16} className="text-red-500" />
+                    <Trash2 size={16} className="text-red-500" /> حذف
                   </button>
                 </>
               )}
@@ -394,7 +407,7 @@ function FolderTree({
     </div>
   );
 }
-export function CurriculumManagePage({ params, nav }: any) {
+export function CurriculumManagePage({ params, nav, authUser }: any) {
   const [years, setYears] = useState<AcademicYear[]>([]);
   const [grades, setGrades] = useState<Grade[]>([]);
   const [yearId, setYearId] = useState(0);
@@ -667,7 +680,7 @@ export function CurriculumManagePage({ params, nav }: any) {
         notify("تم إنشاء المحاضرة. اختر الآن مصدر الفيديو واحفظه", "success");
       } else
         notify(
-          editing ? "تم حفظ تعديلات المحاضرة" : "تمت إضافة المحتوى",
+          editing ? effectiveLevel === "lectures" ? "تم حفظ تعديلات المحاضرة" : "تم حفظ تعديلات المجلد" : "تمت إضافة المحتوى",
           "success",
         );
     } catch (error) {
@@ -926,7 +939,7 @@ export function CurriculumManagePage({ params, nav }: any) {
   };
 
   return (
-    <div className="min-h-screen bg-background p-4 sm:p-6">
+    <div className="workspace content-workspace min-h-screen bg-background p-4 sm:p-6">
       <div className="mx-auto max-w-6xl">
         <div className="mb-5 flex items-center justify-between gap-3">
           <div>
@@ -1304,8 +1317,8 @@ export function CurriculumManagePage({ params, nav }: any) {
                             </strong>
                             <br />
                             <span className="text-xs text-muted-foreground">
-                              {location.branch} / {location.chapter} /{" "}
-                              {location.lesson}
+                              {locationLabel(location.branch)} / {locationLabel(location.chapter)} /{" "}
+                              {locationLabel(location.lesson)}
                             </span>
                           </span>
                         </label>
@@ -1339,7 +1352,7 @@ export function CurriculumManagePage({ params, nav }: any) {
                     الأبعاد الموصى بها: ١٢٨٠ × ٧٢٠ بكسل بنسبة ١٦:٩.
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    صورة بصيغة JPG أو PNG أو WebP، بحد أقصى ٥ ميجابايت.
+                    صورة بصيغة جيه بي جي أو بي إن جي أو ويب بي، بحد أقصى ٥ ميجابايت.
                   </p>
                 </Field>
               </>
@@ -1455,7 +1468,7 @@ export function CurriculumManagePage({ params, nav }: any) {
                   <div><strong>{viewer.name}</strong><p className="text-xs text-muted-foreground">آخر مشاهدة: {viewer.last_watched_at ? new Date(viewer.last_watched_at).toLocaleString("ar-EG") : "—"}</p></div>
                   <div className="text-sm">شاهد {formatWatchTime(viewer.watched_seconds)} · توقف عند {formatWatchTime(viewer.last_position_seconds)} · {viewer.progress_percent}%</div>
                   <Badge2 variant={viewer.status === "watched" ? "success" : viewer.status === "partial" ? "warning" : "default"}>{viewer.status === "watched" ? "شاهدها" : viewer.status === "partial" ? "مشاهدة جزئية" : "لم يشاهدها"}</Badge2>
-                  <Btn size="sm" variant="outline" onClick={() => nav?.("student-detail", { studentId: viewer.student_id })}>متابعة الطالب</Btn>
+                  {(authUser?.role === "teacher" || authUser?.permissions?.includes("manage_students")) && <Btn size="sm" variant="outline" onClick={() => nav?.("student-detail", { studentId: viewer.student_id })}>متابعة الطالب</Btn>}
                 </div>
               ))}
               {viewersTotalPages > 1 && <div className="flex items-center justify-center gap-3 pt-3"><Btn size="sm" variant="outline" disabled={viewersPage <= 1} onClick={() => viewerLecture && void openLectureViewers(viewerLecture, viewersPage - 1)}>السابق</Btn><span>{viewersPage} من {viewersTotalPages}</span><Btn size="sm" variant="outline" disabled={viewersPage >= viewersTotalPages} onClick={() => viewerLecture && void openLectureViewers(viewerLecture, viewersPage + 1)}>التالي</Btn></div>}

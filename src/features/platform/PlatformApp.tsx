@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { lazy, useState, useEffect, useCallback, type Dispatch, type SetStateAction } from "react";
+import { lazy, useState, useEffect, useCallback, useRef, type Dispatch, type SetStateAction } from "react";
 import {
   Moon, Sun, Menu, X, ChevronRight, ChevronDown, ChevronLeft,
   Play, Lock, CheckCircle, XCircle, Clock, Award, BookOpen,
@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { parseLocation, routeToPath } from "../../app/routing/hash-router";
 import { canAccess, ROLE_DEFAULT } from "../../app/routing/policy";
+import { assistantCanOpen } from "../../app/routing/assistant-permissions";
 import type { AppRoute, Navigate, Role, RouteParams } from "../../app/routing/types";
 import { AboutPage, HomePage, LoginPage, RegisterPage, ParentRegisterPage, OTPPage, ForgotPage, FreeContentPage, SecondaryArabicLandingPage } from "../public/pages";
 import { Badge2, Btn, Card2, Field, Input2, Modal2, Pager, Select2, StatCard, ToastContainer, cn, notify } from "../../shared/ui";
@@ -80,7 +81,7 @@ function NotFoundPage({ nav }: Pick<ShellProps,"nav">) {
   return (
     <div className="min-h-[80vh] bg-background flex items-center justify-center p-6">
       <div className="max-w-sm w-full text-center">
-        <div className="text-7xl font-black text-primary/20 mb-3">404</div>
+        <div className="text-7xl font-black text-primary/20 mb-3">٤٠٤</div>
         <h1 className="text-xl font-black mb-2">الصفحة غير موجودة</h1>
         <p className="text-sm text-muted-foreground mb-5">الرابط الذي فتحته غير صحيح أو لم يعد متاحًا.</p>
         <Btn className="w-full" onClick={() => nav("home")}>العودة إلى الصفحة الرئيسية</Btn>
@@ -97,6 +98,20 @@ function TopBar({ role, nav, dark, setDark, setRole, onLogout, authUser }: Shell
   const [notif, setNotif] = useState(false);
   const [more, setMore] = useState(false);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!mob && !notif && !more) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      if (mob) menuButtonRef.current?.focus();
+      setMob(false);
+      setNotif(false);
+      setMore(false);
+    };
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [mob, notif, more]);
 
   useEffect(() => {
     if (role === "guest") {
@@ -113,22 +128,9 @@ function TopBar({ role, nav, dark, setDark, setRole, onLogout, authUser }: Shell
     teacher:  [{ l:"لوحة القيادة",view:"admin-dashboard"},{ l:"الطلاب",view:"students-list"},{ l:"أولياء الأمور",view:"parents-list"},{ l:"التقارير",view:"management-reports"},{ l:"المحتوى",view:"content-subjects"},{ l:"السنوات",view:"academic-years"},{ l:"الاختبارات",view:"exam-manage"},{ l:"الواجبات",view:"homework-manage"},{ l:"الأكواد",view:"activation-codes"},{ l:"طلبات الدعم",view:"support-requests"},{ l:"الإعلانات",view:"announcements-admin"},{ l:"المساعدون",view:"assistants"},{ l:"نشاط المساعدين",view:"audit-log"}],
     assistant:[{ l:"لوحتي",view:"admin-dashboard"},{ l:"الطلاب",view:"students-list"},{ l:"التقارير",view:"management-reports"},{ l:"المحتوى",view:"content-subjects"},{ l:"السنوات",view:"academic-years"},{ l:"الاختبارات",view:"exam-manage"},{ l:"الواجبات",view:"homework-manage"},{ l:"الأكواد",view:"activation-codes"},{ l:"طلبات الدعم",view:"support-requests"},{ l:"الإعلانات",view:"announcements-admin"},{ l:"نشاط المساعدين",view:"audit-log"}],
   };
-  const assistantRoutePermissions: Partial<Record<AppRoute, string>> = {
-    "students-list": "manage_students",
-    "content-subjects": "manage_content",
-    "support-requests": "manage_support_requests",
-    "announcements-admin": "manage_announcements",
-    "audit-log": "view_reports",
-    "academic-years": "manage_academic_years",
-    "exam-manage": "manage_exams",
-    "homework-manage": "manage_homeworks",
-    "activation-codes": "manage_codes",
-    "management-reports": "view_reports",
-  };
   const navLinks = (links[role] || []).filter((link) => {
     if (role !== "assistant") return true;
-    const permission = assistantRoutePermissions[link.view];
-    return !permission || authUser?.permissions.includes(permission);
+    return assistantCanOpen(link.view, authUser?.permissions ?? []);
   });
   const compactNavigation = role === "teacher" || role === "assistant";
   const primaryRoutes:AppRoute[] = ["admin-dashboard","students-list","content-subjects","exam-manage","homework-manage","management-reports","academic-years"];
@@ -137,7 +139,8 @@ function TopBar({ role, nav, dark, setDark, setRole, onLogout, authUser }: Shell
   const homeView = role==="student"?"student-dashboard":role==="parent"?"parent-dashboard":role==="teacher"||role==="assistant"?"admin-dashboard":"home";
 
   return (
-    <header className="sticky top-0 z-40 bg-card/95 backdrop-blur border-b border-border shadow-sm">
+    <header data-atelier-role={role} className="sticky top-0 z-40 bg-card/95 backdrop-blur border-b border-border shadow-sm">
+      {role !== 'guest' && <aside className="atelier-sidebar"><a href={routeToPath(homeView,{})} onClick={e=>{e.preventDefault();nav(homeView);}} className="atelier-sidebar-brand"><img src="/images/mourdy-logo-160.webp" alt="منصة المرضي"/><strong>المرضي<small>مساحتك للتعلّم والتقدّم</small></strong></a><div className="atelier-sidebar-label">مساحة {role==='teacher'?'الأستاذ':role==='assistant'?'المساعد':role==='parent'?'ولي الأمر':'الطالب'}</div><nav aria-label="التنقل داخل المنصة">{navLinks.map((link,index)=><a key={link.view} href={routeToPath(link.view,{})} aria-current={parseLocation().route===link.view?'page':undefined} onClick={e=>{e.preventDefault();nav(link.view);}}><span>{(index+1).toLocaleString('ar-EG',{minimumIntegerDigits:2})}</span>{link.l}<ChevronLeft size={14}/></a>)}</nav><div className="atelier-sidebar-end"><BookOpen size={23}/><p>كل خطوة صغيرة،<br/>تصنع فرقًا كبيرًا.</p></div></aside>}
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-3">
         <a href={routeToPath(homeView, {})} onClick={(event) => { event.preventDefault(); nav(homeView); }} className="flex items-center gap-3 shrink-0">
           <img src="/images/mourdy-logo-160.webp" alt="شعار منصة المرضي" className="h-10 w-10 rounded-full object-cover shadow-sm" width="40" height="40" />
@@ -203,13 +206,13 @@ function TopBar({ role, nav, dark, setDark, setRole, onLogout, authUser }: Shell
               </Btn>
             </div>
           )}
-          <button onClick={() => setMob(!mob)} className="xl:hidden p-2 rounded-xl hover:bg-accent" aria-label="القائمة الرئيسية" aria-expanded={mob}>
+          <button ref={menuButtonRef} type="button" onClick={() => setMob(!mob)} className="xl:hidden p-2 rounded-xl hover:bg-accent focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2" aria-label="القائمة الرئيسية" aria-expanded={mob} aria-controls="mobile-navigation">
             {mob ? <X size={17}/> : <Menu size={17}/>}
           </button>
         </div>
       </div>
       {mob && (
-        <div className="xl:hidden border-t border-border bg-card px-4 py-2 flex flex-col gap-0.5">
+        <div id="mobile-navigation" className="xl:hidden border-t border-border bg-card px-4 py-2 flex flex-col gap-0.5">
           {navLinks.map(l => (
             <a key={l.view} href={routeToPath(l.view, {})} onClick={(event) => { event.preventDefault(); nav(l.view); setMob(false); }} className="px-3 py-2.5 rounded-xl text-sm font-medium hover:bg-accent text-right">
               {l.l}
@@ -426,21 +429,7 @@ export default function App() {
   }
 
   const render = () => {
-    const assistantPermissionByRoute: Partial<Record<AppRoute, string>> = {
-      "students-list": "manage_students",
-      "student-detail": "manage_students",
-      "content-subjects": "manage_content",
-      "support-requests": "manage_support_requests",
-      "announcements-admin": "manage_announcements",
-      "audit-log": "view_reports",
-      "academic-years": "manage_academic_years",
-      "exam-manage": "manage_exams",
-      "homework-manage": "manage_homeworks",
-      "activation-codes": "manage_codes",
-      "management-reports": "view_reports",
-    };
-    const requiredPermission = role === "assistant" ? assistantPermissionByRoute[view] : undefined;
-    if (!canAccess(role, view) || (requiredPermission && !authUser?.permissions.includes(requiredPermission))) {
+    if (!canAccess(role, view) || (role === "assistant" && !assistantCanOpen(view, authUser?.permissions ?? []))) {
       return <AccessDenied role={role} nav={nav}/>;
     }
     switch(view) {
@@ -484,8 +473,8 @@ export default function App() {
       case "student-preview": return <StudentPreviewPage {...ctx}/>;
       case "management-reports": return <ManagementReportsPage {...ctx}/>;
       case "content-subjects": return <CurriculumManagePage {...ctx}/>;
-      case "exam-manage":      return <ConnectedExamManagePage/>;
-      case "homework-manage":  return <ConnectedExamManagePage assessmentType="homework"/>;
+      case "exam-manage":      return <ConnectedExamManagePage key="exam-manage"/>;
+      case "homework-manage":  return <ConnectedExamManagePage key="homework-manage" assessmentType="homework"/>;
       case "activation-codes": return <ConnectedActivationCodesPage/>;
       case "announcements-admin": return <ConnectedAnnouncementsPage manage/>;
       case "assistants":       return <Day5AssistantsPage/>;
@@ -498,7 +487,10 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-background text-foreground" style={{fontFamily:"'Cairo', sans-serif"}}>
-      <a href="#main-content" className="skip-link">تخطي إلى المحتوى الرئيسي</a>
+      <a href="#main-content" className="skip-link" onClick={(event) => {
+        event.preventDefault();
+        window.requestAnimationFrame(() => document.getElementById("main-content")?.focus());
+      }}>تخطي إلى المحتوى الرئيسي</a>
       <TopBar {...ctx}/>
       <main id="main-content" tabIndex={-1}>{render()}</main>
       <ToastContainer/>

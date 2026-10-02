@@ -1,0 +1,13 @@
+import { useMemo, useState } from 'react';
+import { Film, Trash2 } from 'lucide-react';
+import type { VideoAsset } from '../../shared/videos/api';
+import { arabicNumber as n } from '../../shared/arabic';
+const size=(bytes?:number)=>bytes==null?'غير مسجلة':`${n((bytes/1024/1024).toFixed(1))} ميجابايت`;
+const labels={uploaded:'بانتظار المعالجة',processing:'جارٍ التجهيز',ready:'جاهز',failed:'فشلت المعالجة'};
+export function StorageLibrary({videos,busy,onDelete,query:externalQuery,onQueryChange}:{videos:VideoAsset[];busy:boolean;onDelete:(video:VideoAsset)=>void;query?:string;onQueryChange?:(query:string)=>void}){
+ const [localQuery,setLocalQuery]=useState('');const [filter,setFilter]=useState('all');const [sort,setSort]=useState('recent');
+ const query=externalQuery??localQuery;
+ const changeQuery=onQueryChange??setLocalQuery;
+ const visible=useMemo(()=>videos.filter(v=>(externalQuery!==undefined||(v.lecture_title??`فيديو رقم ${v.id}`).toLocaleLowerCase('ar').includes(query.trim().toLocaleLowerCase('ar')))&&(filter==='all'||v.processing_status===filter)).sort((a,b)=>sort==='size'?(b.storage_size_bytes??0)-(a.storage_size_bytes??0):b.id-a.id),[videos,query,filter,sort,externalQuery]);
+ return <section className="storage-library"><header><div><span>مكتبة الوسائط</span><h2>كل فيديو، ومساحته.</h2><p>الحذف نهائي لكل الجودات؛ راجع المحاضرات المرتبطة قبل المتابعة.</p></div><strong>{size(videos.reduce((sum,v)=>sum+(v.storage_size_bytes??0),0))}<small>مساحة الفيديوهات المعروضة في هذه الصفحة</small></strong></header><div className="storage-controls"><label>البحث<input value={query} onChange={e=>changeQuery(e.target.value)} placeholder="ابحث باسم الفيديو أو رقمه"/></label><label>حالة المعالجة<select value={filter} onChange={e=>setFilter(e.target.value)}><option value="all">كل الحالات</option>{Object.entries(labels).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label><label>الترتيب<select value={sort} onChange={e=>setSort(e.target.value)}><option value="recent">الأحدث إضافة</option><option value="size">الأكبر مساحة</option></select></label></div><p className="storage-count">{n(visible.length)} فيديو معروض</p><div className="storage-grid">{visible.map(v=><article key={v.id}><div className="storage-file"><Film size={32}/><span>{labels[v.processing_status]}</span></div><h3>{v.lecture_title??`فيديو رقم ${n(v.id)}`}</h3><dl><div><dt>المساحة</dt><dd>{size(v.storage_size_bytes)}</dd></div><div><dt>المحاضرات المرتبطة</dt><dd>{n(v.used_by_lectures_count??0)}</dd></div></dl><button type="button" disabled={busy} onClick={()=>onDelete(v)}><Trash2 size={15}/> حذف نهائي</button></article>)}</div>{!visible.length&&<p className="followup-empty">لا توجد فيديوهات مطابقة.</p>}</section>;
+}

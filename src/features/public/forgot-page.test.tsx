@@ -62,6 +62,16 @@ describe("password recovery page", () => {
     expect(await screen.findByText("تم التحقق من البريد الإلكتروني")).toBeInTheDocument();
   });
 
+  it("accepts an Arabic-digit verification code and sends ASCII digits", async () => {
+    render(<ForgotPage nav={vi.fn()}/>);
+    fireEvent.change(screen.getByLabelText("البريد الإلكتروني"), { target: { value: "student@example.com" } });
+    fireEvent.click(screen.getByRole("button", { name: "إرسال كود التحقق" }));
+    fireEvent.change(await screen.findByLabelText("كود التحقق"), { target: { value: "١٢۳٤٥٦" } });
+    expect(screen.getByLabelText("كود التحقق")).toHaveValue("123456");
+    fireEvent.click(screen.getByRole("button", { name: "تأكيد الكود" }));
+    await waitFor(() => expect(resetMocks.verify).toHaveBeenCalledWith(pendingReset, "123456"));
+  });
+
   it("sets a new password after the phone is verified", async () => {
     resetMocks.loadPending.mockReturnValue(pendingReset);
     resetMocks.loadStatus.mockResolvedValue({ status: "verified", expires_at: pendingReset.expiresAt });
@@ -93,5 +103,15 @@ describe("login page", () => {
 
     await waitFor(() => expect(onLogin).toHaveBeenCalledWith("01012349876", "AssistantPassword"));
     expect(nav).toHaveBeenCalledWith("admin-dashboard", {}, "assistant");
+  });
+
+  it("accepts Arabic phone digits and sends an ASCII phone number", async () => {
+    const onLogin = vi.fn().mockResolvedValue({ role: "assistant" });
+    render(<LoginPage nav={vi.fn()} setRole={vi.fn()} onLogin={onLogin}/>);
+    fireEvent.change(screen.getByLabelText("رقم الهاتف"), { target: { value: "٠١٠١٢٣٤٩٨٧٦" } });
+    expect(screen.getByLabelText("رقم الهاتف")).toHaveValue("01012349876");
+    fireEvent.change(screen.getByLabelText("كلمة المرور"), { target: { value: "Password123!" } });
+    fireEvent.click(screen.getByRole("button", { name: "دخول" }));
+    await waitFor(() => expect(onLogin).toHaveBeenCalledWith("01012349876", "Password123!"));
   });
 });

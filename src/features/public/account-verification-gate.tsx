@@ -4,6 +4,7 @@ import { ApiError } from "../../shared/api/client";
 import { changeAccountEmail, requestAccountVerification, verifyAccount, type AccountVerification } from "../../shared/auth/account-verification";
 import type { AuthUser } from "../../shared/auth/session";
 import { Btn, Card2, Input2, notify } from "../../shared/ui";
+import { normalizeNumericInput } from "../../shared/auth/numeric-input";
 
 export function AccountVerificationGate({
   user,
@@ -78,7 +79,7 @@ export function AccountVerificationGate({
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-4" dir="rtl">
+    <div className="verification-workspace min-h-screen bg-background text-foreground flex items-center justify-center p-4" dir="rtl">
       <div className="w-full max-w-md text-center">
         <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4"><Shield className="text-primary" size={30}/></div>
         <h1 className="text-2xl font-black mb-2">تفعيل الحساب مطلوب</h1>
@@ -102,7 +103,7 @@ export function AccountVerificationGate({
                 <>
                   <p className="text-sm text-muted-foreground">تم إرسال الكود إلى <strong dir="ltr">{verification.emailHint}</strong></p>
                   <button type="button" className="text-sm font-semibold text-primary hover:underline" disabled={loading} onClick={() => { setEditingEmail(true); setError(""); }}>البريد غير صحيح؟ تغيير البريد الإلكتروني</button>
-                  <Input2 label="كود التفعيل" inputMode="numeric" dir="ltr" maxLength={6} value={code} onChange={(event:any) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))}/>
+                  <Input2 label="كود التفعيل" inputMode="numeric" dir="ltr" maxLength={6} value={code} onChange={(event:any) => setCode(normalizeNumericInput(event.target.value, 6))}/>
                   <Btn type="submit" className="w-full" disabled={loading || code.length !== 6}>{loading ? "جارٍ التفعيل…" : "تفعيل الحساب"}</Btn>
                   <button type="button" className="text-sm text-primary disabled:opacity-50" disabled={loading || remaining > 0} onClick={sendCode}>
                     {remaining > 0 ? `إعادة الإرسال خلال ${remaining} ثانية` : "إرسال كود جديد"}

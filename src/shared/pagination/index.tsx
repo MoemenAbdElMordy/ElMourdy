@@ -1,3 +1,5 @@
+import { arabicNumber } from "../arabic";
+
 export type PaginationMeta = {
   current_page: number;
   per_page: number;
@@ -26,7 +28,7 @@ export function PaginationControls({ pagination, onPageChange }: { pagination: P
   if (pagination.total_pages <= 1) return null;
 
   return <nav aria-label="صفحات النتائج" className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-3 text-sm">
-    <span>عرض صفحة {pagination.current_page} من {pagination.total_pages} — إجمالي {pagination.total_count}</span>
+    <span>عرض صفحة {arabicNumber(pagination.current_page)} من {arabicNumber(pagination.total_pages)} — إجمالي {arabicNumber(pagination.total_count)}</span>
     <div className="flex gap-2">
       <button type="button" disabled={!pagination.previous_page} onClick={() => pagination.previous_page && onPageChange(pagination.previous_page)} className="rounded-lg border border-border px-3 py-2 disabled:cursor-not-allowed disabled:opacity-40">السابق</button>
       <button type="button" disabled={!pagination.next_page} onClick={() => pagination.next_page && onPageChange(pagination.next_page)} className="rounded-lg border border-border px-3 py-2 disabled:cursor-not-allowed disabled:opacity-40">التالي</button>

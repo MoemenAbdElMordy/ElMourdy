@@ -1,5 +1,6 @@
+import { arabicNumber as n } from "../../shared/arabic";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import Hls from "hls.js";
+import type Hls from "hls.js";
 import {
   ChevronDown,
   ChevronLeft,
@@ -84,8 +85,8 @@ function formatDuration(seconds?: number) {
   const totalMinutes = Math.ceil(seconds / 60);
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
-  if (!hours) return `${minutes} دقيقة`;
-  return minutes ? `${hours} ساعة و${minutes} دقيقة` : `${hours} ساعة`;
+  if (!hours) return `${n(minutes)} دقيقة`;
+  return minutes ? `${n(hours)} ساعة و${n(minutes)} دقيقة` : `${n(hours)} ساعة`;
 }
 
 export function ConnectedVideoPage({
@@ -203,23 +204,37 @@ export function ConnectedVideoPage({
     if (!source || !video) return;
 
     let hls: Hls | null = null;
+    let disposed = false;
     const restorePosition = () => {
       if (resumePositionRef.current > 0 && video.currentTime < 1) {
         video.currentTime = resumePositionRef.current;
       }
     };
 
-    if (Hls.isSupported()) {
-      hls = new Hls({ enableWorker: true });
-      hls.loadSource(source);
-      hls.attachMedia(video);
-      hls.on(Hls.Events.MANIFEST_PARSED, restorePosition);
-    } else {
+    if (video.canPlayType("application/vnd.apple.mpegurl")) {
       video.src = source;
       video.addEventListener("loadedmetadata", restorePosition, { once: true });
+    } else {
+      void import("hls.js").then(({ default: HlsPlayer }) => {
+        if (disposed) return;
+        if (!HlsPlayer.isSupported()) {
+          video.src = source;
+          video.addEventListener("loadedmetadata", restorePosition, { once: true });
+          return;
+        }
+        hls = new HlsPlayer({ enableWorker: true });
+        hls.loadSource(source);
+        hls.attachMedia(video);
+        hls.on(HlsPlayer.Events.MANIFEST_PARSED, restorePosition);
+      }).catch(() => {
+        if (disposed) return;
+        video.src = source;
+        video.addEventListener("loadedmetadata", restorePosition, { once: true });
+      });
     }
 
     return () => {
+      disposed = true;
       if (Number.isFinite(video.currentTime) && video.currentTime > 0) {
         resumePositionRef.current = video.currentTime;
       }
@@ -380,7 +395,8 @@ export function ConnectedVideoPage({
   );
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div className="lecture-workspace flex min-h-screen flex-col bg-background">
+      <header className="lecture-desk-heading"><div><span>مساحة المشاهدة والتعلّم</span><h1>{playback.lecture.title}</h1></div><button type="button" onClick={goBack}><ChevronRight size={17}/> العودة للمحاضرات</button></header>
       <div className="sticky top-16 z-30 flex items-center gap-2 border-b border-border bg-card px-3 py-2 lg:hidden">
         <button
           aria-label="العودة إلى قائمة المحاضرات"
@@ -409,8 +425,8 @@ export function ConnectedVideoPage({
         </button>
       </div>
 
-      <div className="flex flex-1 flex-col lg:h-[calc(100vh-64px)] lg:flex-row lg:overflow-hidden" dir="ltr">
-        <main className="min-w-0 flex-1 overflow-y-auto" dir="rtl">
+      <div className="lecture-desk flex flex-1 flex-col lg:flex-row" dir="ltr">
+        <div className="min-w-0 flex-1 overflow-y-auto" dir="rtl">
           <section className="group relative aspect-video w-full overflow-hidden bg-black">
             {playback.source_type === "youtube" && playback.youtube_video_id ? <iframe
               title={playback.lecture.title}
@@ -557,7 +573,7 @@ export function ConnectedVideoPage({
                   <InfoCard
                     icon={<Play size={17} />}
                     label="تقدم المشاهدة"
-                    value={`${watchProgress}%`}
+                    value={`${n(watchProgress)}٪`}
                   />
                 </div>
               </div>
@@ -597,7 +613,7 @@ export function ConnectedVideoPage({
               </div>
             )}
           </div>
-        </main>
+        </div>
 
         <aside
           className="hidden w-[360px] shrink-0 flex-col overflow-hidden border-l border-border bg-card lg:flex xl:w-[400px]"
@@ -683,7 +699,7 @@ function VideoWatermark({
   );
 }
 
-function CurriculumSidebar({
+export function CurriculumSidebar({
   branch,
   currentLectureId,
   openChapters,
@@ -705,7 +721,7 @@ function CurriculumSidebar({
   const strokeOffset = circumference - (watchProgress / 100) * circumference;
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="course-rail flex h-full flex-col">
       <div className="shrink-0 border-b border-border bg-card/50 p-4">
         <div className="flex items-center gap-3">
           <div className="relative h-[52px] w-[52px] shrink-0">
@@ -732,13 +748,13 @@ function CurriculumSidebar({
               />
             </svg>
             <span className="absolute inset-0 flex items-center justify-center text-[11px] font-black text-primary">
-              {watchProgress}%
+              {n(watchProgress)}٪
             </span>
           </div>
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm font-bold">{branch.title}</div>
             <div className="mt-0.5 text-xs text-muted-foreground">
-              {readyLectures} من {allLectures.length} محاضرة جاهزة
+              {n(readyLectures)} من {n(allLectures.length)} محاضرة جاهزة
             </div>
             <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-muted">
               <div
@@ -769,18 +785,19 @@ function CurriculumSidebar({
               className="border-b border-border/60 last:border-0"
             >
               <button
+                aria-expanded={isOpen}
                 onClick={() => onToggleChapter(chapter.id)}
                 className="flex w-full items-center gap-2 px-4 py-3 text-right hover:bg-accent/40"
               >
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-muted text-[10px] font-bold text-muted-foreground">
-                  {chapterIndex + 1}
+                  {n(chapterIndex + 1)}
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-xs font-bold">
                     {chapter.title}
                   </span>
                   <span className="mt-0.5 block text-[10px] text-muted-foreground">
-                    {readyCount} من {chapterItems.length} محاضرة
+                    {n(readyCount)} من {n(chapterItems.length)} محاضرة
                   </span>
                 </span>
                 <ChevronDown
@@ -808,6 +825,7 @@ function CurriculumSidebar({
                         return (
                           <button
                             key={lecture.id}
+                            aria-current={isCurrent ? "true" : undefined}
                             disabled={!accessible || !ready}
                             onClick={() => onOpenLecture(item)}
                             className={cn(

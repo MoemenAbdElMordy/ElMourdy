@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { WorkspaceHeading } from '../dashboard/workspace-views';
 import { CalendarDays, Clock, Laptop, Monitor, Shield, Smartphone, UserCheck, Wifi } from "lucide-react";
 import { ApiError } from "../../shared/api/client";
 import { loadDevices, removeDevice as removeRegisteredDevice, requestDeviceRemoval, type StudentDevice } from "../../shared/auth/devices";
@@ -125,19 +126,17 @@ export function StudentSettingsPage({
   };
 
   return (
-    <div className="min-h-screen bg-background py-6 px-4">
+    <div className="workspace settings-workspace">
       <div className="max-w-5xl mx-auto">
-        <div className="mb-6">
-          <h1 className="text-2xl font-black">إعدادات الحساب</h1>
-          <p className="text-sm text-muted-foreground mt-1">إدارة بياناتك وكلمة المرور والأجهزة المسجلة</p>
-        </div>
-        <div className="grid lg:grid-cols-[240px_1fr] gap-5">
-          <Card2 className="h-fit !p-2">
+        <WorkspaceHeading eyebrow="حسابك، تحت سيطرتك" title="إعداداتك الشخصية" description="راجع بياناتك، حافظ على أمان حسابك، وتابع الأجهزة المسجلة."/>
+        <section className="settings-passport"><span>{authUser?.name?.charAt(0)||'ط'}</span><div><h2>{authUser?.name||'حساب الطالب'}</h2><p>مساحتك الخاصة لإدارة بياناتك وأمان حسابك.</p></div></section>
+        <div className="settings-content">
+          <nav className="settings-tabs" aria-label="أقسام إعدادات الحساب">
             {tabs.map((item) => {
               const Icon = item.icon;
               return <button key={item.id} onClick={() => setTab(item.id)} className={cn("w-full flex items-center gap-2.5 px-3 py-3 rounded-xl text-sm font-semibold text-right", tab === item.id ? "bg-primary text-primary-foreground" : "hover:bg-accent text-muted-foreground")}><Icon size={16}/>{item.label}</button>;
             })}
-          </Card2>
+          </nav>
           <div>
             {tab === "profile" && <Card2><form onSubmit={(event) => { event.preventDefault(); void saveProfile(); }}>
               <h2 className="font-bold mb-5">البيانات الشخصية والدراسية</h2>
@@ -165,7 +164,7 @@ export function StudentSettingsPage({
             {tab === "devices" && <div className="space-y-4">
               <Card2>
                 <div className="flex items-start justify-between gap-4 flex-wrap">
-                  <div><h2 className="font-bold">الأجهزة المسجلة</h2><p className="text-sm text-muted-foreground mt-1">يمكنك استخدام 3 أجهزة بحد أقصى، وحسابك يعمل على جهاز واحد في نفس الوقت.</p></div>
+                  <div><h2 className="font-bold">الأجهزة المسجلة</h2><p className="text-sm text-muted-foreground mt-1">يمكنك استخدام ٣ أجهزة بحد أقصى، وحسابك يعمل على جهاز واحد في نفس الوقت.</p></div>
                   <Badge2 variant={devices.length >= deviceLimit ? "warning" : "success"}>{devices.length} من {deviceLimit} أجهزة</Badge2>
                 </div>
               </Card2>
@@ -187,7 +186,7 @@ export function StudentSettingsPage({
                 </div>
               </Card2>)}
               <Card2 className="border-primary/20 bg-primary/5">
-                <div className="flex items-start gap-3"><Shield size={18} className="text-primary mt-0.5"/><div><h3 className="font-bold text-sm">سياسة إزالة الأجهزة</h3><p className="text-xs text-muted-foreground mt-1 leading-relaxed">يمكن إزالة جهاز ذاتيًا مرة كل 7 أيام. إذا كنت تحتاج إزالته قبل الموعد، أرسل طلبًا للمساعد من نافذة الإزالة.</p></div></div>
+                <div className="flex items-start gap-3"><Shield size={18} className="text-primary mt-0.5"/><div><h3 className="font-bold text-sm">سياسة إزالة الأجهزة</h3><p className="text-xs text-muted-foreground mt-1 leading-relaxed">يمكن إزالة جهاز ذاتيًا مرة كل ٧ أيام. إذا كنت تحتاج إزالته قبل الموعد، أرسل طلبًا للمساعد من نافذة الإزالة.</p></div></div>
               </Card2>
             </div>}
           </div>
@@ -198,7 +197,7 @@ export function StudentSettingsPage({
           <div className="p-3 rounded-xl bg-muted"><div className="font-bold text-sm">{requestDevice.name}</div><div className="text-xs text-muted-foreground mt-1">آخر نشاط: {new Date(requestDevice.last_seen_at).toLocaleString("ar-EG")}</div></div>
           {requestDevice.can_self_remove
             ? <div className="p-3 rounded-xl border border-red-200 bg-red-50 dark:bg-red-900/20 text-sm text-red-800 dark:text-red-300">ستتم إزالة الجهاز وإنهاء أي جلسة مفتوحة عليه.</div>
-            : <><div className="p-3 rounded-xl border border-yellow-200 bg-yellow-50 dark:bg-yellow-900/20 text-sm text-yellow-800 dark:text-yellow-300">لم يمر 7 أيام على آخر إزالة ذاتية. سيتم إرسال طلب للمساعد.</div><Field label="سبب الطلب (اختياري)"><textarea rows={3} value={requestReason} onChange={(event) => setRequestReason(event.target.value)} className="w-full rounded-xl border border-border bg-background p-3 text-sm" placeholder="مثال: الجهاز ضاع أو تم بيعه"/></Field></>}
+            : <><div className="p-3 rounded-xl border border-yellow-200 bg-yellow-50 dark:bg-yellow-900/20 text-sm text-yellow-800 dark:text-yellow-300">لم يمر ٧ أيام على آخر إزالة ذاتية. سيتم إرسال طلب للمساعد.</div><Field label="سبب الطلب (اختياري)"><textarea rows={3} value={requestReason} onChange={(event) => setRequestReason(event.target.value)} className="w-full rounded-xl border border-border bg-background p-3 text-sm" placeholder="مثال: الجهاز ضاع أو تم بيعه"/></Field></>}
           <div className="flex gap-2"><Btn variant="outline" className="flex-1" disabled={submittingDevice} onClick={() => setRequestDevice(null)}>إلغاء</Btn><Btn className="flex-1" disabled={submittingDevice} onClick={submitDeviceAction}>{requestDevice.can_self_remove ? "إزالة الجهاز" : "إرسال الطلب"}</Btn></div>
         </div>}
       </Modal2>

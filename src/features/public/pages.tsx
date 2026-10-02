@@ -31,6 +31,8 @@ import {
 } from "../../shared/auth/password-reset";
 import { freeLectureThumbnailUrl, loadFreeLectures, loadGrades, type FreeLecture, type PublicGrade } from "../../shared/public/api";
 import { EGYPTIAN_GOVERNORATES } from "../../shared/public/registration-options";
+import { normalizeNumericInput } from "../../shared/auth/numeric-input";
+import { arabicNumber } from "../../shared/arabic";
 
 const ARABIC_GRADE_NAMES: Record<number, string> = {
   1: "الصف الأول الثانوي",
@@ -39,7 +41,7 @@ const ARABIC_GRADE_NAMES: Record<number, string> = {
 };
 
 function arabicGradeName(grade: PublicGrade) {
-  return ARABIC_GRADE_NAMES[grade.level] ?? `الصف الدراسي ${grade.level}`;
+  return ARABIC_GRADE_NAMES[grade.level] ?? `الصف الدراسي ${arabicNumber(grade.level)}`;
 }
 
 function freeLectureGradeName(lecture: FreeLecture) {
@@ -67,7 +69,8 @@ function PublicLearningLinks({ nav }: { nav: any }) {
   );
 }
 // ============================================================
-export function HomePage({ nav }: any) {
+export { AtelierHome as HomePage } from './atelier-home';
+function LegacyHomePage({ nav }: any) {
   const [lectures, setLectures] = useState<FreeLecture[]>([]);
   const [loadingContent, setLoadingContent] = useState(true);
   const [contentError, setContentError] = useState("");
@@ -296,7 +299,8 @@ export function LoginPage({ nav, setRole, onLogin }: any) {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="atelier-auth min-h-screen bg-background flex items-center justify-center p-4">
+      <aside className="atelier-auth-story" aria-label="مرحبًا بك"><span>منصة الأستاذ محمود عبدالمرضي</span><h2>مكانك هنا.<br/>وخُطوتك الجاية<br/><em>أجمل.</em></h2><p>ارجع لمحاضراتك، كمّل من آخر نقطة، وخلي كل يوم خطوة أقرب لهدفك.</p><div>تعلّم بفهم. تقدّم بثقة.</div></aside>
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <img src="/images/mourdy-logo-160.webp" alt="شعار منصة المرضي" className="mx-auto mb-3 h-16 w-16 rounded-full object-cover shadow-md" width="64" height="64" />
@@ -305,7 +309,7 @@ export function LoginPage({ nav, setRole, onLogin }: any) {
         </div>
         <Card2>
           <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); void doLogin(); }}>
-            <Input2 label="رقم الهاتف" type="tel" inputMode="numeric" placeholder="01xxxxxxxxx" value={phone} onChange={(e:any)=>setPhone(e.target.value.replace(/\D/g,"").slice(0,11))} dir="ltr"/>
+            <Input2 label="رقم الهاتف" type="tel" inputMode="numeric" placeholder="٠١٠٠٠٠٠٠٠٠٠" value={phone} onChange={(e:any)=>setPhone(normalizeNumericInput(e.target.value, 11))} dir="ltr"/>
             <Input2 label="كلمة المرور" type="password" placeholder="••••••••" value={pass} onChange={(e:any)=>setPass(e.target.value)}/>
             {err && (
               <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-700 dark:text-red-400 text-sm">
@@ -415,7 +419,7 @@ export function RegisterPage({ nav }: any) {
   };
 
   return (
-    <div className="min-h-screen bg-background py-8 px-4">
+    <div className="atelier-register min-h-screen bg-background py-8 px-4">
       <div className="max-w-lg mx-auto">
         <div className="text-center mb-6">
           <h1 className="text-2xl font-black">تسجيل طالب جديد</h1>
@@ -424,7 +428,7 @@ export function RegisterPage({ nav }: any) {
             {[1,2,3].map(s=>(
               <div key={s} className={cn("w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-colors",
                 s<step?"bg-primary text-white border-primary":s===step?"border-primary text-primary":"border-muted text-muted-foreground")}>
-                {s<step?<Check size={14}/>:s}
+                {s<step?<Check size={14}/>:arabicNumber(s)}
               </div>
             ))}
           </div>
@@ -436,8 +440,8 @@ export function RegisterPage({ nav }: any) {
               <Input2 label="الاسم الكامل" placeholder="محمد أحمد علي" value={form.name} onChange={(e:any)=>set("name",e.target.value)} error={errors.name}/>
               <Input2 label="تاريخ الميلاد" type="date" value={form.birthDate} onInput={(e:any)=>set("birthDate",e.currentTarget.value)} error={errors.birthDate}/>
               <div className="grid grid-cols-2 gap-3">
-                <Input2 label="هاتف الطالب" placeholder="01xxxxxxxxx" value={form.phone} onChange={(e:any)=>set("phone",e.target.value)} error={errors.phone} dir="ltr"/>
-                <Input2 label="هاتف ولي الأمر" placeholder="01xxxxxxxxx" value={form.parentPhone} onChange={(e:any)=>set("parentPhone",e.target.value)} error={errors.parentPhone} dir="ltr"/>
+                <Input2 label="هاتف الطالب" type="tel" inputMode="numeric" placeholder="٠١٠٠٠٠٠٠٠٠٠" value={form.phone} onChange={(e:any)=>set("phone",normalizeNumericInput(e.target.value, 11))} error={errors.phone} dir="ltr"/>
+                <Input2 label="هاتف ولي الأمر" type="tel" inputMode="numeric" placeholder="٠١٠٠٠٠٠٠٠٠٠" value={form.parentPhone} onChange={(e:any)=>set("parentPhone",normalizeNumericInput(e.target.value, 11))} error={errors.parentPhone} dir="ltr"/>
               </div>
               <Input2 label="البريد الإلكتروني (فريد)" type="email" placeholder="example@email.com" value={form.email} onChange={(e:any)=>set("email",e.target.value)} error={errors.email} dir="ltr"/>
               <Btn type="submit" className="w-full">التالي</Btn>
@@ -464,7 +468,7 @@ export function RegisterPage({ nav }: any) {
           {step===3 && (
             <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
               <h3 className="font-bold">كلمة المرور</h3>
-              <Input2 label="كلمة المرور" name="new-password" autoComplete="new-password" type="password" placeholder="8 أحرف على الأقل" value={form.password} onChange={(e:any)=>set("password",e.target.value)} error={errors.password}/>
+              <Input2 label="كلمة المرور" name="new-password" autoComplete="new-password" type="password" placeholder="٨ أحرف على الأقل" value={form.password} onChange={(e:any)=>set("password",e.target.value)} error={errors.password}/>
               <Input2 label="تأكيد كلمة المرور" name="confirm-password" autoComplete="new-password" type="password" placeholder="أعد كتابة كلمة المرور" value={form.confirm} onChange={(e:any)=>set("confirm",e.target.value)} error={errors.confirm}/>
               {errors.submit && (
                 <div role="alert" aria-live="assertive" className="space-y-3 rounded-xl border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-600 dark:text-red-300">
@@ -535,7 +539,7 @@ export function ParentRegisterPage({ nav }: any) {
         <Card2>
           <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
             <Input2 label="الاسم الكامل" value={form.name} onChange={(e:any)=>setForm(current=>({...current,name:e.target.value}))}/>
-            <Input2 label="رقم الهاتف" type="tel" inputMode="numeric" placeholder="01xxxxxxxxx" dir="ltr" value={form.phone} onChange={(e:any)=>setForm(current=>({...current,phone:e.target.value.replace(/\D/g,"").slice(0,11)}))}/>
+            <Input2 label="رقم الهاتف" type="tel" inputMode="numeric" placeholder="٠١٠٠٠٠٠٠٠٠٠" dir="ltr" value={form.phone} onChange={(e:any)=>setForm(current=>({...current,phone:normalizeNumericInput(e.target.value, 11)}))}/>
             <Input2 label="البريد الإلكتروني" type="email" dir="ltr" value={form.email} onChange={(e:any)=>setForm(current=>({...current,email:e.target.value}))}/>
             <div className="rounded-xl bg-primary/5 border border-primary/20 p-3 text-xs text-muted-foreground">
               بعد تأكيد الرقم سيتم ربط الحساب تلقائيًا بكل الطلاب الذين سجلوا هذا الرقم كولي أمر.
@@ -614,12 +618,12 @@ export function OTPPage({ nav, params, setRole, setAuthUser }: any) {
         </div>
         <h1 className="text-2xl font-black mb-2">التحقق من البريد الإلكتروني</h1>
         <p className="text-muted-foreground text-sm mb-6">
-          أرسلنا كودًا مكونًا من 6 أرقام إلى<br/>
+          أرسلنا كودًا مكونًا من ٦ أرقام إلى<br/>
           <span className="font-bold text-foreground" dir="ltr">{registration?.emailHint || "بريدك الإلكتروني"}</span>
         </p>
         <Card2>
           <form onSubmit={(event) => { event.preventDefault(); void submit(); }} className="space-y-4">
-            <Input2 label="كود التحقق" inputMode="numeric" dir="ltr" maxLength={6} value={code} onChange={(event:any)=>setCode(event.target.value.replace(/\D/g, "").slice(0, 6))}/>
+            <Input2 label="كود التحقق" inputMode="numeric" dir="ltr" maxLength={6} value={code} onChange={(event:any)=>setCode(normalizeNumericInput(event.target.value, 6))}/>
             {error && <div role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</div>}
             <Btn type="submit" className="w-full" disabled={loading || code.length !== 6}>{loading ? "جارٍ التحقق…" : "تأكيد الكود"}</Btn>
           </form>
@@ -719,7 +723,7 @@ export function ForgotPage({ nav }: any) {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="verification-workspace min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-6">
           <h1 className="text-2xl font-black">استعادة كلمة المرور</h1>
@@ -737,8 +741,8 @@ export function ForgotPage({ nav }: any) {
           )}
           {status === "pending" && reset && (
             <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); void submitCode(); }}>
-              <div className="text-center"><Shield size={44} className="text-primary mx-auto mb-3"/><p className="font-bold">أدخل كود التحقق</p><p className="mt-1 text-sm text-muted-foreground">أرسلنا كودًا من 6 أرقام إلى بريدك الإلكتروني.</p></div>
-              <Input2 label="كود التحقق" inputMode="numeric" maxLength={6} value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))} dir="ltr" autoComplete="one-time-code"/>
+              <div className="text-center"><Shield size={44} className="text-primary mx-auto mb-3"/><p className="font-bold">أدخل كود التحقق</p><p className="mt-1 text-sm text-muted-foreground">أرسلنا كودًا من ٦ أرقام إلى بريدك الإلكتروني.</p></div>
+              <Input2 label="كود التحقق" inputMode="numeric" maxLength={6} value={code} onChange={(event) => setCode(normalizeNumericInput(event.target.value, 6))} dir="ltr" autoComplete="one-time-code"/>
               <Btn type="submit" className="w-full" disabled={loading || code.length !== 6}>{loading ? "جارٍ التحقق…" : "تأكيد الكود"}</Btn>
               <button type="button" onClick={restart} className="block w-full text-sm text-primary hover:underline">استخدام بريد إلكتروني آخر</button>
             </form>
@@ -773,7 +777,7 @@ export function ForgotPage({ nav }: any) {
 // ============================================================
 export function AboutPage({ nav }: any) {
   return (
-    <div className="min-h-screen bg-background py-10 px-4">
+    <div className="atelier-about min-h-screen bg-background py-10 px-4">
       <div className="max-w-4xl mx-auto space-y-6">
         <section className="rounded-3xl bg-primary p-8 text-primary-foreground md:p-10">
           <img src="/images/mourdy-logo-160.webp" alt="شعار منصة المرضي" className="mb-5 h-16 w-16 rounded-full object-cover shadow-md" width="64" height="64" loading="lazy" />
@@ -940,11 +944,11 @@ export function SecondaryArabicLandingPage({ nav, route }: { nav: any; route: Se
         </div>
       </section>
 
-      <main className="mx-auto max-w-6xl px-4 py-12">
+      <div className="mx-auto max-w-6xl px-4 py-12">
         <div className="grid gap-5 md:grid-cols-3">
           {page.sections.map((section, index) => (
             <article key={section.title} className="rounded-3xl border border-border bg-card p-6 shadow-sm">
-              <span className="mb-4 grid h-10 w-10 place-items-center rounded-xl bg-primary/10 font-black text-primary">{index + 1}</span>
+              <span className="mb-4 grid h-10 w-10 place-items-center rounded-xl bg-primary/10 font-black text-primary">{arabicNumber(index + 1)}</span>
               <h2 className="mb-3 text-xl font-black">{section.title}</h2>
               <p className="text-sm leading-8 text-muted-foreground">{section.body}</p>
             </article>
@@ -968,7 +972,7 @@ export function SecondaryArabicLandingPage({ nav, route }: { nav: any; route: Se
           <p className="mx-auto mb-6 max-w-2xl leading-8 opacity-90">اختار صفك وشوف المحتوى المنظم مع الأستاذ محمود عبدالمرضي، وابدأ بالمحاضرات المجانية المتاحة.</p>
           <Btn className="!bg-white !text-primary" onClick={() => nav("free-content")}>تصفح المحاضرات المجانية</Btn>
         </section>
-      </main>
+      </div>
 
       <footer className="border-t border-border px-4 py-7 text-center text-xs text-muted-foreground">
         <PublicLearningLinks nav={nav}/>
@@ -1035,7 +1039,7 @@ export function FreeContentPage({ nav, role }: any) {
   }, [visibleLectures]);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="atelier-library min-h-screen bg-background">
       <section className="border-b border-border bg-gradient-to-b from-primary/15 to-background px-4 py-10 md:py-14">
         <div className="mx-auto max-w-7xl text-center">
           <Badge2 variant="primary">ابدأ التعلم مجانًا</Badge2>
@@ -1044,7 +1048,7 @@ export function FreeContentPage({ nav, role }: any) {
         </div>
       </section>
 
-      <main className="mx-auto max-w-7xl px-4 py-8">
+      <div className="mx-auto max-w-7xl px-4 py-8">
         {!loading && !error && lectures.length > 0 && (
           <section aria-label="البحث في المحاضرات المجانية" className="mb-9 grid gap-3 rounded-3xl border border-border bg-card p-4 shadow-sm md:grid-cols-[1fr_260px]">
             <label className="relative block">
@@ -1064,7 +1068,7 @@ export function FreeContentPage({ nav, role }: any) {
 
         {loading && <Card2 className="text-center text-muted-foreground">جارٍ تحميل المحاضرات…</Card2>}
         {!loading && error && <Card2 className="text-center text-red-600">{error}</Card2>}
-        {!loading && !error && groups.length === 0 && (
+        {!loading && !error && lectures.length === 0 && (
           <Card2 className="text-center">
             <Video className="mx-auto mb-3 text-muted-foreground" />
             <h2 className="mb-1 font-black">لا توجد محاضرات مجانية جاهزة حاليًا</h2>
@@ -1131,7 +1135,7 @@ export function FreeContentPage({ nav, role }: any) {
             المحاضرات المجانية مرتبة حسب الصف والفرع. أنشئ حساب طالب لتكمل المشاهدة من آخر نقطة وصلت إليها وتتابع المحتوى الجديد عند نشره.
           </p>
         </section>
-      </main>
+      </div>
       <footer className="border-t border-border px-4 py-7 text-center text-xs text-muted-foreground">
         <PublicLearningLinks nav={nav}/>
         <p className="mt-4">محاضرات مجانية في اللغة العربية للمرحلة الثانوية على منصة المرضي التعليمية.</p>
