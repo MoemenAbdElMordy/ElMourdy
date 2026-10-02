@@ -81,7 +81,7 @@ export function AccountVerificationGate({
   return (
     <div className="verification-workspace min-h-screen bg-background text-foreground flex items-center justify-center p-4" dir="rtl">
       <div className="w-full max-w-md text-center">
-        <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4"><Shield className="text-primary" size={30}/></div>
+        <div className="verification-icon w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4"><Shield className="text-primary" size={30}/></div>
         <h1 className="text-2xl font-black mb-2">تفعيل الحساب مطلوب</h1>
         <p className="text-sm text-muted-foreground mb-6">مرحبًا {user.name}. لن تتمكن من استخدام محتوى المنصة قبل تفعيل بريدك الإلكتروني.</p>
         <Card2>
