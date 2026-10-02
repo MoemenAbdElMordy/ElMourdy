@@ -139,7 +139,7 @@ function TopBar({ role, nav, dark, setDark, setRole, onLogout, authUser }: Shell
   const homeView = role==="student"?"student-dashboard":role==="parent"?"parent-dashboard":role==="teacher"||role==="assistant"?"admin-dashboard":"home";
 
   return (
-    <header data-atelier-role={role} className="sticky top-0 z-40 bg-card/95 backdrop-blur border-b border-border shadow-sm">
+    <header data-atelier-role={role} className="sticky top-0 z-40 bg-card border-b border-border shadow-sm">
       {role !== 'guest' && <aside className="atelier-sidebar"><a href={routeToPath(homeView,{})} onClick={e=>{e.preventDefault();nav(homeView);}} className="atelier-sidebar-brand"><img src="/images/mourdy-logo-160.webp" alt="منصة المرضي"/><strong>المرضي<small>مساحتك للتعلّم والتقدّم</small></strong></a><div className="atelier-sidebar-label">مساحة {role==='teacher'?'الأستاذ':role==='assistant'?'المساعد':role==='parent'?'ولي الأمر':'الطالب'}</div><nav aria-label="التنقل داخل المنصة">{navLinks.map((link,index)=><a key={link.view} href={routeToPath(link.view,{})} aria-current={parseLocation().route===link.view?'page':undefined} onClick={e=>{e.preventDefault();nav(link.view);}}><span>{(index+1).toLocaleString('ar-EG',{minimumIntegerDigits:2})}</span>{link.l}<ChevronLeft size={14}/></a>)}</nav><div className="atelier-sidebar-end"><BookOpen size={23}/><p>كل خطوة صغيرة،<br/>تصنع فرقًا كبيرًا.</p></div></aside>}
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-3">
         <a href={routeToPath(homeView, {})} onClick={(event) => { event.preventDefault(); nav(homeView); }} className="flex items-center gap-3 shrink-0">
