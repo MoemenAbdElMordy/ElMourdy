@@ -32,6 +32,16 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("connected role journeys", () => {
+  it("keeps the teacher sidebar outside a blurred header containing block", async () => {
+    auth.restore.mockResolvedValue(account("teacher"));
+    window.history.replaceState({}, "", "/admin-dashboard");
+    render(<App/>);
+    const navigation = await screen.findByRole("navigation", { name: "التنقل داخل المنصة" });
+    expect(navigation).toHaveTextContent("المحتوى");
+    expect(navigation).toHaveTextContent("الواجبات");
+    expect(navigation.closest("header")).not.toHaveClass("backdrop-blur");
+  });
+
   it("blocks a student from the teacher dashboard", async () => {
     auth.restore.mockResolvedValue(account("student"));
     window.history.replaceState({}, "", "/admin-dashboard");
