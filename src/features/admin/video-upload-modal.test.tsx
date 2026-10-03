@@ -22,6 +22,7 @@ vi.mock("../../shared/videos/api", () => ({
 }));
 
 import { VideoUploadModal } from "./video-upload-modal";
+import { completeVideoUpload, createVideoUpload, uploadVideoFile } from "../../shared/videos/api";
 
 const reusableAsset = {
   id: 6,
@@ -44,6 +45,22 @@ afterEach(() => {
 });
 
 describe("reusing an uploaded video", () => {
+  it("does not finalize a video after an interrupted upload", async () => {
+    vi.mocked(createVideoUpload).mockResolvedValue({
+      video_asset: { ...reusableAsset, id: 77, processing_status: "uploaded" },
+      upload: { url: "/api/test-upload", method: "PUT", headers: {}, requires_authentication: true },
+    } as never);
+    vi.mocked(uploadVideoFile).mockRejectedValue(new Error("انقطع الاتصال أثناء الرفع"));
+    render(<VideoUploadModal lecture={{ id: 4, title: "محاضرة اختبار" }} onReady={vi.fn()} onClose={vi.fn()}/>);
+    fireEvent.change(document.querySelector('input[type="file"]')!, {
+      target: { files: [new File(["video"], "test.mp4", { type: "video/mp4" })] },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "ابدأ الرفع" }));
+    await waitFor(() => expect(uploadVideoFile).toHaveBeenCalledOnce());
+    await waitFor(() => expect(screen.getByRole("button", { name: "رفع الفيديو البديل" })).toBeEnabled());
+    expect(completeVideoUpload).not.toHaveBeenCalled();
+  });
+
   it("persists the selected asset and refreshes the curriculum", async () => {
     const onReady = vi.fn();
     const onClose = vi.fn();
