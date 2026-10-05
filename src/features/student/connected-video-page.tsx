@@ -32,6 +32,7 @@ import {
 } from "../../shared/videos/api";
 import { Btn, Card2, cn, notify } from "../../shared/ui";
 import { useLectureThumbnailUrl } from "../../shared/media/lecture-thumbnail";
+import { studentVideoBranch } from "./presentation";
 
 const preferredQualityOrder = ["480p", "720p", "360p"];
 const displayedQualityOrder = ["720p", "480p", "360p"];
@@ -49,7 +50,8 @@ function findLectureContext(
   curriculum: Curriculum,
   lectureId: number,
 ): LectureContext | null {
-  for (const branch of curriculum.branches) {
+  for (const original of curriculum.branches) {
+    const branch = studentVideoBranch(original);
     for (const chapter of branch.chapters) {
       for (const lesson of chapter.lessons) {
         const lecture = lesson.lectures.find((item) => item.id === lectureId);
@@ -61,6 +63,7 @@ function findLectureContext(
 }
 
 function flattenBranchLectures(branch: Branch): LectureContext[] {
+  const seen = new Set<number>();
   return branch.chapters.flatMap((chapter) =>
     chapter.lessons.flatMap((lesson) =>
       lesson.lectures.map((lecture) => ({
@@ -70,7 +73,11 @@ function flattenBranchLectures(branch: Branch): LectureContext[] {
         lecture,
       })),
     ),
-  );
+  ).filter(item => {
+    if (seen.has(item.lecture.id)) return false;
+    seen.add(item.lecture.id);
+    return true;
+  });
 }
 
 export function canPlay(item: LectureContext) {
@@ -323,9 +330,9 @@ export function ConnectedVideoPage({
 
   const goBack = () => {
     if (context) {
-      nav("lessons", {
+      nav(context.chapter.id === 0 ? "chapters" : "lessons", {
         subjectId: context.branch.id,
-        chapterId: context.chapter.id,
+        ...(context.chapter.id === 0 ? {} : { chapterId: context.chapter.id }),
       });
       return;
     }

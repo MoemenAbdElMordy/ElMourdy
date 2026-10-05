@@ -6,6 +6,7 @@ import { ApiError } from "../../shared/api/client";
 import { loadCurriculum, type Curriculum, type Lecture } from "../../shared/curriculum/api";
 import { useLectureThumbnailUrl } from "../../shared/media/lecture-thumbnail";
 import { Badge2, Card2 } from "../../shared/ui";
+import { findStudentFolder, findStudentFolderParent, studentPresentationItems, type StudentPresentationItem } from "./presentation";
 
 type StudentLecture = Lecture & { lesson_title: string; has_access?: boolean };
 
@@ -51,26 +52,31 @@ export function StudentCurriculumPage({ nav, params }: any) {
   if (!tree) return <div className="p-8 text-center">جارٍ تحميل المنهج…</div>;
 
   const requestedChapterId = Number(params?.chapterId);
-  const branch = tree.branches.find((item) => item.id === Number(params?.subjectId)) ?? tree.branches.find((item) => item.chapters.some((chapter) => chapter.id === requestedChapterId));
-  const chapter = branch?.chapters.find((item) => item.id === requestedChapterId);
-  const lectures: StudentLecture[] = chapter?.lessons.flatMap((lesson) => lesson.lectures.map((lecture) => ({
-    ...lecture,
-    lesson_title: lesson.title,
-    has_access: lecture.has_access ?? (lecture.is_free || lesson.has_access),
-  }))) ?? [];
-  const items = chapter ? lectures : (branch?.chapters ?? tree.branches);
-  const title = chapter?.title ?? branch?.title ?? `منهج ${tree.grade?.name ?? "الطالب"}`;
-  const open = (item: any) => chapter ? item.has_access && ((item.video_source_type === "youtube" && item.youtube_video_id) || item.video_asset?.processing_status === "ready") ? nav("video", { lessonId: item.id }) : item.has_access ? undefined : nav("activation", { lectureId: item.id }) : branch ? nav("lessons", { subjectId: branch.id, chapterId: item.id }) : nav("chapters", { subjectId: item.id });
+  const branch = tree.branches.find((item) => item.id === Number(params?.subjectId)) ?? tree.branches.find((item) => findStudentFolder(studentPresentationItems(item), requestedChapterId));
+  const roots = branch ? studentPresentationItems(branch) : [];
+  const folder = branch && Number.isFinite(requestedChapterId) ? findStudentFolder(roots, requestedChapterId) : null;
+  const parentFolder = folder ? findStudentFolderParent(roots, folder.id) : null;
+  const items = folder?.children ?? (branch ? roots : tree.branches);
+  const title = folder?.title ?? branch?.title ?? `منهج ${tree.grade?.name ?? "الطالب"}`;
+  const open = (item: StudentPresentationItem) => {
+    if (item.kind === "lecture" && item.lecture) {
+      const lecture = item.lecture;
+      if (lecture.has_access === false) nav("activation", { lectureId: lecture.id });
+      else if ((lecture.video_source_type === "youtube" && lecture.youtube_video_id) || lecture.video_asset?.processing_status === "ready") nav("video", { lessonId: lecture.id });
+    } else if (branch) nav("lessons", { subjectId: branch.id, chapterId: item.id });
+  };
 
   return (
     <div className="workspace curriculum-workspace min-h-screen">
       <div className="mx-auto max-w-6xl">
         <div className="mb-5">
-          {(branch || chapter) && <button onClick={() => chapter ? nav("chapters", { subjectId: branch!.id }) : nav("subjects")} className="mb-2 flex items-center gap-1 text-sm text-muted-foreground"><ChevronLeft size={14} /> رجوع</button>}
-          <WorkspaceHeading eyebrow={chapter?'المحاضرات':branch?'أبواب المنهج':'مكتبتك الدراسية'} title={arabicLabel(title)} description={`${arabicLabel(tree.academic_year?.name??'')} · ${chapter?'اختار محاضرتك وكمّل رحلتك':branch?'كل باب يقربك أكثر من الفهم':'اختار فرعك، وابدأ خطوة جديدة'}`}/>
+          {branch && <button onClick={() => folder ? parentFolder ? nav("lessons", { subjectId: branch.id, chapterId: parentFolder.id }) : nav("chapters", { subjectId: branch.id }) : nav("subjects")} className="mb-2 flex items-center gap-1 text-sm text-muted-foreground"><ChevronLeft size={14} /> رجوع</button>}
+          <WorkspaceHeading eyebrow={folder?'محتوى المجلد':branch?'مجلدات ومحاضرات المادة':'مكتبتك الدراسية'} title={arabicLabel(title)} description={`${arabicLabel(tree.academic_year?.name??'')} · ${branch?'اختار المجلد أو المحاضرة المناسبة':'اختار فرعك، وابدأ خطوة جديدة'}`}/>
         </div>
-        <div className={chapter ? "grid gap-5 sm:grid-cols-2 lg:grid-cols-3" : "curriculum-journey"}>
-          {items.map((item: any,index:number) => chapter ? <LectureCard key={item.id} lecture={item} open={() => open(item)} /> : <button key={item.id} className="curriculum-tile" onClick={() => open(item)}><span aria-hidden="true">{n(index+1)}</span><BookOpen size={29}/><h2>{item.title}</h2><p>{branch?'باب دراسي · شرح وتطبيق':'فرع دراسي · تعلّم متدرّج'}</p><div>{branch?'استعرض المحاضرات':'اكتشف أبواب المنهج'}<ChevronLeft size={18}/></div></button>)}
+        <div className={branch ? "grid gap-5 sm:grid-cols-2 lg:grid-cols-3" : "curriculum-journey"}>
+          {items.map((item,index) => branch && "kind" in item && item.kind === "lecture" && item.lecture
+            ? <LectureCard key={`lecture-${item.id}`} lecture={{ ...item.lecture, lesson_title: item.lessonTitle ?? title, has_access: item.lecture.has_access ?? item.lecture.is_free }} open={() => open(item)} />
+            : <button key={item.id} className="curriculum-tile" onClick={() => branch ? open(item as StudentPresentationItem) : nav("chapters", { subjectId: item.id })}><span aria-hidden="true">{n(index+1)}</span><BookOpen size={29}/><h2>{item.title}</h2><p>{branch?'مجلد دراسي · شرح وتطبيق':'فرع دراسي · تعلّم متدرّج'}</p><div>{branch?'افتح المجلد':'اكتشف المحتوى'}<ChevronLeft size={18}/></div></button>)}
         </div>
         {items.length === 0 && <Card2><p className="py-8 text-center text-muted-foreground">لم يُنشر محتوى لهذا المستوى بعد</p></Card2>}
       </div>
