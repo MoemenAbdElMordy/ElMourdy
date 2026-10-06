@@ -7,12 +7,13 @@ import { loadCurriculum, type Curriculum, type Lecture } from "../../shared/curr
 import { useLectureThumbnailUrl } from "../../shared/media/lecture-thumbnail";
 import { Badge2, Card2 } from "../../shared/ui";
 import { findStudentFolder, findStudentFolderParent, studentPresentationItems, type StudentPresentationItem } from "./presentation";
+import { lectureHasPlayableVideo } from "./video-availability";
 
 type StudentLecture = Lecture & { lesson_title: string; has_access?: boolean };
 
 function LectureCard({ lecture, open }: { lecture: StudentLecture; open: () => void }) {
   const thumbnailUrl = useLectureThumbnailUrl(lecture.id, lecture.has_thumbnail);
-  const ready = (lecture.video_source_type === "youtube" && Boolean(lecture.youtube_video_id)) || lecture.video_asset?.processing_status === "ready";
+  const ready = lectureHasPlayableVideo(lecture);
   const position = lecture.progress?.last_position_seconds ?? 0;
   const duration = lecture.duration_seconds ?? lecture.video_asset?.duration_seconds ?? 0;
   const progress = lecture.progress?.completed ? 100 : duration > 0 ? Math.min(100, Math.round((position / duration) * 100)) : 0;
@@ -29,7 +30,7 @@ function LectureCard({ lecture, open }: { lecture: StudentLecture; open: () => v
         <p className="mt-1 text-xs text-muted-foreground">{lecture.lesson_title}</p>
         <div className="mt-3 flex flex-wrap gap-2">
           <Badge2 variant={lecture.has_access ? "success" : "warning"}>{lecture.has_access ? "متاح" : "يحتاج كود"}</Badge2>
-          <Badge2 variant={ready ? "success" : "warning"}>{ready ? "جاهز للمشاهدة" : "قيد المعالجة"}</Badge2>
+          <Badge2 variant={ready ? "success" : "warning"}>{ready ? lecture.video_asset?.processing_status === "processing" ? "متاح بجودة واحدة والباقي قيد التجهيز" : "جاهز للمشاهدة" : "قيد المعالجة"}</Badge2>
         </div>
         <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
           <span className="flex items-center gap-1"><Clock size={12} />{n(Math.ceil(duration / 60))} دقيقة</span>
@@ -62,7 +63,7 @@ export function StudentCurriculumPage({ nav, params }: any) {
     if (item.kind === "lecture" && item.lecture) {
       const lecture = item.lecture;
       if (lecture.has_access === false) nav("activation", { lectureId: lecture.id });
-      else if ((lecture.video_source_type === "youtube" && lecture.youtube_video_id) || lecture.video_asset?.processing_status === "ready") nav("video", { lessonId: lecture.id });
+      else if (lectureHasPlayableVideo(lecture)) nav("video", { lessonId: lecture.id });
     } else if (branch) nav("lessons", { subjectId: branch.id, chapterId: item.id });
   };
 

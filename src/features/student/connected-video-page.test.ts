@@ -5,16 +5,18 @@ function context({
   lessonAccess,
   lectureAccess,
   processingStatus = "ready",
+  availableQualities = [],
 }: {
   lessonAccess: boolean;
   lectureAccess: boolean;
   processingStatus?: "uploaded" | "processing" | "ready" | "failed";
+  availableQualities?: string[];
 }) {
   return {
     lesson: { has_access: lessonAccess },
     lecture: {
       has_access: lectureAccess,
-      video_asset: { processing_status: processingStatus },
+      video_asset: { processing_status: processingStatus, available_qualities: availableQualities },
     },
   } as LectureContext;
 }
@@ -42,5 +44,10 @@ describe("student video availability", () => {
         }),
       ),
     ).toBe(false);
+  });
+
+  it("allows the first completed quality while other qualities are still processing", () => {
+    expect(canPlay(context({ lessonAccess: true, lectureAccess: true,
+      processingStatus: "processing", availableQualities: ["480p"] }))).toBe(true);
   });
 });

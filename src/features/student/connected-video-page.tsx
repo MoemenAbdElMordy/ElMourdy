@@ -33,6 +33,7 @@ import {
 import { Btn, Card2, cn, notify } from "../../shared/ui";
 import { useLectureThumbnailUrl } from "../../shared/media/lecture-thumbnail";
 import { studentVideoBranch } from "./presentation";
+import { lectureHasPlayableVideo } from "./video-availability";
 
 const preferredQualityOrder = ["480p", "720p", "360p"];
 const displayedQualityOrder = ["720p", "480p", "360p"];
@@ -83,7 +84,7 @@ function flattenBranchLectures(branch: Branch): LectureContext[] {
 export function canPlay(item: LectureContext) {
   return (
     item.lecture.has_access !== false &&
-    ((item.lecture.video_source_type === "youtube" && Boolean(item.lecture.youtube_video_id)) || item.lecture.video_asset?.processing_status === "ready")
+    lectureHasPlayableVideo(item.lecture)
   );
 }
 
