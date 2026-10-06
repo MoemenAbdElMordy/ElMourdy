@@ -3,6 +3,7 @@ import { apiRequest } from "../api/client";
 const PENDING_PASSWORD_RESET_KEY = "elmourdy-pending-password-reset";
 
 export type PendingPasswordReset = {
+  email?: string;
   passwordResetId: number;
   expiresAt: string;
   resendAfterSeconds: number;
@@ -37,6 +38,7 @@ export async function requestPasswordReset(email: string) {
     body: JSON.stringify({ password_reset: { email } }),
   });
   return {
+    email,
     passwordResetId: response.password_reset_id,
     expiresAt: response.expires_at,
     resendAfterSeconds: response.resend_after_seconds,

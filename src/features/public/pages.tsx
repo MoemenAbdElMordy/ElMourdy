@@ -650,6 +650,17 @@ export function ForgotPage({ nav }: any) {
   const [passwordConfirmation, setPasswordConfirmation] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [resendRemaining, setResendRemaining] = useState(0);
+
+  useEffect(() => {
+    if (reset?.email && !email) setEmail(reset.email);
+    if (reset) setResendRemaining(reset.resendAfterSeconds);
+  }, [reset]);
+  useEffect(() => {
+    if (resendRemaining <= 0) return;
+    const timer = window.setTimeout(() => setResendRemaining(value => Math.max(0, value - 1)), 1000);
+    return () => window.clearTimeout(timer);
+  }, [resendRemaining]);
 
   useEffect(() => {
     if (!reset) return;
@@ -657,7 +668,7 @@ export function ForgotPage({ nav }: any) {
       if (response.status === "verified") setStatus("verified");
       if (response.status === "consumed") setStatus("success");
       if (response.status === "expired" || response.status === "failed") restart();
-    }).catch(() => restart());
+    }).catch(() => setError("تعذر التحقق من حالة الكود الآن. أعد المحاولة بعد قليل، ولم يتم إلغاء طلبك."));
   // Only restore the persisted reset once when the page opens.
   }, []);
 
@@ -722,6 +733,24 @@ export function ForgotPage({ nav }: any) {
     setError("");
   };
 
+  const resend = async () => {
+    if (loading || resendRemaining > 0 || !email.includes("@")) return;
+    setLoading(true);
+    setError("");
+    try {
+      const next = await requestPasswordReset(email.trim());
+      storePendingPasswordReset(next);
+      setReset(next);
+      setCode("");
+      setResendRemaining(next.resendAfterSeconds);
+      notify("تم إرسال كود جديد إلى بريدك الإلكتروني", "success");
+    } catch (requestError) {
+      setError(requestError instanceof ApiError ? requestError.message : "تعذر إعادة إرسال كود التحقق.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="verification-workspace min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
@@ -744,6 +773,8 @@ export function ForgotPage({ nav }: any) {
               <div className="text-center"><Shield size={44} className="text-primary mx-auto mb-3"/><p className="font-bold">أدخل كود التحقق</p><p className="mt-1 text-sm text-muted-foreground">أرسلنا كودًا من ٦ أرقام إلى بريدك الإلكتروني.</p></div>
               <Input2 label="كود التحقق" inputMode="numeric" maxLength={6} value={code} onChange={(event) => setCode(normalizeNumericInput(event.target.value, 6))} dir="ltr" autoComplete="one-time-code"/>
               <Btn type="submit" className="w-full" disabled={loading || code.length !== 6}>{loading ? "جارٍ التحقق…" : "تأكيد الكود"}</Btn>
+              {!reset.email && <Input2 label="البريد الإلكتروني لإعادة الإرسال" type="email" value={email} onChange={(event) => setEmail(event.target.value)} dir="ltr"/>}
+              <button type="button" disabled={loading || resendRemaining > 0 || !email.includes("@") } onClick={() => void resend()} className="block w-full text-sm text-primary hover:underline disabled:opacity-50 disabled:no-underline">{resendRemaining > 0 ? `إرسال كود جديد خلال ${resendRemaining} ثانية` : "إرسال كود جديد"}</button>
               <button type="button" onClick={restart} className="block w-full text-sm text-primary hover:underline">استخدام بريد إلكتروني آخر</button>
             </form>
           )}

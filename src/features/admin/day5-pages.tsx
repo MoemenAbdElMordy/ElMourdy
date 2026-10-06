@@ -18,7 +18,7 @@ const permissionLabels: Record<string, string> = {
   manage_parent_phone: "تغيير رقم ولي الأمر",
   manage_devices: "إدارة الأجهزة",
   manage_support_requests: "طلبات الدعم",
-  manage_content: "إدارة المحتوى",
+  manage_content: "عرض المحتوى ومتابعة المشاهدة",
   upload_videos: "رفع الفيديو",
   manage_exams: "إدارة الاختبارات",
   manage_homeworks: "إدارة الواجبات",

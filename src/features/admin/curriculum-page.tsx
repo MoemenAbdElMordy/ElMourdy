@@ -160,6 +160,7 @@ function LectureThumbnail({ lecture }: { lecture: Lecture }) {
 
 function FolderTree({
   nodes,
+  readOnly = false,
   depth = 0,
   onEdit,
   onEditLecture,
@@ -175,6 +176,7 @@ function FolderTree({
   onDropNode,
 }: {
   nodes: CurriculumNode[];
+  readOnly?: boolean;
   depth?: number;
   onEdit: (node: CurriculumNode) => void;
   onEditLecture: (node: CurriculumNode) => void;
@@ -200,7 +202,7 @@ function FolderTree({
           key={node.id}
           className={depth ? "mr-5 border-r border-border pr-3" : ""}
         >
-          <div
+          {!readOnly && <div
             aria-label={`ضع العنصر قبل ${node.title}`}
             className="my-1 h-2 rounded-full transition-colors hover:bg-primary/40"
             onDragOver={(event) => event.preventDefault()}
@@ -210,9 +212,9 @@ function FolderTree({
               const sourceId = Number(event.dataTransfer.getData("text/plain"));
               if (sourceId) onDropNode(sourceId, node.parent_id ?? null, node.id);
             }}
-          />
+          />}
           <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-card p-3 shadow-sm">
-            <span
+            {!readOnly && <span
               draggable
               role="button"
               tabIndex={0}
@@ -222,8 +224,8 @@ function FolderTree({
               onDragStart={(event) => event.dataTransfer.setData("text/plain", String(node.id))}
             >
               <GripVertical size={18} />
-            </span>
-            <div className="flex flex-col">
+            </span>}
+            {!readOnly && <div className="flex flex-col">
               <button
                 type="button"
                 aria-label="تحريك لأعلى"
@@ -240,7 +242,7 @@ function FolderTree({
               >
                 <ChevronDown size={16} />
               </button>
-            </div>
+            </div>}
             {node.kind === "folder" ? (
               <FolderOpen className="text-primary" />
             ) : (
@@ -257,7 +259,7 @@ function FolderTree({
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              {node.kind === "folder" ? (
+              {node.kind === "folder" ? (!readOnly && (
                 <>
                   <button
                     type="button"
@@ -301,63 +303,19 @@ function FolderTree({
                     <Trash2 size={16} className="text-red-500" /> حذف
                   </button>
                 </>
-              ) : (
+                )) : (
                 <>
-                  <button
-                    type="button"
-                    title="تعديل المحاضرة"
-                    className="curriculum-action"
-                    onClick={() => onEditLecture(node)}
-                  >
-                    <Edit2 size={16} /> تعديل المحاضرة
-                  </button>
-                  <button
-                    type="button"
-                    title="متابعة مشاهدة الطلاب"
-                    aria-label={`متابعة مشاهدة الطلاب في ${node.title}`}
-                    className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-sm text-primary hover:bg-primary/10"
-                    onClick={() => onViewers(node)}
-                  >
-                    <Eye size={16} /> متابعة المشاهدة
-                  </button>
-                  <button
-                    type="button"
-                    title="إدارة فيديو المحاضرة"
-                    className="curriculum-action"
-                    onClick={() => onVideo(node)}
-                  >
-                    <Upload size={16} /> الفيديو
-                  </button>
-                  <button
-                    type="button"
-                    title="نشر المحاضرة"
-                    className="curriculum-action"
-                    onClick={() => onPublish(node)}
-                  >
-                    <BookOpen size={16} /> نشر
-                  </button>
-                  <button
-                    type="button"
-                    title="نقل المحاضرة أو تغيير ترتيبها"
-                    aria-label={`نقل وترتيب ${node.title}`}
-                    onClick={() => onMove(node)}
-                    className="inline-flex items-center gap-1 rounded-lg border border-primary/40 px-2 py-1 text-sm font-bold text-primary hover:bg-primary/10"
-                  >
-                    <Move size={16} /> نقل وترتيب
-                  </button>
-                  <button
-                    type="button"
-                    title="حذف المحاضرة"
-                    className="curriculum-action"
-                    onClick={() => onDeleteLecture(node)}
-                  >
-                    <Trash2 size={16} className="text-red-500" /> حذف
-                  </button>
+                  {!readOnly && <button type="button" title="تعديل المحاضرة" className="curriculum-action" onClick={() => onEditLecture(node)}><Edit2 size={16} /> تعديل المحاضرة</button>}
+                  <button type="button" title="متابعة مشاهدة الطلاب" aria-label={`متابعة مشاهدة الطلاب في ${node.title}`} className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-sm text-primary hover:bg-primary/10" onClick={() => onViewers(node)}><Eye size={16} /> متابعة المشاهدة</button>
+                  {!readOnly && <button type="button" title="إدارة فيديو المحاضرة" className="curriculum-action" onClick={() => onVideo(node)}><Upload size={16} /> الفيديو</button>}
+                  {!readOnly && <button type="button" title="نشر المحاضرة" className="curriculum-action" onClick={() => onPublish(node)}><BookOpen size={16} /> نشر</button>}
+                  {!readOnly && <button type="button" title="نقل المحاضرة أو تغيير ترتيبها" aria-label={`نقل وترتيب ${node.title}`} onClick={() => onMove(node)} className="inline-flex items-center gap-1 rounded-lg border border-primary/40 px-2 py-1 text-sm font-bold text-primary hover:bg-primary/10"><Move size={16} /> نقل وترتيب</button>}
+                  {!readOnly && <button type="button" title="حذف المحاضرة" className="curriculum-action" onClick={() => onDeleteLecture(node)}><Trash2 size={16} className="text-red-500" /> حذف</button>}
                 </>
               )}
             </div>
           </div>
-          {node.kind === "folder" && (
+          {!readOnly && node.kind === "folder" && (
             <div
               className="my-1 mr-4 rounded-lg border border-dashed border-border px-3 py-1 text-center text-xs text-muted-foreground transition-colors hover:border-primary hover:bg-primary/10"
               onDragOver={(event) => event.preventDefault()}
@@ -375,6 +333,7 @@ function FolderTree({
             <div className="mt-2">
               <FolderTree
                 nodes={node.children}
+                readOnly={readOnly}
                 depth={depth + 1}
                 onEdit={onEdit}
                 onEditLecture={onEditLecture}
@@ -393,7 +352,7 @@ function FolderTree({
           )}
         </div>
       ))}
-      <div
+      {!readOnly && <div
         className="h-3 rounded-full transition-colors hover:bg-primary/40"
         aria-label="ضع العنصر في نهاية هذا المستوى"
         onDragOver={(event) => event.preventDefault()}
@@ -403,11 +362,12 @@ function FolderTree({
           const sourceId = Number(event.dataTransfer.getData("text/plain"));
           if (sourceId) onDropNode(sourceId, nodes[0]?.parent_id ?? null);
         }}
-      />
+      />}
     </div>
   );
 }
 export function CurriculumManagePage({ params, nav, authUser }: any) {
+  const readOnly = authUser?.role === "assistant";
   const [years, setYears] = useState<AcademicYear[]>([]);
   const [grades, setGrades] = useState<Grade[]>([]);
   const [yearId, setYearId] = useState(0);
@@ -953,10 +913,10 @@ export function CurriculumManagePage({ params, nav, authUser }: any) {
             )}
             <h1 className="text-2xl font-black">{heading}</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              أنشئ مجلدًا أو محاضرة، ثم استخدم «نقل وترتيب» لاختيار مكانها بسهولة. ويمكنك أيضًا السحب للترتيب السريع.
+              {readOnly ? "تصفح المجلدات والمحاضرات، وافتح متابعة المشاهدة لمعرفة تقدم الطلاب." : "أنشئ مجلدًا أو محاضرة، ثم استخدم «نقل وترتيب» لاختيار مكانها بسهولة. ويمكنك أيضًا السحب للترتيب السريع."}
             </p>
           </div>
-          <div className="flex flex-wrap justify-end gap-2">
+          {!readOnly && <div className="flex flex-wrap justify-end gap-2">
             {branchTreeMode ? (
               <>
                 <Btn variant="outline" onClick={removeMainFolder}>
@@ -977,7 +937,7 @@ export function CurriculumManagePage({ params, nav, authUser }: any) {
                 <Plus size={15} /> إضافة {levelLabel[level]}
               </Btn>
             )}
-          </div>
+          </div>}
         </div>
         <Card2 className="mb-4">
           <Select2
@@ -1011,15 +971,16 @@ export function CurriculumManagePage({ params, nav, authUser }: any) {
             </div>
           </div>
         </Card2>
-        <VideoStoragePanel onChange={refresh} />
+        {!readOnly && <VideoStoragePanel onChange={refresh} />}
         {branchTreeMode ? (
           <div className="space-y-3">
-            <div className="rounded-2xl border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
+            {!readOnly && <div className="rounded-2xl border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
               <strong>تريد تغيير مكان عنصر؟</strong> اضغط «نقل وترتيب» بجانبه، اختر المجلد ثم موضعه، واضغط «حفظ المكان». الأسهم الصغيرة تغيّر ترتيبه داخل نفس المجلد فقط.
-            </div>
+            </div>}
             {selection.branch?.nodes?.length ? (
               <FolderTree
                 nodes={selection.branch.nodes}
+                readOnly={readOnly}
                 onEdit={(node) => openFolderEditor(null, node)}
                 onEditLecture={editTreeLecture}
                 onVideo={manageTreeLectureVideo}
@@ -1036,7 +997,7 @@ export function CurriculumManagePage({ params, nav, authUser }: any) {
             ) : (
               <Card2>
                 <p className="py-8 text-center text-muted-foreground">
-                  لا يوجد محتوى بعد. أضف مجلدًا أو محاضرة.
+                  {readOnly ? "لا يوجد محتوى في هذا الفرع حتى الآن." : "لا يوجد محتوى بعد. أضف مجلدًا أو محاضرة."}
                 </p>
               </Card2>
             )}
@@ -1048,7 +1009,7 @@ export function CurriculumManagePage({ params, nav, authUser }: any) {
               return (
                 <Card2 key={item.id}>
                   <div className="flex flex-wrap items-center gap-3">
-                    <div className="flex flex-col">
+                    {!readOnly && <div className="flex flex-col">
                       <button
                         aria-label="تحريك لأعلى"
                         disabled={index === 0}
@@ -1063,7 +1024,7 @@ export function CurriculumManagePage({ params, nav, authUser }: any) {
                       >
                         <ChevronDown size={16} />
                       </button>
-                    </div>
+                    </div>}
                     {lecture ? (
                       <LectureThumbnail lecture={lecture} />
                     ) : (
@@ -1109,6 +1070,8 @@ export function CurriculumManagePage({ params, nav, authUser }: any) {
                       )}
                     </button>
                     <div className="flex flex-wrap gap-2">
+                      {lecture && <Btn size="sm" variant="outline" onClick={() => void openLectureViewers({ id: lecture.id, lecture_id: lecture.id, kind: "lecture", title: lecture.title } as CurriculumNode)}><Eye size={14} /> متابعة المشاهدة</Btn>}
+                      {!readOnly && <>
                       {lecture && (
                         <>
                           <Btn
@@ -1165,6 +1128,7 @@ export function CurriculumManagePage({ params, nav, authUser }: any) {
                       >
                         <Trash2 size={16} className="text-red-500" />
                       </button>
+                      </>}
                     </div>
                   </div>
                 </Card2>

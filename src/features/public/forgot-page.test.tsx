@@ -48,6 +48,24 @@ afterEach(() => {
 });
 
 describe("password recovery page", () => {
+  it("keeps a pending reset after a temporary status failure", async () => {
+    resetMocks.loadPending.mockReturnValue(pendingReset);
+    resetMocks.loadStatus.mockRejectedValue(new Error("offline"));
+    render(<ForgotPage nav={vi.fn()}/>);
+    expect(await screen.findByText(/لم يتم إلغاء طلبك/)).toBeInTheDocument();
+    expect(screen.getByLabelText("كود التحقق")).toBeInTheDocument();
+    expect(resetMocks.clear).not.toHaveBeenCalled();
+  });
+
+  it("resends a code to the same email without discarding the reset page", async () => {
+    const previous = { ...pendingReset, email: "student@example.com", resendAfterSeconds: 0 };
+    resetMocks.loadPending.mockReturnValue(previous);
+    render(<ForgotPage nav={vi.fn()}/>);
+    fireEvent.click(await screen.findByRole("button", { name: "إرسال كود جديد" }));
+    await waitFor(() => expect(resetMocks.request).toHaveBeenCalledWith("student@example.com"));
+    expect(screen.getByLabelText("كود التحقق")).toBeInTheDocument();
+  });
+
   it("requests and verifies a password reset code using the account email", async () => {
     render(<ForgotPage nav={vi.fn()}/>);
 
