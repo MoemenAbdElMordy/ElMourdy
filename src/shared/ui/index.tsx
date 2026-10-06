@@ -13,6 +13,8 @@ import {
   CheckCircle,
   ChevronLeft,
   ChevronRight,
+  Eye,
+  EyeOff,
   Info,
   X,
   XCircle,
@@ -178,23 +180,36 @@ export function Input2({
   error?: ReactNode;
 }) {
   const generatedId = useId();
+  const [passwordVisible, setPasswordVisible] = useState(false);
   const id = p.id ?? generatedId;
   const errorId = error ? `${id}-error` : undefined;
+  const isPassword = p.type === "password";
   return (
     <Field label={label} error={error} htmlFor={id} errorId={errorId}>
+      <div className="relative" dir={p.dir}>
       <input
         className={cn(
           "block w-full min-w-0 max-w-full px-3 py-2.5 rounded-xl border border-border bg-background text-foreground",
           "focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary",
           "placeholder:text-muted-foreground text-sm min-h-[44px] overflow-hidden",
           Boolean(error) && "border-red-500",
+          isPassword && "ps-12",
           className,
         )}
         {...p}
+        type={isPassword && passwordVisible ? "text" : p.type}
         id={id}
         aria-invalid={Boolean(error)}
         aria-describedby={errorId}
       />
+      {isPassword && <button
+        type="button"
+        aria-label={passwordVisible ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
+        aria-pressed={passwordVisible}
+        onClick={() => setPasswordVisible(value => !value)}
+        className="absolute start-1.5 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-primary"
+      >{passwordVisible ? <EyeOff size={18}/> : <Eye size={18}/>}</button>}
+      </div>
     </Field>
   );
 }

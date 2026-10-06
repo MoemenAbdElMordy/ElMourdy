@@ -21,6 +21,19 @@ describe("shared UI", () => {
     expect(input).toHaveAccessibleDescription("الحقل مطلوب");
   });
 
+  it("reveals and hides password text without submitting its form", () => {
+    const submit = vi.fn((event: React.FormEvent) => event.preventDefault());
+    render(<form onSubmit={submit}><Input2 label="كلمة المرور" type="password" defaultValue="Secret123!" /></form>);
+    const input = screen.getByLabelText("كلمة المرور");
+    expect(input).toHaveAttribute("type", "password");
+    fireEvent.click(screen.getByRole("button", { name: "إظهار كلمة المرور" }));
+    expect(input).toHaveAttribute("type", "text");
+    expect(input).toHaveValue("Secret123!");
+    fireEvent.click(screen.getByRole("button", { name: "إخفاء كلمة المرور" }));
+    expect(input).toHaveAttribute("type", "password");
+    expect(submit).not.toHaveBeenCalled();
+  });
+
   it("respects disabled buttons", () => {
     const onClick = vi.fn();
     render(<Btn disabled onClick={onClick}>حفظ</Btn>);

@@ -1,4 +1,5 @@
 import { DetailSection } from "../../shared/ui/detail-section";
+import { normalizeNumericInput } from "../../shared/auth/numeric-input";
 import { useEffect, useState } from "react";
 import { YearCollection, YearGradeCollection } from './year-collection';
 import { AssistantDirectory } from './assistant-directory';
@@ -567,6 +568,7 @@ export function Day5AssistantsPage() {
     permissions: [] as string[],
   };
   const [form, setForm] = useState(empty);
+  const [fieldErrors, setFieldErrors] = useState<{ phone?: string; email?: string }>({});
   const refresh = () =>
     loadAssistants(page)
       .then((r) => {
@@ -579,6 +581,7 @@ export function Day5AssistantsPage() {
     void refresh();
   }, [page]);
   const open = (assistant?: AssistantRecord) => {
+    setFieldErrors({});
     setEditing(assistant || null);
     setForm(
       assistant
@@ -596,16 +599,29 @@ export function Day5AssistantsPage() {
     setModal(true);
   };
   const save = async () => {
-    if (editing)
-      await updateAssistant(editing.id, {
+    setFieldErrors({});
+    try {
+      if (editing)
+        await updateAssistant(editing.id, {
         name: form.name,
-        email: form.email,
+        email: form.email.trim() ? form.email.trim().toLowerCase() : null,
         title: form.title,
         status: form.status,
         permissions: form.permissions,
         ...(form.password ? { password: form.password, password_confirmation: form.password } : {}),
-      });
-    else await createAssistant({ ...form, password_confirmation: form.password });
+        });
+      else await createAssistant({ ...form, name: form.name.trim(), email: form.email.trim() ? form.email.trim().toLowerCase() : null, password_confirmation: form.password });
+    } catch (error) {
+      if (error instanceof ApiError) {
+        const message = error.rawMessage.toLowerCase();
+        const phone = message.includes("phone e164 has already been taken") ? "رقم الهاتف مستخدم في حساب آخر" :
+          message.includes("phone number is invalid") ? "أدخل رقم هاتف صحيحًا" : undefined;
+        const email = message.includes("email has already been taken") ? "البريد الإلكتروني مستخدم في حساب آخر؛ استخدم بريدًا مختلفًا أو اتركه فارغًا" :
+          message.includes("email is invalid") ? "أدخل بريدًا إلكترونيًا صحيحًا" : undefined;
+        if (phone || email) { setFieldErrors({ phone, email }); return; }
+      }
+      throw error;
+    }
     setModal(false);
     await refresh();
     notify(editing ? "تم تحديث المساعد" : "تم إنشاء حساب المساعد", "success");
@@ -634,8 +650,8 @@ export function Day5AssistantsPage() {
         <Modal2 open={modal} onClose={() => setModal(false)} title={editing ? "تعديل المساعد" : "إضافة مساعد"} onSubmit={save}>
           <div className="space-y-3">
             <Input2 label="الاسم" value={form.name} onChange={(e) => setForm((v) => ({ ...v, name: e.target.value }))} />
-            <Input2 label="الهاتف" value={form.phone} disabled={!!editing} dir="ltr" onChange={(e) => setForm((v) => ({ ...v, phone: e.target.value }))} />
-            <Input2 label="البريد" value={form.email} dir="ltr" onChange={(e) => setForm((v) => ({ ...v, email: e.target.value }))} />
+            <Input2 label="الهاتف" type="tel" inputMode="tel" value={form.phone} disabled={!!editing} dir="ltr" error={fieldErrors.phone} onChange={(e) => { const value=e.target.value; setForm((v) => ({ ...v, phone: value.trimStart().startsWith("+") ? `+${normalizeNumericInput(value,15)}` : normalizeNumericInput(value,15) })); setFieldErrors(current=>({...current,phone:undefined})); }} />
+            <Input2 label="البريد الإلكتروني (اختياري)" type="email" value={form.email} dir="ltr" error={fieldErrors.email} onChange={(e) => { setForm((v) => ({ ...v, email: e.target.value })); setFieldErrors(current=>({...current,email:undefined})); }} />
             <Input2 label="المسمى الوظيفي" value={form.title} onChange={(e) => setForm((v) => ({ ...v, title: e.target.value }))} />
             {editing && <Select2 label="حالة الحساب" value={form.status} onChange={(e: any) => setForm((v) => ({ ...v, status: e.target.value as AssistantRecord["status"] }))} options={[{value:"active",label:"نشط"},{value:"suspended",label:"موقوف"},{value:"archived",label:"مؤرشف"}]} />}
             <Input2 label={editing ? "كلمة مرور جديدة (اختياري)" : "كلمة المرور المؤقتة"} type="password" value={form.password} onChange={(e) => setForm((v) => ({ ...v, password: e.target.value }))} />
@@ -658,7 +674,7 @@ export function Day5AssistantsPage() {
                 ))}
               </div>
             </Field>
-            <Btn type="submit" className="w-full" disabled={!form.name || (!editing && form.password.length < 8) || (!!editing && form.password.length > 0 && form.password.length < 8)}>
+            <Btn type="submit" className="w-full" disabled={!form.name.trim() || (!editing && (!form.phone.trim() || form.password.length < 8)) || (!!editing && form.password.length > 0 && form.password.length < 8)}>
               حفظ
             </Btn>
           </div>
