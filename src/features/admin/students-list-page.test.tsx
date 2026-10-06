@@ -35,6 +35,23 @@ describe("student list search", () => {
 
     await waitFor(() => expect(adminMocks.loadStudents).toHaveBeenCalledWith(expect.objectContaining({ query: "student@example.com" })), { timeout: 1500 });
     expect(await screen.findByText("طالب البريد")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("الاسم أو رقم الهاتف أو البريد الإلكتروني")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("الاسم أو الهاتف أو البريد الإلكتروني أو السنتر")).toBeInTheDocument();
+  });
+
+  it("does not replace a newer status result with an older response", async () => {
+    let finishOld!: (value: unknown) => void;
+    adminMocks.loadStudents.mockImplementation(({ status }: { status?: string }) =>
+      status === "active"
+        ? new Promise((resolve) => { finishOld = resolve; })
+        : Promise.resolve({ students: [{ id: 10, name: "طالب مؤرشف", phone: "+201000000010", status: "archived", created_at: "2026-09-01" }], pagination })
+    );
+    render(<Day5StudentsListPage nav={vi.fn()}/>);
+    fireEvent.change(screen.getByLabelText("الحالة"), { target: { value: "active" } });
+    await waitFor(() => expect(adminMocks.loadStudents).toHaveBeenCalledWith(expect.objectContaining({ status: "active" })), { timeout: 1500 });
+    fireEvent.change(screen.getByLabelText("الحالة"), { target: { value: "archived" } });
+    expect(await screen.findByText("طالب مؤرشف")).toBeInTheDocument();
+    finishOld({ students: [{ id: 11, name: "نتيجة قديمة", phone: "+201000000011", status: "active", created_at: "2026-09-01" }], pagination });
+    await waitFor(() => expect(screen.queryByText("نتيجة قديمة")).not.toBeInTheDocument());
+    expect(screen.getByText("طالب مؤرشف")).toBeInTheDocument();
   });
 });

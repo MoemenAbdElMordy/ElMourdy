@@ -39,19 +39,19 @@ export function Day5StudentsListPage({ nav }: any) {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState<PaginationMeta>(emptyPagination);
-  const refresh = () => {
-    setLoading(true);
-    loadStudents({ query, gradeId, status, page })
-      .then((r) => { setStudents(r.students); setPagination(r.pagination); })
-      .catch((e) => notify(e instanceof ApiError ? e.message : "تعذر تحميل الطلاب", "error"))
-      .finally(() => setLoading(false));
-  };
   useEffect(() => {
     loadGrades().then((r) => setGrades(r.grades));
   }, []);
   useEffect(() => {
-    const timer = setTimeout(refresh, 250);
-    return () => clearTimeout(timer);
+    let current = true;
+    setLoading(true);
+    const timer = setTimeout(() => {
+      loadStudents({ query, gradeId, status, page })
+        .then((r) => { if (current) { setStudents(r.students); setPagination(r.pagination); } })
+        .catch((e) => { if (current) notify(e instanceof ApiError ? e.message : "تعذر تحميل الطلاب", "error"); })
+        .finally(() => { if (current) setLoading(false); });
+    }, 250);
+    return () => { current = false; clearTimeout(timer); };
   }, [query, gradeId, status, page]);
   useEffect(() => { setPage(1); }, [query, gradeId, status]);
   return (
@@ -66,7 +66,7 @@ export function Day5StudentsListPage({ nav }: any) {
             <Field label="بحث">
               <div className="relative">
                 <Search size={15} className="absolute right-3 top-3 text-muted-foreground" />
-                <input aria-label="بحث" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="الاسم أو رقم الهاتف أو البريد الإلكتروني" className="w-full pr-9 px-3 py-2.5 rounded-xl border border-border bg-background" />
+                <input aria-label="بحث" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="الاسم أو الهاتف أو البريد الإلكتروني أو السنتر" className="w-full pr-9 px-3 py-2.5 rounded-xl border border-border bg-background" />
               </div>
             </Field>
             <Select2
@@ -89,6 +89,7 @@ export function Day5StudentsListPage({ nav }: any) {
                 { value: "", label: "كل الحالات" },
                 { value: "active", label: "نشط" },
                 { value: "suspended", label: "موقوف" },
+                { value: "archived", label: "مؤرشف" },
               ]}
             />
           </div>
@@ -331,7 +332,7 @@ export function Day5StudentDetailPage({ nav, params, authUser }: any) {
           <StatCard label="محاضرات تمت مشاهدتها" value={student.progress?.watched_lectures ?? 0} icon={CalendarDays} />
           <StatCard label="أعلى نتيجة" value={student.progress?.highest_score == null ? "—" : `${Math.round(student.progress.highest_score)}%`} icon={Shield} />
         </div>
-        <DetailSection title="الواجبات والاختبارات" description="التكليفات المخصصة للطالب ونتائجها">
+        <DetailSection title="الواجبات والاختبارات" description="التكليفات المخصصة للطالب ونتائجها" open>
         {(["homework", "exam"] as const).map((kind) => {
           const items = (student.assessments ?? []).filter((assessment) => assessment.assessment_type === kind);
           return <Card2 className="mt-4" key={kind}>
@@ -344,7 +345,7 @@ export function Day5StudentDetailPage({ nav, params, authUser }: any) {
           </Card2>;
         })}
         </DetailSection>
-        <DetailSection title="متابعة المشاهدة" description="المحاضرات التي شاهدها الطالب ونسبة المشاهدة الفعلية">
+        <DetailSection title="متابعة المشاهدة" description="المحاضرات التي شاهدها الطالب ونسبة المشاهدة الفعلية" open>
         <Card2 className="mt-4">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div><h2 className="font-black">تقدم مشاهدة المحاضرات</h2><p className="mt-1 text-xs text-muted-foreground">كل فيديو متاح للصف الحالي وحالة مشاهدة الطالب الفعلية.</p></div>
@@ -367,10 +368,10 @@ export function Day5StudentDetailPage({ nav, params, authUser }: any) {
           {!student.devices?.length && <p className="text-sm text-muted-foreground">لا توجد أجهزة مسجلة.</p>}
         </Card2>
         </DetailSection>
-        <DetailSection title="سجل المحاولات" description="التاريخ التفصيلي لمحاولات الحل">
+        <DetailSection title="سجل المحاولات" description="التاريخ التفصيلي لمحاولات الحل" open>
         <Card2 className="mt-4">
           <h2 className="font-black mb-3">سجل محاولات الواجبات والاختبارات</h2>
-          {student.attempts?.map((attempt) => <div key={attempt.id} className="grid gap-2 border-t border-border py-3 text-sm sm:grid-cols-[1fr_auto_auto]"><div><strong>{attempt.exam_title}</strong><p className="text-xs text-muted-foreground">{attempt.assessment_type === "homework" ? "واجب" : "اختبار"} • المحاولة رقم {attempt.attempt_number}</p></div><span>{attempt.percent == null ? assessmentStatus[attempt.status as keyof typeof assessmentStatus] ?? attempt.status : `${Math.round(attempt.percent)}% — ${resultStatus[attempt.result_status as keyof typeof resultStatus] ?? attempt.result_status}`}</span><span className="text-xs text-muted-foreground">{formatDateTime(attempt.submitted_at ?? attempt.started_at)}</span></div>)}
+          {student.attempts?.map((attempt) => <div key={attempt.id} className="border-t border-border py-3 text-sm"><div className="grid gap-2 sm:grid-cols-[1fr_auto_auto]"><div><strong>{attempt.exam_title}</strong><p className="text-xs text-muted-foreground">{attempt.assessment_type === "homework" ? "واجب" : "اختبار"} • المحاولة رقم {attempt.attempt_number}</p></div><span>{attempt.percent == null ? assessmentStatus[attempt.status as keyof typeof assessmentStatus] ?? attempt.status : `${Math.round(attempt.percent)}% — ${resultStatus[attempt.result_status as keyof typeof resultStatus] ?? attempt.result_status}`}</span><span className="text-xs text-muted-foreground">{formatDateTime(attempt.submitted_at ?? attempt.started_at)}</span></div>{attempt.answers?.length ? <details className="mt-2 rounded-lg border border-border p-2"><summary className="cursor-pointer font-semibold">إجابات الطالب ({attempt.answers.length})</summary><div className="mt-2 space-y-2">{attempt.answers.map((answer, index) => <div key={index} className="rounded-lg bg-muted p-2"><strong>{answer.question}</strong><p>إجابة الطالب: {answer.selected_choice || "لم يُجب"}</p>{attempt.status === "submitted" && <p>الإجابة الصحيحة: {answer.correct_choice || "—"} • {answer.is_correct ? "صحيحة" : "غير صحيحة"}</p>}</div>)}</div></details> : null}</div>)}
           {!student.attempts?.length && <p className="text-sm text-muted-foreground">لا توجد محاولات حتى الآن.</p>}
         </Card2>
         </DetailSection>
