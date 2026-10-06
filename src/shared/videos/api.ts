@@ -15,6 +15,8 @@ export type VideoAsset = {
 
 type UploadInstructions = {
   url: string;
+  chunk_url?: string;
+  status_url?: string;
   method: "PUT";
   headers: Record<string, string>;
   requires_authentication: boolean;
@@ -61,6 +63,9 @@ export function uploadVideoFile(
   instructions: UploadInstructions,
   onProgress: (progress: number) => void,
 ) {
+  if (instructions.chunk_url && instructions.status_url) {
+    return uploadVideoInChunks(file, instructions, onProgress);
+  }
   return new Promise<void>((resolve, reject) => {
     const request = new XMLHttpRequest();
     request.open(instructions.method, instructions.url);
@@ -82,6 +87,78 @@ export function uploadVideoFile(
     request.onerror = () => reject(new Error("Video upload failed"));
     request.send(file);
   });
+}
+
+export function videoUploadResumeKey(lectureId: number, file: File) {
+  return `mourdy-video-upload:${lectureId}:${file.name}:${file.size}:${file.lastModified}`;
+}
+
+export type PendingVideoUpload = { video_asset: VideoAsset; upload: UploadInstructions };
+
+export function loadPendingVideoUpload(lectureId: number, file: File): PendingVideoUpload | null {
+  try {
+    const raw = localStorage.getItem(videoUploadResumeKey(lectureId, file));
+    return raw ? JSON.parse(raw) as PendingVideoUpload : null;
+  } catch { return null; }
+}
+
+export function savePendingVideoUpload(lectureId: number, file: File, upload: PendingVideoUpload) {
+  localStorage.setItem(videoUploadResumeKey(lectureId, file), JSON.stringify(upload));
+}
+
+export function clearPendingVideoUpload(lectureId: number, file: File) {
+  localStorage.removeItem(videoUploadResumeKey(lectureId, file));
+}
+
+function sendChunk(file: Blob, url: string, offset: number): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const request = new XMLHttpRequest();
+    request.open("PATCH", url);
+    request.setRequestHeader("Content-Type", "application/octet-stream");
+    request.setRequestHeader("X-Upload-Offset", String(offset));
+    const token = getSessionToken();
+    if (token) request.setRequestHeader("Authorization", `Bearer ${token}`);
+    request.onload = () => {
+      if (request.status < 200 || request.status >= 300) return reject(new Error(`تعذر إرسال جزء الفيديو (${request.status})`));
+      try { resolve((JSON.parse(request.responseText) as { uploaded_bytes: number }).uploaded_bytes); }
+      catch { reject(new Error("تعذر تأكيد الجزء المرفوع")); }
+    };
+    request.onerror = () => reject(new Error("انقطع الاتصال أثناء رفع الفيديو"));
+    request.send(file);
+  });
+}
+
+async function uploadVideoInChunks(file: File, instructions: UploadInstructions, onProgress: (progress: number) => void) {
+  const statusUrl = instructions.status_url!;
+  const chunkUrl = instructions.chunk_url!;
+  const getOffset = async () => {
+    const token = getSessionToken();
+    const response = await fetch(statusUrl, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    if (!response.ok) throw new Error("تعذر استئناف رفع الفيديو");
+    const status = await response.json() as { uploaded_bytes: number; expected_size_bytes: number };
+    if (status.expected_size_bytes !== file.size || status.uploaded_bytes > file.size) throw new Error("حجم الفيديو لا يطابق عملية الرفع السابقة");
+    return status.uploaded_bytes;
+  };
+  let offset = await getOffset();
+  onProgress(Math.floor((offset / file.size) * 100));
+  while (offset < file.size) {
+    let completed = false;
+    for (let attempt = 0; attempt < 4 && !completed; attempt++) {
+      try {
+        const end = Math.min(offset + 4 * 1024 * 1024, file.size);
+        const next = await sendChunk(file.slice(offset, end), chunkUrl, offset);
+        if (next !== end) throw new Error("حجم الجزء المرفوع غير صحيح");
+        offset = next;
+        onProgress(Math.floor((offset / file.size) * 100));
+        completed = true;
+      } catch (error) {
+        if (attempt === 3) throw error;
+        await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+        offset = await getOffset();
+        completed = offset >= file.size;
+      }
+    }
+  }
 }
 
 export const completeVideoUpload = (lectureId: number, videoAssetId: number) =>

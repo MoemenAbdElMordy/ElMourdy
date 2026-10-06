@@ -19,6 +19,9 @@ vi.mock("../../shared/videos/api", () => ({
   retryVideoProcessing: vi.fn(),
   reuseVideoAsset: videoMocks.reuse,
   uploadVideoFile: vi.fn(),
+  loadPendingVideoUpload: vi.fn(() => null),
+  savePendingVideoUpload: vi.fn(),
+  clearPendingVideoUpload: vi.fn(),
 }));
 
 import { VideoUploadModal } from "./video-upload-modal";
