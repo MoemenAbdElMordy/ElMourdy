@@ -21,8 +21,8 @@ beforeEach(() => {
   mocks.choices.mockResolvedValue({ academic_years: [{ id: 1, name: "٢٠٢٦/٢٠٢٧", status: "active" }], grades: [{ id: 2, name: "الصف الثاني الثانوي", level: 2 }] });
   mocks.curriculum.mockResolvedValue({ curriculum: { academic_year: { id: 1 }, grade: { id: 2 }, branches: [] } });
   mocks.progress.mockResolvedValue({ students: [
-    { student_id: 1, name: "طالب لم يبدأ", status: "not_started", attempts_count: 0, best_percent: null, latest_percent: null },
-    { student_id: 2, name: "طالب سلّم", status: "submitted", attempts_count: 1, best_percent: 80, latest_percent: 80 },
+    { student_id: 1, name: "طالب لم يبدأ", phone: "+201000000001", center_name: "سنتر النور", status: "not_started", attempts_count: 0, best_percent: null, latest_percent: null, attempts: [] },
+    { student_id: 2, name: "طالب سلّم", phone: "+201000000002", center_name: "سنتر النجاح", status: "submitted", attempts_count: 1, best_percent: 80, latest_percent: 80, attempts: [{ id: 4, attempt_number: 1, status: "submitted", percent: 80 }] },
   ], pagination });
   mocks.attempts.mockResolvedValue({ attempts: [{ id: 4, student_name: "طالب سلّم", attempt_number: 1, status: "submitted", percent: 80, result_status: "passed" }], pagination });
 });
@@ -34,9 +34,15 @@ describe("teacher assessment follow-up", () => {
     fireEvent.click(await screen.findByRole("button", { name: "متابعة الطلاب" }));
     expect(await screen.findByText("طالب لم يبدأ")).toBeInTheDocument();
     expect(screen.getAllByText("طالب سلّم", { selector: "strong" })).toHaveLength(2);
-    expect(mocks.progress).toHaveBeenCalledWith(19, 1);
-    expect(mocks.attempts).toHaveBeenCalledWith(19, 1);
+    expect(mocks.progress).toHaveBeenCalledWith(19, 1, "");
+    expect(mocks.attempts).toHaveBeenCalledWith(19, 1, "");
+    expect(screen.getByText("سنتر النور")).toBeInTheDocument();
     await waitFor(() => expect(screen.getByText("النتيجة: ٨٠٪")).toBeInTheDocument());
+    fireEvent.click(screen.getAllByRole("button", { name: "تفاصيل التقدم" })[0]);
+    expect(screen.getByText("لم يبدأ الطالب هذا التكليف بعد.")).toBeInTheDocument();
+    fireEvent.change(screen.getByRole("textbox", { name: "ابحث عن طالب في متابعة الواجب أو الاختبار" }), { target: { value: "النور" } });
+    await waitFor(() => expect(mocks.progress).toHaveBeenCalledWith(19, 1, "النور"));
+    await waitFor(() => expect(mocks.attempts).toHaveBeenCalledWith(19, 1, "النور"));
     fireEvent.click(screen.getByRole("button", { name: "إغلاق" }));
     expect(screen.queryByRole("dialog", { name: /متابعة واجب تجريبي/ })).not.toBeInTheDocument();
   });

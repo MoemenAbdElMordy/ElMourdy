@@ -34,7 +34,7 @@ beforeEach(() => {
   mocks.loadAcademicYears.mockResolvedValue({ academic_years: [{ id: 1, name: "٢٠٢٦/٢٠٢٧", status: "active" }] });
   mocks.loadGrades.mockResolvedValue({ grades: [{ id: 2, name: "الثاني", level: 2 }] });
   mocks.loadCurriculumLocations.mockResolvedValue({ locations: [] });
-  mocks.loadLectureViewers.mockResolvedValue({ viewers: [{ student_id: 4, name: "طالب تجريبي", watched_seconds: 240, last_position_seconds: 180, progress_percent: 40, status: "partial" }], pagination: { total_pages: 1 } });
+  mocks.loadLectureViewers.mockResolvedValue({ viewers: [{ student_id: 4, name: "طالب تجريبي", phone: "+201000000004", center_name: "سنتر النور", watched_seconds: 240, duration_seconds: 600, last_position_seconds: 180, progress_percent: 40, status: "partial" }], pagination: { total_pages: 1 } });
   mocks.loadCurriculum.mockResolvedValue({ curriculum: {
     academic_year: { id: 1, name: "٢٠٢٦/٢٠٢٧" },
     grade: { id: 2, name: "الثاني", level: 2 },
@@ -66,6 +66,11 @@ describe("تعديل محاضرة منشورة داخل المجلدات", () =>
     expect(screen.queryByRole("button", { name: "إضافة مجلد" })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "متابعة مشاهدة الطلاب في المحاضرة المنشورة" }));
     expect(await screen.findByText("طالب تجريبي")).toBeInTheDocument();
+    expect(screen.getByText("سنتر النور", { exact: false })).toBeInTheDocument();
+    fireEvent.change(screen.getByRole("textbox", { name: "ابحث عن طالب في متابعة المشاهدة" }), { target: { value: "النور" } });
+    await waitFor(() => expect(mocks.loadLectureViewers).toHaveBeenCalledWith(33, 1, "النور"));
+    fireEvent.click(screen.getByRole("button", { name: "تفاصيل التقدم" }));
+    expect(screen.getByText(/توقف عند/)).toBeInTheDocument();
   });
   it("يفتح التعديل دون درس قديم ويحفظ تحويل المحاضرة إلى مجانية", async () => {
     render(<CurriculumManagePage params={{}} />);

@@ -160,22 +160,28 @@ export function ConnectedExamManagePage({ assessmentType = "exam" }: { assessmen
   const [progressPage, setProgressPage] = useState(1);
   const [progressPagination, setProgressPagination] = useState<PaginationMeta>(emptyPagination);
   const [progressLoading, setProgressLoading] = useState(false);
+  const [studentQuery, setStudentQuery] = useState("");
+  const [expandedProgressStudent, setExpandedProgressStudent] = useState<number | null>(null);
   useEffect(() => {
     if (!resultsExam) return;
+    let current = true;
     setResultsLoading(true);
-    loadExamAttempts(resultsExam.id, resultsPage)
-      .then(({ attempts, pagination }) => { setResults(attempts); setResultsPagination(pagination); })
-      .catch((error) => notify(errorMessage(error), "error"))
-      .finally(() => setResultsLoading(false));
-  }, [resultsExam, resultsPage]);
+    const timer = setTimeout(() => loadExamAttempts(resultsExam.id, resultsPage, studentQuery)
+      .then(({ attempts, pagination }) => { if (current) { setResults(attempts); setResultsPagination(pagination); } })
+      .catch((error) => { if (current) notify(errorMessage(error), "error"); })
+      .finally(() => { if (current) setResultsLoading(false); }), studentQuery ? 250 : 0);
+    return () => { current = false; clearTimeout(timer); };
+  }, [resultsExam, resultsPage, studentQuery]);
   useEffect(() => {
     if (!resultsExam) return;
+    let current = true;
     setProgressLoading(true);
-    loadExamProgress(resultsExam.id, progressPage)
-      .then(({ students, pagination }) => { setProgress(students); setProgressPagination(pagination); })
-      .catch((error) => notify(errorMessage(error), "error"))
-      .finally(() => setProgressLoading(false));
-  }, [resultsExam, progressPage]);
+    const timer = setTimeout(() => loadExamProgress(resultsExam.id, progressPage, studentQuery)
+      .then(({ students, pagination }) => { if (current) { setProgress(students); setProgressPagination(pagination); } })
+      .catch((error) => { if (current) notify(errorMessage(error), "error"); })
+      .finally(() => { if (current) setProgressLoading(false); }), studentQuery ? 250 : 0);
+    return () => { current = false; clearTimeout(timer); };
+  }, [resultsExam, progressPage, studentQuery]);
   const [importWarnings,setImportWarnings]=useState<string[]>([]);
   const blankQuestion = () => ({
     body: "",
@@ -576,7 +582,7 @@ export function ConnectedExamManagePage({ assessmentType = "exam" }: { assessmen
                   <Btn size="sm" variant="outline" onClick={() => edit(exam)}>
                     تعديل
                   </Btn>
-                  <Btn size="sm" variant="outline" onClick={() => { setResultsExam(exam); setResultsPage(1); setProgressPage(1); }}>
+                  <Btn size="sm" variant="outline" onClick={() => { setResultsExam(exam); setResultsPage(1); setProgressPage(1); setStudentQuery(""); setExpandedProgressStudent(null); }}>
                     متابعة الطلاب
                   </Btn>
                 </div>
@@ -589,11 +595,12 @@ export function ConnectedExamManagePage({ assessmentType = "exam" }: { assessmen
       {resultsExam && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setResultsExam(null); }}>
         <div role="dialog" aria-modal="true" aria-label={`متابعة ${resultsExam.title}`} className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-border bg-background p-5 shadow-xl">
           <div className="mb-4 flex items-start justify-between gap-3"><div><h2 className="text-lg font-black">متابعة {resultsExam.assessment_type === "homework" ? "الواجب" : "الاختبار"}: {resultsExam.title}</h2><p className="text-sm text-muted-foreground">كل الطلاب المستهدفين، بما فيهم من لم يبدأ، ثم تفاصيل المحاولات والدرجات.</p></div><Btn variant="outline" size="sm" onClick={() => setResultsExam(null)}>إغلاق</Btn></div>
+          <input aria-label="ابحث عن طالب في متابعة الواجب أو الاختبار" value={studentQuery} onChange={event => { setStudentQuery(event.target.value); setProgressPage(1); setResultsPage(1); setExpandedProgressStudent(null); }} placeholder="ابحث بالاسم أو رقم الهاتف أو السنتر" className="mb-4 w-full rounded-xl border border-border bg-background px-3 py-2.5" />
           <h3 className="mb-2 font-black">حالة الطلاب</h3>
-          {progressLoading ? <p>جارٍ تحميل الطلاب...</p> : progress.length === 0 ? <p className="rounded-xl border border-border p-4 text-sm">لا يوجد طلاب في الصفوف المستهدفة.</p> : <div className="space-y-2">{progress.map((student) => <div key={student.student_id} className="rounded-xl border border-border p-3 text-sm"><strong>{student.name}</strong><div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-muted-foreground"><span>{student.status === "not_started" ? "لم يبدأ" : student.status === "submitted" ? "سلّم" : "قيد الحل"}</span><span>المحاولات: {n(student.attempts_count)}</span><span>أفضل نتيجة: {student.best_percent == null ? "—" : `${n(Math.round(student.best_percent))}٪`}</span><span>آخر نتيجة: {student.latest_percent == null ? "—" : `${n(Math.round(student.latest_percent))}٪`}</span></div></div>)}</div>}
+          {progressLoading ? <p>جارٍ تحميل الطلاب...</p> : progress.length === 0 ? <p className="rounded-xl border border-border p-4 text-sm">{studentQuery ? "لا يوجد طالب مطابق في هذا الواجب أو الاختبار." : "لا يوجد طلاب في الصفوف المستهدفة."}</p> : <div className="space-y-2">{progress.map((student) => <div key={student.student_id} className="rounded-xl border border-border p-3 text-sm"><div className="flex flex-wrap items-start justify-between gap-2"><div><strong>{student.name}</strong><p dir="ltr" className="text-xs text-muted-foreground">{student.phone}</p><p className="text-xs text-muted-foreground">{student.center_name || "السنتر غير مسجل"}</p></div><Btn size="sm" variant="outline" aria-expanded={expandedProgressStudent === student.student_id} onClick={() => setExpandedProgressStudent(expandedProgressStudent === student.student_id ? null : student.student_id)}>تفاصيل التقدم</Btn></div><div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-muted-foreground"><span>{student.status === "not_started" ? "لم يبدأ" : student.status === "submitted" ? "سلّم" : "قيد الحل"}</span><span>المحاولات: {n(student.attempts_count)}</span><span>أفضل نتيجة: {student.best_percent == null ? "—" : `${n(Math.round(student.best_percent))}٪`}</span><span>آخر نتيجة: {student.latest_percent == null ? "—" : `${n(Math.round(student.latest_percent))}٪`}</span></div>{expandedProgressStudent === student.student_id && <div className="mt-3 space-y-2 rounded-xl bg-muted p-3"><p>آخر نشاط: {student.last_activity_at ? new Date(student.last_activity_at).toLocaleString("ar-EG") : "لم يبدأ بعد"}</p>{student.attempts.length ? student.attempts.map(attempt => <p key={attempt.id}>المحاولة {n(attempt.attempt_number)}: {attempt.status === "submitted" ? "تم التسليم" : attempt.status === "in_progress" ? "قيد الحل" : "انتهت"} · {attempt.percent == null ? "النتيجة لم تُحدد" : `${n(Math.round(attempt.percent))}٪`}</p>) : <p>لم يبدأ الطالب هذا التكليف بعد.</p>}</div>}</div>)}</div>}
           <PaginationControls pagination={progressPagination} onPageChange={setProgressPage}/>
           <h3 className="mb-2 mt-5 border-t border-border pt-4 font-black">تفاصيل المحاولات</h3>
-          {resultsLoading ? <p>جارٍ تحميل النتائج...</p> : results.length === 0 ? <p className="rounded-xl border border-border p-4 text-sm">لا توجد محاولات حتى الآن.</p> : <div className="space-y-2">{results.map((attempt) => <div key={attempt.id} className="rounded-xl border border-border p-3 text-sm"><strong>{attempt.student_name}</strong><div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-muted-foreground"><span>المحاولة {n(attempt.attempt_number)}</span><span>{attempt.status === "submitted" ? "تم التسليم" : attempt.status === "in_progress" ? "قيد الحل" : "انتهت"}</span><span>النتيجة: {attempt.percent == null ? "لم تُحدد بعد" : `${n(Math.round(Number(attempt.percent)))}٪`}</span><span>{attempt.result_status ? statusLabel[attempt.result_status] : ""}</span></div></div>)}</div>}
+          {resultsLoading ? <p>جارٍ تحميل النتائج...</p> : results.length === 0 ? <p className="rounded-xl border border-border p-4 text-sm">لا توجد محاولات مطابقة حتى الآن.</p> : <div className="space-y-2">{results.map((attempt) => <div key={attempt.id} className="rounded-xl border border-border p-3 text-sm"><strong>{attempt.student_name}</strong><p dir="ltr" className="text-xs text-muted-foreground">{attempt.student_phone}</p><p className="text-xs text-muted-foreground">{attempt.center_name || "السنتر غير مسجل"}</p><div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-muted-foreground"><span>المحاولة {n(attempt.attempt_number)}</span><span>{attempt.status === "submitted" ? "تم التسليم" : attempt.status === "in_progress" ? "قيد الحل" : "انتهت"}</span><span>النتيجة: {attempt.percent == null ? "لم تُحدد بعد" : `${n(Math.round(Number(attempt.percent)))}٪`}</span><span>{attempt.result_status ? statusLabel[attempt.result_status] : ""}</span></div></div>)}</div>}
           <PaginationControls pagination={resultsPagination} onPageChange={setResultsPage}/>
         </div>
       </div>}
