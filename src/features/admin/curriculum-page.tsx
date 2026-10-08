@@ -410,6 +410,7 @@ export function CurriculumManagePage({ params, nav, authUser }: any) {
   const [viewersTotalPages, setViewersTotalPages] = useState(1);
   const [viewersLoading, setViewersLoading] = useState(false);
   const [viewerQuery, setViewerQuery] = useState("");
+  const [viewerStatus, setViewerStatus] = useState("");
   const [expandedViewerId, setExpandedViewerId] = useState<number | null>(null);
   const level: ResourceType = selection.lesson
     ? "lectures"
@@ -675,7 +676,7 @@ export function CurriculumManagePage({ params, nav, authUser }: any) {
   };
   const openLectureViewers = (node: CurriculumNode, page = 1) => {
     if (!node.lecture_id) return;
-    if (viewerLecture?.lecture_id !== node.lecture_id) setViewerQuery("");
+    if (viewerLecture?.lecture_id !== node.lecture_id) { setViewerQuery(""); setViewerStatus(""); setExpandedViewerId(null); }
     setViewerLecture(node);
     setViewersPage(page);
   };
@@ -684,13 +685,13 @@ export function CurriculumManagePage({ params, nav, authUser }: any) {
     let current = true;
     setViewersLoading(true);
     const timer = setTimeout(() => {
-      loadLectureViewers(viewerLecture.lecture_id!, viewersPage, viewerQuery)
+      loadLectureViewers(viewerLecture.lecture_id!, viewersPage, viewerQuery, viewerStatus)
         .then(response => { if (current) { setViewers(response.viewers); setViewersTotalPages(response.pagination.total_pages || 1); } })
         .catch(error => { if (current) notify(error instanceof ApiError ? error.message : "تعذر تحميل متابعة المحاضرة", "error"); })
         .finally(() => { if (current) setViewersLoading(false); });
     }, viewerQuery ? 250 : 0);
     return () => { current = false; clearTimeout(timer); };
-  }, [viewerLecture, viewersPage, viewerQuery]);
+  }, [viewerLecture, viewersPage, viewerQuery, viewerStatus]);
   const deleteTreeLecture = async (node: CurriculumNode) => {
     if (
       !node.lecture_id ||
@@ -1431,6 +1432,7 @@ export function CurriculumManagePage({ params, nav, authUser }: any) {
         <Modal2 open={viewerLecture !== null} onClose={() => setViewerLecture(null)} title={`متابعة مشاهدة: ${viewerLecture?.title ?? ""}`} size="lg">
           <p className="mb-4 text-sm text-muted-foreground">المشاهدة محسوبة من وقت التشغيل الفعلي، وآخر موضع هو مكان توقف الطالب الأخير.</p>
           <input aria-label="ابحث عن طالب في متابعة المشاهدة" value={viewerQuery} onChange={event => { setViewerQuery(event.target.value); setViewersPage(1); }} placeholder="ابحث بالاسم أو رقم الهاتف أو السنتر" className="mb-4 w-full rounded-xl border border-border bg-background px-3 py-2.5" />
+          <div className="mb-4 flex flex-wrap gap-2" aria-label="فلتر حالة المشاهدة">{([ ["", "كل الطلاب"], ["watched", "شاهدها"], ["partial", "مشاهدة جزئية"], ["not_watched", "لم يشاهدها"] ] as const).map(([value, label]) => <Btn key={value} size="sm" variant={viewerStatus === value ? "primary" : "outline"} aria-pressed={viewerStatus === value} onClick={() => { setViewerStatus(value); setViewersPage(1); setExpandedViewerId(null); }}>{label}</Btn>)}</div>
           {viewersLoading ? <p>جارٍ تحميل المشاهدات…</p> : viewers.length ? (
             <div className="space-y-2">
               {viewers.map((viewer) => (
@@ -1445,7 +1447,7 @@ export function CurriculumManagePage({ params, nav, authUser }: any) {
               ))}
               {viewersTotalPages > 1 && <div className="flex items-center justify-center gap-3 pt-3"><Btn size="sm" variant="outline" disabled={viewersPage <= 1} onClick={() => viewerLecture && void openLectureViewers(viewerLecture, viewersPage - 1)}>السابق</Btn><span>{viewersPage} من {viewersTotalPages}</span><Btn size="sm" variant="outline" disabled={viewersPage >= viewersTotalPages} onClick={() => viewerLecture && void openLectureViewers(viewerLecture, viewersPage + 1)}>التالي</Btn></div>}
             </div>
-          ) : <p className="py-6 text-center text-sm text-muted-foreground">{viewerQuery ? "لا يوجد طالب مطابق في مشاهدات هذه المحاضرة." : "لم يبدأ أي طالب مشاهدة هذه المحاضرة بعد."}</p>}
+          ) : <p className="py-6 text-center text-sm text-muted-foreground">لا يوجد طلاب مطابقون للبحث والفلتر المحددين.</p>}
         </Modal2>
         {uploadLecture && (
           <VideoUploadModal

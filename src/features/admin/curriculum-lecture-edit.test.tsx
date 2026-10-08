@@ -68,7 +68,9 @@ describe("تعديل محاضرة منشورة داخل المجلدات", () =>
     expect(await screen.findByText("طالب تجريبي")).toBeInTheDocument();
     expect(screen.getByText("سنتر النور", { exact: false })).toBeInTheDocument();
     fireEvent.change(screen.getByRole("textbox", { name: "ابحث عن طالب في متابعة المشاهدة" }), { target: { value: "النور" } });
-    await waitFor(() => expect(mocks.loadLectureViewers).toHaveBeenCalledWith(33, 1, "النور"));
+    await waitFor(() => expect(mocks.loadLectureViewers).toHaveBeenCalledWith(33, 1, "النور", ""));
+    fireEvent.click(screen.getByRole("button", { name: "لم يشاهدها" }));
+    await waitFor(() => expect(mocks.loadLectureViewers).toHaveBeenCalledWith(33, 1, "النور", "not_watched"));
     fireEvent.click(screen.getByRole("button", { name: "تفاصيل التقدم" }));
     expect(screen.getByText(/توقف عند/)).toBeInTheDocument();
   });

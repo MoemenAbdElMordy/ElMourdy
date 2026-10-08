@@ -34,14 +34,16 @@ describe("teacher assessment follow-up", () => {
     fireEvent.click(await screen.findByRole("button", { name: "متابعة الطلاب" }));
     expect(await screen.findByText("طالب لم يبدأ")).toBeInTheDocument();
     expect(screen.getAllByText("طالب سلّم", { selector: "strong" })).toHaveLength(2);
-    expect(mocks.progress).toHaveBeenCalledWith(19, 1, "");
+    expect(mocks.progress).toHaveBeenCalledWith(19, 1, "", "");
     expect(mocks.attempts).toHaveBeenCalledWith(19, 1, "");
     expect(screen.getByText("سنتر النور")).toBeInTheDocument();
     await waitFor(() => expect(screen.getByText("النتيجة: ٨٠٪")).toBeInTheDocument());
     fireEvent.click(screen.getAllByRole("button", { name: "تفاصيل التقدم" })[0]);
     expect(screen.getByText("لم يبدأ الطالب هذا التكليف بعد.")).toBeInTheDocument();
     fireEvent.change(screen.getByRole("textbox", { name: "ابحث عن طالب في متابعة الواجب أو الاختبار" }), { target: { value: "النور" } });
-    await waitFor(() => expect(mocks.progress).toHaveBeenCalledWith(19, 1, "النور"));
+    await waitFor(() => expect(mocks.progress).toHaveBeenCalledWith(19, 1, "النور", ""));
+    fireEvent.click(screen.getByRole("button", { name: "لم يحلّ" }));
+    await waitFor(() => expect(mocks.progress).toHaveBeenCalledWith(19, 1, "النور", "not_started"));
     await waitFor(() => expect(mocks.attempts).toHaveBeenCalledWith(19, 1, "النور"));
     fireEvent.click(screen.getByRole("button", { name: "إغلاق" }));
     expect(screen.queryByRole("dialog", { name: /متابعة واجب تجريبي/ })).not.toBeInTheDocument();

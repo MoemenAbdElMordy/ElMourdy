@@ -32,7 +32,7 @@ export function updateContent(type:ResourceType,id:number,input:Record<string,un
 }
 
 export const deleteContent=(type:ResourceType,id:number)=>apiRequest<void>(`/${type}/${id}`,{method:"DELETE"});
-export const loadLectureViewers=(id:number,page=1,query="")=>{const params=new URLSearchParams({page:String(page)});const term=normalizeSearchTerm(query);if(term)params.set("query",term);return apiRequest<{viewers:LectureViewer[];pagination:{current_page:number;total_pages:number;total_count:number}}>(`/lectures/${id}/viewers?${params}`);};
+export const loadLectureViewers=(id:number,page=1,query="",watchStatus="")=>{const params=new URLSearchParams({page:String(page)});const term=normalizeSearchTerm(query);if(term)params.set("query",term);if(watchStatus)params.set("watch_status",watchStatus);return apiRequest<{viewers:LectureViewer[];pagination:{current_page:number;total_pages:number;total_count:number}}>(`/lectures/${id}/viewers?${params}`);};
 export const reorderContent=(type:ResourceType,parent:Record<string,number>,orderedIds:number[])=>apiRequest<void>(`/${type}/reorder`,{method:"PATCH",body:JSON.stringify({...parent,ordered_ids:orderedIds})});
 
 const requestKey=()=>globalThis.crypto?.randomUUID?.()??`${Date.now()}-${Math.random().toString(36).slice(2)}`;
