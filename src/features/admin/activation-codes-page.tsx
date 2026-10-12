@@ -72,6 +72,13 @@ export function ConnectedActivationCodesPage() {
       );
     }
   };
+  const exportBatch = async (id: number) => {
+    try {
+      await exportCodeBatch(id);
+    } catch {
+      notify("تعذر تنزيل ملف الأكواد. حاول مرة أخرى.", "error");
+    }
+  };
   return (
     <div className="workspace code-workspace">
       <div className="max-w-6xl mx-auto">
@@ -95,7 +102,7 @@ export function ConnectedActivationCodesPage() {
                 <Btn
                   size="sm"
                   variant="outline"
-                  onClick={() => exportCodeBatch(batch.id)}
+                  onClick={() => void exportBatch(batch.id)}
                 >
                   <Download size={14} /> تصدير
                 </Btn>
