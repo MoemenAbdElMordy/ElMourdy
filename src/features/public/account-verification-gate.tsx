@@ -29,14 +29,14 @@ export function AccountVerificationGate({
     return () => window.clearInterval(timer);
   }, [remaining]);
 
-  const sendCode = async () => {
+  const sendCode = async (channel?: "email" | "telegram") => {
     setLoading(true);
     setError("");
     try {
-      const result = await requestAccountVerification();
+      const result = await requestAccountVerification(channel);
       setVerification(result);
       setRemaining(result.resendAfterSeconds);
-      notify("تم إرسال كود التفعيل إلى بريدك الإلكتروني", "success");
+      notify(result.verificationMethod === "telegram" ? "تم إرسال كود التفعيل إلى تيليجرام" : "تم إرسال كود التفعيل إلى بريدك الإلكتروني", "success");
     } catch (requestError) {
       setError(requestError instanceof ApiError ? requestError.message : "تعذر إرسال كود التفعيل.");
     } finally {
@@ -83,10 +83,10 @@ export function AccountVerificationGate({
       <div className="w-full max-w-md text-center">
         <div className="verification-icon w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4"><Shield className="text-primary" size={30}/></div>
         <h1 className="text-2xl font-black mb-2">تفعيل الحساب مطلوب</h1>
-        <p className="text-sm text-muted-foreground mb-6">مرحبًا {user.name}. لن تتمكن من استخدام محتوى المنصة قبل تفعيل بريدك الإلكتروني.</p>
+        <p className="text-sm text-muted-foreground mb-6">مرحبًا {user.name}. لن تتمكن من استخدام محتوى المنصة قبل تفعيل حسابك.</p>
         <Card2>
           {!verification ? (
-            <Btn className="w-full" onClick={sendCode} disabled={loading}>
+            <Btn className="w-full" onClick={() => void sendCode()} disabled={loading}>
               {loading ? <RefreshCw size={16} className="animate-spin"/> : <Mail size={16}/>} إرسال رسالة التفعيل
             </Btn>
           ) : (
@@ -101,13 +101,15 @@ export function AccountVerificationGate({
                 </div>
               ) : (
                 <>
-                  <p className="text-sm text-muted-foreground">تم إرسال الكود إلى <strong dir="ltr">{verification.emailHint}</strong></p>
-                  <button type="button" className="text-sm font-semibold text-primary hover:underline" disabled={loading} onClick={() => { setEditingEmail(true); setError(""); }}>البريد غير صحيح؟ تغيير البريد الإلكتروني</button>
+                  <p className="text-sm text-muted-foreground">تم إرسال الكود إلى {verification.verificationMethod === "telegram" ? "تيليجرام المرتبط برقم حسابك" : <strong dir="ltr">{verification.emailHint}</strong>}</p>
+                  {verification.verificationMethod === "email" && <button type="button" className="text-sm font-semibold text-primary hover:underline" disabled={loading} onClick={() => { setEditingEmail(true); setError(""); }}>البريد غير صحيح؟ تغيير البريد الإلكتروني</button>}
                   <Input2 label="كود التفعيل" inputMode="numeric" dir="ltr" maxLength={6} value={code} onChange={(event:any) => setCode(normalizeNumericInput(event.target.value, 6))}/>
                   <Btn type="submit" className="w-full" disabled={loading || code.length !== 6}>{loading ? "جارٍ التفعيل…" : "تفعيل الحساب"}</Btn>
-                  <button type="button" className="text-sm text-primary disabled:opacity-50" disabled={loading || remaining > 0} onClick={sendCode}>
+                  <button type="button" className="text-sm text-primary disabled:opacity-50" disabled={loading || remaining > 0} onClick={() => void sendCode()}>
                     {remaining > 0 ? `إعادة الإرسال خلال ${remaining} ثانية` : "إرسال كود جديد"}
                   </button>
+                  {verification.verificationMethod === "telegram" && <button type="button" className="block w-full text-sm text-primary hover:underline" disabled={loading} onClick={() => void sendCode("email")}>لا تستخدم تيليجرام؟ أرسل الكود إلى البريد الإلكتروني</button>}
+                  {verification.telegramAvailable && verification.verificationMethod !== "telegram" && <div className="space-y-2"><p className="text-xs text-muted-foreground">باختيار تيليجرام، توافق على إرسال رقم هاتفك إليه لاستلام كود التفعيل.</p><button type="button" className="block w-full text-sm text-primary hover:underline" disabled={loading} onClick={() => void sendCode("telegram")}>أرسل الكود إلى تيليجرام بدلًا من البريد</button></div>}
                 </>
               )}
             </form>

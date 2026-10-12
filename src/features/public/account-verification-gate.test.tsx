@@ -19,7 +19,7 @@ const user: AuthUser = {
 };
 
 beforeEach(() => {
-  verification.request.mockReset().mockResolvedValue({ verificationId: 5, emailHint: "s***@example.test", resendAfterSeconds: 0 });
+  verification.request.mockReset().mockResolvedValue({ verificationId: 5, verificationMethod: "email", emailHint: "s***@example.test", resendAfterSeconds: 0 });
   verification.verify.mockReset().mockResolvedValue({ user: { ...user, verified: true } });
   verification.changeEmail.mockReset();
 });
@@ -39,12 +39,23 @@ describe("account verification gate", () => {
   });
 
   it("lets the user correct an email address before verification", async () => {
-    verification.changeEmail.mockResolvedValue({ verificationId: 6, emailHint: "n***@example.test", resendAfterSeconds: 0 });
+    verification.changeEmail.mockResolvedValue({ verificationId: 6, verificationMethod: "email", emailHint: "n***@example.test", resendAfterSeconds: 0 });
     render(<AccountVerificationGate user={user} onVerified={vi.fn()} onLogout={vi.fn()}/>);
     fireEvent.click(screen.getByRole("button", { name: "إرسال رسالة التفعيل" }));
     fireEvent.click(await screen.findByRole("button", { name: "البريد غير صحيح؟ تغيير البريد الإلكتروني" }));
     fireEvent.change(screen.getByLabelText("البريد الإلكتروني الصحيح"), { target: { value: "new@example.test" } });
     fireEvent.click(screen.getByRole("button", { name: "حفظ وإرسال كود جديد" }));
     await waitFor(() => expect(verification.changeEmail).toHaveBeenCalledWith("new@example.test"));
+  });
+
+  it("offers email fallback when the code was sent through Telegram", async () => {
+    verification.request.mockResolvedValueOnce({ verificationId: 5, verificationMethod: "telegram", emailHint: "s***@example.test", resendAfterSeconds: 60 });
+    verification.request.mockResolvedValueOnce({ verificationId: 6, verificationMethod: "email", emailHint: "s***@example.test", resendAfterSeconds: 60 });
+    render(<AccountVerificationGate user={user} onVerified={vi.fn()} onLogout={vi.fn()}/>);
+    fireEvent.click(screen.getByRole("button", { name: "إرسال رسالة التفعيل" }));
+    expect(await screen.findByText(/تيليجرام المرتبط/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /لا تستخدم تيليجرام/ }));
+    await waitFor(() => expect(verification.request).toHaveBeenLastCalledWith("email"));
+    expect(await screen.findByRole("button", { name: "البريد غير صحيح؟ تغيير البريد الإلكتروني" })).toBeInTheDocument();
   });
 });

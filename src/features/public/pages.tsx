@@ -406,7 +406,7 @@ export function RegisterPage({ nav }: any) {
         passwordConfirmation: form.confirm,
       });
       storePendingRegistration(registration);
-      notify("تم إنشاء الحساب وإرسال كود التفعيل إلى بريدك", "success");
+      notify(registration.verificationMethod === "telegram" ? "تم إنشاء الحساب وإرسال كود التفعيل إلى تيليجرام" : "تم إنشاء الحساب وإرسال كود التفعيل إلى بريدك", "success");
       nav("otp", { phone: form.phone, verificationRole: "student" });
     } catch (error) {
       const message = error instanceof ApiError ? error.message : "تعذر إنشاء الحساب. حاول مرة أخرى.";
@@ -585,7 +585,7 @@ export function OTPPage({ nav, params, setRole, setAuthUser }: any) {
       setAuthUser(user);
       setRole(user.role);
       nav(user.role === "parent" ? "parent-dashboard" : "student-dashboard", {}, user.role);
-      notify("تم التحقق من البريد الإلكتروني بنجاح", "success");
+      notify("تم تفعيل الحساب بنجاح", "success");
     } catch (requestError) {
       setError(requestError instanceof ApiError ? requestError.message : "تعذر التحقق من الكود.");
     } finally {
@@ -593,17 +593,17 @@ export function OTPPage({ nav, params, setRole, setAuthUser }: any) {
     }
   };
 
-  const resend = async () => {
-    if (!registration || resendRemaining > 0) return;
+  const resend = async (channel?: "email" | "telegram") => {
+    if (!registration || (resendRemaining > 0 && !channel)) return;
 
     setLoading(true);
     setError("");
     try {
-      const nextRegistration = await resendRegistration(registration);
+      const nextRegistration = await resendRegistration(registration, channel);
       storePendingRegistration(nextRegistration);
       setRegistration(nextRegistration);
       setResendRemaining(nextRegistration.resendAfterSeconds);
-      notify("تم إرسال كود تحقق جديد إلى بريدك الإلكتروني", "success");
+      notify(nextRegistration.verificationMethod === "telegram" ? "تم إرسال كود تحقق جديد إلى تيليجرام" : "تم إرسال كود تحقق جديد إلى بريدك الإلكتروني", "success");
     } catch (requestError) {
       setError(requestError instanceof ApiError ? requestError.message : "تعذر إنشاء رابط تحقق جديد.");
     } finally {
@@ -616,10 +616,10 @@ export function OTPPage({ nav, params, setRole, setAuthUser }: any) {
         <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
           <Shield size={28} className="text-primary"/>
         </div>
-        <h1 className="text-2xl font-black mb-2">التحقق من البريد الإلكتروني</h1>
+        <h1 className="text-2xl font-black mb-2">تفعيل الحساب</h1>
         <p className="text-muted-foreground text-sm mb-6">
-          أرسلنا كودًا مكونًا من ٦ أرقام إلى<br/>
-          <span className="font-bold text-foreground" dir="ltr">{registration?.emailHint || "بريدك الإلكتروني"}</span>
+          أرسلنا كودًا مكونًا من ٦ أرقام إلى {registration?.verificationMethod === "telegram" ? "تيليجرام المرتبط برقم" : "البريد الإلكتروني"}<br/>
+          <span className="font-bold text-foreground" dir="ltr">{registration?.verificationMethod === "telegram" ? registration.phone : registration?.emailHint || "بريدك الإلكتروني"}</span>
         </p>
         <Card2>
           <form onSubmit={(event) => { event.preventDefault(); void submit(); }} className="space-y-4">
@@ -627,9 +627,11 @@ export function OTPPage({ nav, params, setRole, setAuthUser }: any) {
             {error && <div role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</div>}
             <Btn type="submit" className="w-full" disabled={loading || code.length !== 6}>{loading ? "جارٍ التحقق…" : "تأكيد الكود"}</Btn>
           </form>
-          <button disabled={loading || resendRemaining > 0} onClick={resend} className="text-sm text-primary hover:underline disabled:opacity-50 disabled:no-underline">
+          <button type="button" disabled={loading || resendRemaining > 0} onClick={() => void resend()} className="text-sm text-primary hover:underline disabled:opacity-50 disabled:no-underline">
             {resendRemaining > 0 ? `إرسال كود جديد خلال ${resendRemaining} ثانية` : "إرسال كود جديد"}
           </button>
+          {registration?.verificationMethod === "telegram" && <button type="button" disabled={loading} onClick={() => void resend("email")} className="mt-3 block w-full text-sm text-primary hover:underline disabled:opacity-50">لا تستخدم تيليجرام؟ أرسل الكود إلى البريد الإلكتروني</button>}
+          {registration?.telegramAvailable && registration.verificationMethod !== "telegram" && <div className="mt-3 space-y-2"><p className="text-xs text-muted-foreground">باختيار تيليجرام، توافق على إرسال رقم هاتفك إليه لاستلام كود التفعيل.</p><button type="button" disabled={loading} onClick={() => void resend("telegram")} className="block w-full text-sm text-primary hover:underline disabled:opacity-50">أرسل الكود إلى تيليجرام بدلًا من البريد</button></div>}
         </Card2>
       </div>
     </div>

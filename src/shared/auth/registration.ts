@@ -10,7 +10,8 @@ export type PendingRegistration = {
   role: Extract<AuthRole, "student" | "parent">;
   resendAfterSeconds: number;
   expiresAt: string;
-  verificationMethod: "email";
+  verificationMethod: "email" | "telegram";
+  telegramAvailable: boolean;
   emailHint: string;
   clientToken: string;
 };
@@ -34,7 +35,8 @@ type RegistrationResponse = {
   phone: string;
   expires_at: string;
   resend_after_seconds: number;
-  verification_method: "email";
+  verification_method: "email" | "telegram";
+  telegram_available: boolean;
   email_hint: string;
   client_token: string;
 };
@@ -48,6 +50,7 @@ function pendingRegistration(response: RegistrationResponse, role: PendingRegist
     resendAfterSeconds: response.resend_after_seconds,
     expiresAt: response.expires_at,
     verificationMethod: response.verification_method,
+    telegramAvailable: response.telegram_available,
     emailHint: response.email_hint,
     clientToken: response.client_token,
   };
@@ -160,10 +163,10 @@ export async function completeRegistration(registration: PendingRegistration) {
   return acceptSession(response);
 }
 
-export async function resendRegistration(registration: PendingRegistration) {
+export async function resendRegistration(registration: PendingRegistration, channel?: "email" | "telegram") {
   const response = await apiRequest<RegistrationResponse>(
     `/registrations/${registration.registrationId}/resend`,
-    { method: "POST" },
+    { method: "POST", body: JSON.stringify({ channel }) },
   );
   return pendingRegistration(response, registration.role);
 }
