@@ -654,7 +654,7 @@ export function ForgotPage({ nav }: any) {
 
   useEffect(() => {
     if (reset?.email && !email) setEmail(reset.email);
-    if (reset) setResendRemaining(reset.resendAfterSeconds);
+    if (reset) setResendRemaining(Math.max(0, Math.ceil(((reset.requestedAt ?? Date.now()) + reset.resendAfterSeconds * 1000 - Date.now()) / 1000)));
   }, [reset]);
   useEffect(() => {
     if (resendRemaining <= 0) return;
@@ -731,6 +731,8 @@ export function ForgotPage({ nav }: any) {
       await completePasswordReset(reset, password, passwordConfirmation);
       clearPendingPasswordReset();
       setReset(null);
+      setPassword("");
+      setPasswordConfirmation("");
       setStatus("success");
     } catch (requestError) {
       // If the save succeeded but its response was lost, the verification is
@@ -739,6 +741,8 @@ export function ForgotPage({ nav }: any) {
       if (current?.status === "consumed") {
         clearPendingPasswordReset();
         setReset(null);
+        setPassword("");
+        setPasswordConfirmation("");
         setStatus("success");
       } else {
         setError(requestError instanceof ApiError ? requestError.message : "تعذر تغيير كلمة المرور.");
@@ -752,6 +756,10 @@ export function ForgotPage({ nav }: any) {
     clearPendingPasswordReset();
     setReset(null);
     setStatus("request");
+    setCode("");
+    setPassword("");
+    setPasswordConfirmation("");
+    setResendRemaining(0);
     setError("");
   };
 
@@ -803,8 +811,8 @@ export function ForgotPage({ nav }: any) {
           {status === "verified" && (
             <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); void submitPassword(); }}>
               <div className="text-center"><CheckCircle size={42} className="text-primary mx-auto mb-2"/><p className="font-bold">تم التحقق من البريد الإلكتروني</p></div>
-              <Input2 label="كلمة المرور الجديدة" type="password" value={password} onChange={(event) => setPassword(event.target.value)} dir="ltr"/>
-              <Input2 label="تأكيد كلمة المرور" type="password" value={passwordConfirmation} onChange={(event) => setPasswordConfirmation(event.target.value)} dir="ltr"/>
+              <Input2 label="كلمة المرور الجديدة" type="password" autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} dir="ltr"/>
+              <Input2 label="تأكيد كلمة المرور" type="password" autoComplete="new-password" value={passwordConfirmation} onChange={(event) => setPasswordConfirmation(event.target.value)} dir="ltr"/>
               <Btn type="submit" className="w-full" disabled={loading || password.length < 8 || password !== passwordConfirmation}>{loading ? <><RefreshCw size={15} className="animate-spin"/> جارٍ الحفظ…</> : "حفظ كلمة المرور الجديدة"}</Btn>
             </form>
           )}

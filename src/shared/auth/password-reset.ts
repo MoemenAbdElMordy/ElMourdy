@@ -9,6 +9,7 @@ export type PendingPasswordReset = {
   resendAfterSeconds: number;
   verificationMethod: "email_code";
   clientToken: string;
+  requestedAt?: number;
 };
 
 type PasswordResetResponse = {
@@ -20,11 +21,20 @@ type PasswordResetResponse = {
 };
 
 export function storePendingPasswordReset(reset: PendingPasswordReset) {
-  sessionStorage.setItem(PENDING_PASSWORD_RESET_KEY, JSON.stringify(reset));
+  try {
+    sessionStorage.setItem(PENDING_PASSWORD_RESET_KEY, JSON.stringify(reset));
+  } catch {
+    // The reset remains usable in memory when browser storage is disabled.
+  }
 }
 
 export function loadPendingPasswordReset() {
-  const value = sessionStorage.getItem(PENDING_PASSWORD_RESET_KEY);
+  let value: string | null;
+  try {
+    value = sessionStorage.getItem(PENDING_PASSWORD_RESET_KEY);
+  } catch {
+    return null;
+  }
   if (!value) return null;
   try {
     const reset = JSON.parse(value) as Partial<PendingPasswordReset>;
@@ -42,7 +52,11 @@ export function loadPendingPasswordReset() {
 }
 
 export function clearPendingPasswordReset() {
-  sessionStorage.removeItem(PENDING_PASSWORD_RESET_KEY);
+  try {
+    sessionStorage.removeItem(PENDING_PASSWORD_RESET_KEY);
+  } catch {
+    // Storage may be unavailable in private browsing mode.
+  }
 }
 
 export async function requestPasswordReset(email: string) {
@@ -57,6 +71,7 @@ export async function requestPasswordReset(email: string) {
     resendAfterSeconds: response.resend_after_seconds,
     verificationMethod: response.verification_method,
     clientToken: response.client_token,
+    requestedAt: Date.now(),
   } satisfies PendingPasswordReset;
 }
 
