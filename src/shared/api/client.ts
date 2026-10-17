@@ -31,6 +31,12 @@ function localizeApiError(message: string, status: number, code?: string) {
   if (normalized.includes("no active account uses this email address")) return "لا يوجد حساب نشط مسجل بهذا البريد الإلكتروني";
   if (normalized.includes("verification email could not be delivered")) return "تعذر إرسال رسالة التحقق إلى البريد الإلكتروني؛ حاول مرة أخرى بعد قليل";
   if (normalized.includes("verification code is invalid")) return "كود التحقق غير صحيح";
+  if (normalized.includes("email verification is not complete")) return "أكد كود البريد الإلكتروني أولًا قبل تغيير كلمة المرور";
+  if (normalized.includes("password reset token is invalid")) return "طلب الاستعادة لم يعد صالحًا؛ ابدأ طلبًا جديدًا";
+  if (normalized.includes("a new password is required")) return "اكتب كلمة المرور الجديدة";
+  if (normalized.includes("password confirmation doesn't match")) return "تأكيد كلمة المرور غير مطابق";
+  if (normalized.includes("password is too short")) return "كلمة المرور يجب ألا تقل عن ٨ أحرف";
+  if (normalized.includes("verification code is no longer active")) return "كود التحقق لم يعد صالحًا؛ اطلب كودًا جديدًا";
   if (normalized.includes("password") && normalized.includes("incorrect")) return "كلمة المرور غير صحيحة";
   if (normalized.includes("expired")) return "انتهت صلاحية الطلب، حاول مرة أخرى";
   if (normalized.includes("not found")) return "العنصر المطلوب غير موجود";
@@ -89,7 +95,11 @@ export function clearSessionToken() {
 }
 
 export async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const token = getSessionToken();
+  // Recovery and sign-in are public even when an expired session token is
+  // still stored in this browser. Never let that token disrupt the flow.
+  const publicAuthRequest = path === "/password_resets" || path.startsWith("/password_resets/") ||
+    (path === "/session" && options.method?.toUpperCase() === "POST");
+  const token = publicAuthRequest ? null : getSessionToken();
   const headers = new Headers(options.headers);
   headers.set("Accept", "application/json");
   if (options.body && !(options.body instanceof FormData) && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
