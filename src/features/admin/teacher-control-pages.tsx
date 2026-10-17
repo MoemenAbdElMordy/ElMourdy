@@ -26,7 +26,15 @@ export function ParentDetailPage({nav,params}:any){
   const refresh=()=>loadParent(Number(params?.parentId)).then(r=>setParent(r.parent)).catch(e=>notify(errorMessage(e,"تعذر تحميل حساب ولي الأمر"),"error"));useEffect(()=>{void refresh();},[params?.parentId]);
   if(!parent)return <p className="p-8 text-center">جارٍ تحميل الحساب…</p>;
   const toggle=async()=>{const status=parent.status==="active"?"suspended":"active";const r=await updateParent(parent.id,{status});setParent(r.parent);notify(status==="active"?"تم تفعيل الحساب":"تم إيقاف الحساب وإنهاء جلساته","success");};
-  const savePassword=async()=>{await resetParentPassword(parent.id,password);setPassword("");setPasswordModal(false);notify("تم تغيير كلمة المرور وإنهاء الجلسات القديمة","success");};
+  const savePassword=async()=>{
+    try {
+      await resetParentPassword(parent.id,password);
+      setPassword("");setPasswordModal(false);
+      notify("تم تغيير كلمة المرور وإنهاء الجلسات القديمة","success");
+    } catch(error) {
+      notify(errorMessage(error,"تعذر تغيير كلمة مرور ولي الأمر"),"error");
+    }
+  };
   return <div className="workspace family-workspace"><div className="mx-auto max-w-4xl"><button onClick={()=>nav("parents-list")} className="mb-4 flex items-center gap-1 text-sm text-muted-foreground"><ArrowRight size={14}/> العودة لأولياء الأمور</button><Card2><div className="flex flex-wrap items-start justify-between gap-3"><div><h1 className="text-2xl font-black">{parent.name}</h1><p dir="ltr" className="text-sm text-muted-foreground">{parent.phone}</p></div><div className="flex gap-2"><Btn variant="outline" onClick={()=>setPasswordModal(true)}>تغيير كلمة المرور</Btn><Btn variant={parent.status==="active"?"danger":"primary"} onClick={toggle}>{parent.status==="active"?"إيقاف الحساب":"تفعيل الحساب"}</Btn></div></div><div className="mt-5 grid gap-3 sm:grid-cols-2"><div className="rounded-xl bg-muted p-3"><span className="text-xs text-muted-foreground">الحالة</span><p className="font-bold">{accountStatus[parent.status]}</p></div><div className="rounded-xl bg-muted p-3"><span className="text-xs text-muted-foreground">آخر نشاط</span><p className="font-bold">{date(parent.last_active_at)}</p></div></div></Card2><DetailSection title="الطلاب المرتبطون" description="افتح ملف الطالب أو راجع البيانات التي يراها" open><div className="family-children">{parent.students?.map(student=><div key={student.id} className="flex items-center justify-between border-t border-border py-3"><div><strong>{student.name}</strong><p dir="ltr" className="text-xs text-muted-foreground">{student.phone}</p></div><div className="flex gap-2"><Badge2>{relationName[student.relation]||"ولي الأمر"}</Badge2><Btn size="sm" variant="outline" onClick={()=>nav("student-detail",{studentId:student.id})}>إدارة الطالب</Btn><Btn size="sm" onClick={()=>nav("student-preview",{studentId:student.id})}>معاينة كطالب</Btn></div></div>)}</div></DetailSection><Modal2 open={passwordModal} onClose={()=>setPasswordModal(false)} title="تغيير كلمة مرور ولي الأمر"><div className="space-y-3"><Input2 label="كلمة المرور الجديدة" type="password" value={password} onChange={e=>setPassword(e.target.value)}/><Btn className="w-full" disabled={password.length<8} onClick={savePassword}>حفظ وإنهاء الجلسات</Btn></div></Modal2></div></div>;
 }
 

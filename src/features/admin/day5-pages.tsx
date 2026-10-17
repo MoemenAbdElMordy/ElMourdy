@@ -264,10 +264,14 @@ export function Day5StudentDetailPage({ nav, params, authUser }: any) {
     notify("تم تحديث تسجيل الطالب الدراسي", "success");
   };
   const savePassword = async () => {
-    await resetStudentPassword(student.id, newPassword);
-    setNewPassword("");
-    setPasswordModal(false);
-    notify("تم تغيير كلمة المرور وإنهاء جلسات الطالب القديمة", "success");
+    try {
+      await resetStudentPassword(student.id, newPassword);
+      setNewPassword("");
+      setPasswordModal(false);
+      notify("تم تغيير كلمة المرور وإنهاء جلسات الطالب القديمة", "success");
+    } catch (error) {
+      notify(error instanceof ApiError ? error.message : "تعذر تغيير كلمة مرور الطالب", "error");
+    }
   };
   const openParentPhone = () => {
     setNewParentPhone(student.parent_phone || "");
