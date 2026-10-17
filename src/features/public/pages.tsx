@@ -664,11 +664,20 @@ export function ForgotPage({ nav }: any) {
 
   useEffect(() => {
     if (!reset) return;
+    let active = true;
     void loadPasswordResetStatus(reset).then((response) => {
+      if (!active) return;
       if (response.status === "verified") setStatus("verified");
-      if (response.status === "consumed") setStatus("success");
+      if (response.status === "consumed") {
+        clearPendingPasswordReset();
+        setReset(null);
+        setStatus("success");
+      }
       if (response.status === "expired" || response.status === "failed") restart();
-    }).catch(() => setError("تعذر التحقق من حالة الكود الآن. أعد المحاولة بعد قليل، ولم يتم إلغاء طلبك."));
+    }).catch(() => {
+      if (active) setError("تعذر التحقق من حالة الكود الآن. أعد المحاولة بعد قليل، ولم يتم إلغاء طلبك.");
+    });
+    return () => { active = false; };
   // Only restore the persisted reset once when the page opens.
   }, []);
 
@@ -695,7 +704,11 @@ export function ForgotPage({ nav }: any) {
       await verifyPasswordReset(reset, code);
       setStatus("verified");
     } catch (requestError) {
-      setError(requestError instanceof ApiError ? requestError.message : "كود التحقق غير صحيح أو انتهت صلاحيته.");
+      // A lost HTTP response must not leave the user stuck after the server
+      // has already accepted the code.
+      const current = await loadPasswordResetStatus(reset).catch(() => null);
+      if (current?.status === "verified") setStatus("verified");
+      else setError(requestError instanceof ApiError ? requestError.message : "كود التحقق غير صحيح أو انتهت صلاحيته.");
     } finally {
       setLoading(false);
     }
@@ -720,7 +733,16 @@ export function ForgotPage({ nav }: any) {
       setReset(null);
       setStatus("success");
     } catch (requestError) {
-      setError(requestError instanceof ApiError ? requestError.message : "تعذر تغيير كلمة المرور.");
+      // If the save succeeded but its response was lost, the verification is
+      // consumed. Report success instead of asking for another reset.
+      const current = await loadPasswordResetStatus(reset).catch(() => null);
+      if (current?.status === "consumed") {
+        clearPendingPasswordReset();
+        setReset(null);
+        setStatus("success");
+      } else {
+        setError(requestError instanceof ApiError ? requestError.message : "تعذر تغيير كلمة المرور.");
+      }
     } finally {
       setLoading(false);
     }

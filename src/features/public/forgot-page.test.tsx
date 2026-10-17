@@ -107,6 +107,36 @@ describe("password recovery page", () => {
     ));
     expect(await screen.findByText("تم تغيير كلمة المرور")).toBeInTheDocument();
   });
+
+  it("continues after a lost code-verification response when the server accepted it", async () => {
+    resetMocks.loadPending.mockReturnValue(pendingReset);
+    resetMocks.verify.mockRejectedValue(new Error("network disconnected"));
+    resetMocks.loadStatus
+      .mockResolvedValueOnce({ status: "pending", expires_at: pendingReset.expiresAt })
+      .mockResolvedValueOnce({ status: "verified", expires_at: pendingReset.expiresAt });
+    render(<ForgotPage nav={vi.fn()}/>);
+
+    fireEvent.change(await screen.findByLabelText("كود التحقق"), { target: { value: "123456" } });
+    fireEvent.click(screen.getByRole("button", { name: "تأكيد الكود" }));
+
+    expect(await screen.findByText("تم التحقق من البريد الإلكتروني")).toBeInTheDocument();
+  });
+
+  it("shows success after a lost save response when the password was changed", async () => {
+    resetMocks.loadPending.mockReturnValue(pendingReset);
+    resetMocks.loadStatus
+      .mockResolvedValueOnce({ status: "verified", expires_at: pendingReset.expiresAt })
+      .mockResolvedValueOnce({ status: "consumed", expires_at: pendingReset.expiresAt });
+    resetMocks.complete.mockRejectedValue(new Error("network disconnected"));
+    render(<ForgotPage nav={vi.fn()}/>);
+
+    fireEvent.change(await screen.findByLabelText("كلمة المرور الجديدة"), { target: { value: "NewPassword123!" } });
+    fireEvent.change(screen.getByLabelText("تأكيد كلمة المرور"), { target: { value: "NewPassword123!" } });
+    fireEvent.click(screen.getByRole("button", { name: "حفظ كلمة المرور الجديدة" }));
+
+    expect(await screen.findByText("تم تغيير كلمة المرور")).toBeInTheDocument();
+    expect(resetMocks.clear).toHaveBeenCalled();
+  });
 });
 
 describe("login page", () => {

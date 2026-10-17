@@ -25,7 +25,20 @@ export function storePendingPasswordReset(reset: PendingPasswordReset) {
 
 export function loadPendingPasswordReset() {
   const value = sessionStorage.getItem(PENDING_PASSWORD_RESET_KEY);
-  return value ? JSON.parse(value) as PendingPasswordReset : null;
+  if (!value) return null;
+  try {
+    const reset = JSON.parse(value) as Partial<PendingPasswordReset>;
+    if (Number.isSafeInteger(reset.passwordResetId) && reset.passwordResetId! > 0 &&
+      typeof reset.clientToken === "string" && reset.clientToken.length > 0 &&
+      typeof reset.expiresAt === "string" && Number.isFinite(Date.parse(reset.expiresAt)) &&
+      typeof reset.resendAfterSeconds === "number" && reset.verificationMethod === "email_code") {
+      return reset as PendingPasswordReset;
+    }
+  } catch {
+    // A partially written browser-storage value must not crash recovery.
+  }
+  clearPendingPasswordReset();
+  return null;
 }
 
 export function clearPendingPasswordReset() {

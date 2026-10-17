@@ -34,6 +34,11 @@ describe("API error messages", () => {
     const error = new ApiError("Phone e164 has already been taken", 422, "unprocessable_entity");
     expect(error.message).toBe("تم إنشاء حساب بهذه البيانات بالفعل. سجّل الدخول لإكمال تفعيل الحساب");
   });
+
+  it("explains a missing password confirmation instead of showing a generic error", () => {
+    const error = new ApiError("Password confirmation does not match", 422, "business_rule_violation");
+    expect(error.message).toBe("تأكيد كلمة المرور غير مطابق");
+  });
 });
 
 afterEach(() => {

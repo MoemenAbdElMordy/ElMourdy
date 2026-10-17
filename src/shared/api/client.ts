@@ -34,7 +34,8 @@ function localizeApiError(message: string, status: number, code?: string) {
   if (normalized.includes("email verification is not complete")) return "أكد كود البريد الإلكتروني أولًا قبل تغيير كلمة المرور";
   if (normalized.includes("password reset token is invalid")) return "طلب الاستعادة لم يعد صالحًا؛ ابدأ طلبًا جديدًا";
   if (normalized.includes("a new password is required")) return "اكتب كلمة المرور الجديدة";
-  if (normalized.includes("password confirmation doesn't match")) return "تأكيد كلمة المرور غير مطابق";
+  if (normalized.includes("password confirmation doesn't match") ||
+    normalized.includes("password confirmation does not match")) return "تأكيد كلمة المرور غير مطابق";
   if (normalized.includes("password is too short")) return "كلمة المرور يجب ألا تقل عن ٨ أحرف";
   if (normalized.includes("verification code is no longer active")) return "كود التحقق لم يعد صالحًا؛ اطلب كودًا جديدًا";
   if (normalized.includes("password") && normalized.includes("incorrect")) return "كلمة المرور غير صحيحة";
